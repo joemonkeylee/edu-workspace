@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Book {
+  id          Int      @id @default(autoincrement())
+  title       String
+  category    String
+  totalPages  Int
+  storagePath String
+  tocJson     Json
+  createdAt   DateTime @default(now())
+
+  annotations Annotation[]
+  mistakes    Mistake[]
+}
+
+model Annotation {
+  id          Int      @id @default(autoincrement())
+  bookId      Int
+  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber  Int
+  type        String
+  contentJson Json
+  tags        String?
+  createdAt   DateTime @default(now())
+
+  mistakes Mistake[]
+}
+
+model Mistake {
+  id           Int         @id @default(autoincrement())
+  annotationId Int
+  annotation   Annotation  @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  bookId       Int
+  book         Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber   Int
+  imagePath    String
+  subject      String
+  tags         String?
+  reviewStatus Int         @default(0)
+  createdAt    DateTime    @default(now())
+
+  @@index([bookId])
+  @@index([annotationId])
+  @@index([subject])
+}
