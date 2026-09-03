@@ -28,6 +28,7 @@ import {
   Trash2,
   CheckCircle2,
   Circle,
+  Layers,
 } from 'lucide-react';
 
 type FitMode = 'width' | 'page' | null;
@@ -65,6 +66,7 @@ export default function BookViewer() {
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
   const mainRef = useRef<HTMLDivElement>(null);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
+  const [selectedDpi, setSelectedDpi] = useState<number>(0);
 
   useEffect(() => {
     if (bookId) {
@@ -74,13 +76,24 @@ export default function BookViewer() {
     return () => clearCurrent();
   }, [bookId]);
 
+  const availableDpis: number[] = currentBook?.availableDpis || [];
+  const activeDpi = selectedDpi || availableDpis[0] || 0;
+  const effectiveStoragePath = activeDpi
+    ? `/storage/books/${bookId}/${activeDpi}/`
+    : currentBook?.storagePath || '';
+
+  // Reset selectedDpi when book changes
+  useEffect(() => {
+    setSelectedDpi(0);
+  }, [bookId]);
+
   // Load natural image dimensions for auto-fit calculation
   useEffect(() => {
     if (!currentBook) return;
     const img = new Image();
     img.onload = () => setImgNatural({ w: img.naturalWidth, h: img.naturalHeight });
-    img.src = pageImageUrl(currentBook.storagePath, currentPage);
-  }, [currentBook, currentPage]);
+    img.src = pageImageUrl(effectiveStoragePath, currentPage);
+  }, [currentBook, currentPage, effectiveStoragePath]);
 
   const effectiveLayout: PageLayout = tool !== 'view' ? 'single' : pageLayout;
   const isDouble = effectiveLayout === 'double' && currentPage < (currentBook?.totalPages ?? 0);
@@ -283,6 +296,23 @@ export default function BookViewer() {
           </button>
         </div>
 
+        {/* DPI selector */}
+        {availableDpis.length > 0 && (
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+            <Layers size={14} className="text-gray-400 ml-1.5" />
+            <select
+              value={activeDpi}
+              onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('width'); }}
+              className="bg-transparent text-gray-200 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black"
+              title="选择分辨率"
+            >
+              {availableDpis.map(d => (
+                <option key={d} value={d}>{d} DPI</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <button
           onClick={() => setRightOpen(!rightOpen)}
           className={`p-1.5 rounded transition ${rightOpen ? 'bg-white/10' : 'hover:bg-white/10'}`}
@@ -308,7 +338,7 @@ export default function BookViewer() {
           <div className="p-4 flex gap-1">
             {tool === 'crop' ? (
               <CropTool
-                storagePath={currentBook.storagePath}
+                storagePath={effectiveStoragePath}
                 pageNumber={currentPage}
                 zoom={zoom}
                 onSave={handleCropSave}
@@ -317,7 +347,7 @@ export default function BookViewer() {
             ) : isDouble ? (
               <>
                 <PageCanvas
-                  storagePath={currentBook.storagePath}
+                  storagePath={effectiveStoragePath}
                   pageNumber={currentPage}
                   zoom={zoom}
                   tool={tool}
@@ -325,7 +355,7 @@ export default function BookViewer() {
                   onSaveAnnotation={handleSaveAnnotation}
                 />
                 <PageCanvas
-                  storagePath={currentBook.storagePath}
+                  storagePath={effectiveStoragePath}
                   pageNumber={currentPage + 1}
                   zoom={zoom}
                   tool={'view'}
@@ -335,7 +365,7 @@ export default function BookViewer() {
               </>
             ) : (
               <PageCanvas
-                storagePath={currentBook.storagePath}
+                storagePath={effectiveStoragePath}
                 pageNumber={currentPage}
                 zoom={zoom}
                 tool={tool}

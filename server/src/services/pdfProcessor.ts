@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -93,43 +93,65 @@ export async function renderPages(
   inputPath: string,
   outputDir: string,
   dpi: number,
+  totalPages: number,
   onProgress?: (current: number, total: number) => void
 ): Promise<string[]> {
   fs.mkdirSync(outputDir, { recursive: true });
-
   const prefix = path.join(outputDir, 'page');
-  const result = spawnSync('pdftoppm', [
-    '-png', '-r', String(dpi),
-    inputPath, prefix
-  ], { encoding: 'utf-8', env: SHELL_ENV, timeout: 600000 });
 
-  if (result.status !== 0) {
-    throw new Error(`pdftoppm 渲染失败: ${result.stderr || result.stdout}`);
-  }
+  return new Promise((resolve, reject) => {
+    const proc = spawn('pdftoppm', [
+      '-png', '-r', String(dpi),
+      inputPath, prefix
+    ], { env: SHELL_ENV });
 
-  const files = fs.readdirSync(outputDir)
-    .filter(f => /^page-\d+\.png$/.test(f))
-    .sort((a, b) => {
-      const na = parseInt(a.match(/page-(\d+)/)![1]);
-      const nb = parseInt(b.match(/page-(\d+)/)![1]);
-      return na - nb;
+    let stderr = '';
+    proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    const pollInterval = setInterval(() => {
+      try {
+        const files = fs.readdirSync(outputDir).filter(f => /^page-\d+\.png$/.test(f));
+        onProgress?.(files.length, totalPages);
+      } catch { /* ignore */ }
+    }, 500);
+
+    proc.on('close', (code) => {
+      clearInterval(pollInterval);
+
+      if (code !== 0) {
+        reject(new Error(`pdftoppm 渲染失败: ${stderr}`));
+        return;
+      }
+
+      const files = fs.readdirSync(outputDir)
+        .filter(f => /^page-\d+\.png$/.test(f))
+        .sort((a, b) => {
+          const na = parseInt(a.match(/page-(\d+)/)![1]);
+          const nb = parseInt(b.match(/page-(\d+)/)![1]);
+          return na - nb;
+        });
+
+      const renamed: string[] = [];
+      files.forEach((file, idx) => {
+        const current = idx + 1;
+        const oldPath = path.join(outputDir, file);
+        const newName = `page-${String(current).padStart(4, '0')}.png`;
+        const newPath = path.join(outputDir, newName);
+        if (oldPath !== newPath) {
+          fs.renameSync(oldPath, newPath);
+        }
+        renamed.push(newName);
+      });
+
+      onProgress?.(renamed.length, totalPages);
+      resolve(renamed);
     });
 
-  const total = files.length;
-  const renamed: string[] = [];
-  files.forEach((file, idx) => {
-    const current = idx + 1;
-    const oldPath = path.join(outputDir, file);
-    const newName = `page-${String(current).padStart(4, '0')}.png`;
-    const newPath = path.join(outputDir, newName);
-    if (oldPath !== newPath) {
-      fs.renameSync(oldPath, newPath);
-    }
-    renamed.push(newName);
-    onProgress?.(current, total);
+    proc.on('error', (err) => {
+      clearInterval(pollInterval);
+      reject(err);
+    });
   });
-
-  return renamed;
 }
 
 export function getAvailableDpis(bookDir: string): number[] {

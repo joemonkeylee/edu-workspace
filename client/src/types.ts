@@ -13,6 +13,7 @@ export interface Book {
   tocJson: TocNode[];
   createdAt: string;
   annotations?: Annotation[];
+  availableDpis?: number[];
 }
 
 export interface Annotation {

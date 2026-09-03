@@ -150,22 +150,21 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const dpiDir = path.join(bookDir, String(dpi));
         send('log', { message: `  开始渲染 ${task.pages} 页 (DPI=${dpi})${isNew ? '' : ' [覆盖/新增]'}...` });
 
-        const images = await renderPages(task.pdfPath, dpiDir, dpi, (current, total) => {
-          if (current % 10 === 0 || current === total) {
-            processedPages++;
-            const elapsed = (Date.now() - startTime) / 1000;
-            const overallProgress = (processedPages / totalPages) * 100;
-            const remaining = (totalPages - processedPages) * secPerPage;
-            send('progress', {
-              current, total,
-              overallCurrent: processedPages,
-              overallTotal: totalPages,
-              overallPct: Math.round(overallProgress),
-              elapsed: Math.round(elapsed),
-              remaining: Math.round(remaining),
-              message: `  渲染: ${current}/${total} | 总进度: ${processedPages}/${totalPages} (${Math.round(overallProgress)}%) 剩余 ${fmtTime(remaining)}`,
-            });
-          }
+        const prevBookPages = tasks.slice(0, i).reduce((s, t) => s + t.pages, 0);
+        const images = await renderPages(task.pdfPath, dpiDir, dpi, task.pages, (current, total) => {
+          processedPages = prevBookPages + current;
+          const elapsed = (Date.now() - startTime) / 1000;
+          const overallProgress = (processedPages / totalPages) * 100;
+          const remaining = (totalPages - processedPages) * secPerPage;
+          send('progress', {
+            current, total,
+            overallCurrent: processedPages,
+            overallTotal: totalPages,
+            overallPct: Math.round(overallProgress),
+            elapsed: Math.round(elapsed),
+            remaining: Math.round(remaining),
+            message: `  渲染: ${current}/${total} | 总进度: ${processedPages}/${totalPages} (${Math.round(overallProgress)}%) 剩余 ${fmtTime(remaining)}`,
+          });
         });
 
         // Update storagePath to reflect available DPIs

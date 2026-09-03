@@ -161,6 +161,8 @@ export default function PageCanvas({
         alt={`Page ${pageNumber}`}
         className="w-full block select-none"
         draggable={false}
+        loading="lazy"
+        decoding="async"
       />
       <canvas
         ref={canvasRef}
