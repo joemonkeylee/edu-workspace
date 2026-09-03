@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import * as api from '../api/client';
+import { pageImageUrl } from '../api/client';
 import TocTree from '../components/TocTree';
 import PageCanvas from '../components/PageCanvas';
 import CropTool from '../components/CropTool';
@@ -15,6 +16,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Minimize2,
+  Book,
+  BookOpen,
   PanelLeft,
   PanelRight,
   ChevronFirst,
@@ -25,6 +29,9 @@ import {
   CheckCircle2,
   Circle,
 } from 'lucide-react';
+
+type FitMode = 'width' | 'page' | null;
+type PageLayout = 'single' | 'double';
 
 export default function BookViewer() {
   const { id } = useParams();
@@ -54,6 +61,11 @@ export default function BookViewer() {
   const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('annotations');
   const [mistakeFilter, setMistakeFilter] = useState('');
 
+  const [fitMode, setFitMode] = useState<FitMode>('width');
+  const [pageLayout, setPageLayout] = useState<PageLayout>('single');
+  const mainRef = useRef<HTMLDivElement>(null);
+  const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
+
   useEffect(() => {
     if (bookId) {
       fetchBook(bookId);
@@ -62,16 +74,55 @@ export default function BookViewer() {
     return () => clearCurrent();
   }, [bookId]);
 
+  // Load natural image dimensions for auto-fit calculation
+  useEffect(() => {
+    if (!currentBook) return;
+    const img = new Image();
+    img.onload = () => setImgNatural({ w: img.naturalWidth, h: img.naturalHeight });
+    img.src = pageImageUrl(currentBook.storagePath, currentPage);
+  }, [currentBook, currentPage]);
+
+  const effectiveLayout: PageLayout = tool !== 'view' ? 'single' : pageLayout;
+  const isDouble = effectiveLayout === 'double' && currentPage < (currentBook?.totalPages ?? 0);
+
+  const calcZoom = useCallback(() => {
+    if (!fitMode || !mainRef.current || imgNatural.w === 0) return;
+    const container = mainRef.current;
+    const cw = container.clientWidth - 32;
+    const ch = container.clientHeight - 32;
+    const pages = isDouble ? 2 : 1;
+    if (fitMode === 'width') {
+      setZoom(cw / (imgNatural.w * pages));
+    } else {
+      setZoom(Math.min(cw / (imgNatural.w * pages), ch / imgNatural.h));
+    }
+  }, [fitMode, imgNatural, isDouble, setZoom]);
+
+  useEffect(() => { calcZoom(); }, [calcZoom]);
+
+  useEffect(() => {
+    if (!mainRef.current) return;
+    const observer = new ResizeObserver(() => calcZoom());
+    observer.observe(mainRef.current);
+    return () => observer.disconnect();
+  }, [calcZoom]);
+
+  const handleManualZoom = (delta: number) => {
+    setFitMode(null);
+    setZoom(zoom + delta);
+  };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
       if (!currentBook) return;
-      if (e.key === 'ArrowLeft' && currentPage > 1) setCurrentPage(currentPage - 1);
-      if (e.key === 'ArrowRight' && currentPage < currentBook.totalPages) setCurrentPage(currentPage + 1);
+      const step = effectiveLayout === 'double' ? 2 : 1;
+      if (e.key === 'ArrowLeft' && currentPage > 1) setCurrentPage(Math.max(1, currentPage - step));
+      if (e.key === 'ArrowRight' && currentPage < currentBook.totalPages) setCurrentPage(Math.min(currentBook.totalPages, currentPage + step));
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [currentPage, currentBook, setCurrentPage]);
+  }, [currentPage, currentBook, setCurrentPage, effectiveLayout]);
 
   const handleSaveAnnotation = useCallback(
     async (data: { type: string; contentJson: any }) => {
@@ -129,13 +180,17 @@ export default function BookViewer() {
   }
 
   const totalPages = currentBook.totalPages;
-  const pageAnnotations = annotations.filter((a) => a.pageNumber === currentPage);
+  const pageAnnotations = annotations.filter(
+    (a) => a.pageNumber === currentPage || (isDouble && a.pageNumber === currentPage + 1)
+  );
   const tools: { mode: ToolMode; icon: any; label: string }[] = [
     { mode: 'view', icon: MousePointer2, label: '浏览' },
     { mode: 'note', icon: StickyNote, label: '笔记' },
     { mode: 'highlight', icon: Highlighter, label: '高亮' },
     { mode: 'crop', icon: Scissors, label: '裁剪' },
   ];
+
+  const step = effectiveLayout === 'double' ? 2 : 1;
 
   return (
     <div className="h-full flex flex-col bg-gray-100">
@@ -172,22 +227,56 @@ export default function BookViewer() {
           ))}
         </div>
 
+        {/* Fit mode toggles */}
+        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+          <button
+            onClick={() => setFitMode('width')}
+            title="适应宽度"
+            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+          >
+            <Maximize2 size={16} />
+          </button>
+          <button
+            onClick={() => setFitMode('page')}
+            title="适应页面"
+            className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+          >
+            <Minimize2 size={16} />
+          </button>
+        </div>
+
         {/* Zoom controls */}
         <div className="flex items-center gap-1">
-          <button onClick={() => setZoom(zoom - 0.25)} className="p-1.5 rounded hover:bg-white/10 transition">
+          <button onClick={() => handleManualZoom(-0.25)} className="p-1.5 rounded hover:bg-white/10 transition" title="缩小">
             <ZoomOut size={18} />
           </button>
           <button
-            onClick={() => setZoom(1)}
+            onClick={() => { setFitMode(null); setZoom(1); }}
             className="text-xs w-12 text-center text-gray-300 hover:text-white"
+            title="实际大小"
           >
             {Math.round(zoom * 100)}%
           </button>
-          <button onClick={() => setZoom(zoom + 0.25)} className="p-1.5 rounded hover:bg-white/10 transition">
+          <button onClick={() => handleManualZoom(0.25)} className="p-1.5 rounded hover:bg-white/10 transition" title="放大">
             <ZoomIn size={18} />
           </button>
-          <button onClick={() => setZoom(1)} title="适应宽度" className="p-1.5 rounded hover:bg-white/10 transition">
-            <Maximize2 size={16} />
+        </div>
+
+        {/* Page layout toggles */}
+        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+          <button
+            onClick={() => setPageLayout('single')}
+            title="单页"
+            className={`p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+          >
+            <Book size={16} />
+          </button>
+          <button
+            onClick={() => setPageLayout('double')}
+            title="双页"
+            className={`p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+          >
+            <BookOpen size={16} />
           </button>
         </div>
 
@@ -212,8 +301,8 @@ export default function BookViewer() {
         )}
 
         {/* Center - page image */}
-        <main className="flex-1 overflow-auto flex flex-col items-center bg-gray-300/30">
-          <div className="p-4 inline-block">
+        <main ref={mainRef} className="flex-1 overflow-auto flex justify-center bg-gray-300/30">
+          <div className="p-4 flex gap-1">
             {tool === 'crop' ? (
               <CropTool
                 storagePath={currentBook.storagePath}
@@ -222,6 +311,25 @@ export default function BookViewer() {
                 onSave={handleCropSave}
                 onCancel={() => setTool('view')}
               />
+            ) : isDouble ? (
+              <>
+                <PageCanvas
+                  storagePath={currentBook.storagePath}
+                  pageNumber={currentPage}
+                  zoom={zoom}
+                  tool={tool}
+                  annotations={annotations}
+                  onSaveAnnotation={handleSaveAnnotation}
+                />
+                <PageCanvas
+                  storagePath={currentBook.storagePath}
+                  pageNumber={currentPage + 1}
+                  zoom={zoom}
+                  tool={'view'}
+                  annotations={annotations}
+                  onSaveAnnotation={handleSaveAnnotation}
+                />
+              </>
             ) : (
               <PageCanvas
                 storagePath={currentBook.storagePath}
@@ -288,7 +396,7 @@ export default function BookViewer() {
           <ChevronFirst size={18} />
         </button>
         <button
-          onClick={() => setCurrentPage(currentPage - 1)}
+          onClick={() => setCurrentPage(Math.max(1, currentPage - step))}
           disabled={currentPage <= 1}
           className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
         >
@@ -306,10 +414,15 @@ export default function BookViewer() {
             }}
             className="w-12 bg-white/10 text-center rounded px-1 py-0.5 text-white border border-white/10 focus:outline-none focus:border-primary"
           />
+          {isDouble && (
+            <span className="text-gray-400">
+              -{Math.min(currentPage + 1, totalPages)}
+            </span>
+          )}
           <span className="text-gray-400">/ {totalPages}</span>
         </div>
         <button
-          onClick={() => setCurrentPage(currentPage + 1)}
+          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + step))}
           disabled={currentPage >= totalPages}
           className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
         >
