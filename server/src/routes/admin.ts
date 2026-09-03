@@ -10,7 +10,7 @@ const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './st
 
 router.get('/scan-pdf', async (req: Request, res: Response) => {
   const targetPath = req.query.targetPath as string;
-  const category = (req.query.category as string) || path.basename(targetPath) || '未分类';
+  const explicitCategory = req.query.category as string;
   const dpi = parseInt((req.query.dpi as string) || '200', 10);
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -35,9 +35,21 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
     if (stat.isFile() && targetPath.toLowerCase().endsWith('.pdf')) {
       pdfFiles = [targetPath];
     } else if (stat.isDirectory()) {
-      pdfFiles = fs.readdirSync(targetPath)
-        .filter(f => f.toLowerCase().endsWith('.pdf'))
-        .map(f => path.join(targetPath, f));
+      const scanDir = (dir: string): string[] => {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        const results: string[] = [];
+        for (const entry of entries) {
+          if (entry.name.startsWith('.')) continue;
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            results.push(...scanDir(fullPath));
+          } else if (entry.name.toLowerCase().endsWith('.pdf')) {
+            results.push(fullPath);
+          }
+        }
+        return results;
+      };
+      pdfFiles = scanDir(targetPath);
     }
 
     if (pdfFiles.length === 0) {
@@ -54,7 +66,8 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
       try {
         const info = getPdfInfo(pdfPath);
-        send('log', { message: `  共 ${info.pages} 页，标题: ${info.title}` });
+        const pdfCategory = explicitCategory || path.basename(path.dirname(pdfPath)) || '未分类';
+        send('log', { message: `  共 ${info.pages} 页，标题: ${info.title}，分类: ${pdfCategory}` });
 
         send('log', { message: `  正在提取目录...` });
         const toc = await extractOutline(pdfPath, info.pages);
@@ -63,7 +76,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const book = await prisma.book.create({
           data: {
             title: info.title,
-            category,
+            category: pdfCategory,
             totalPages: info.pages,
             storagePath: '',
             tocJson: toc,

@@ -2,6 +2,10 @@ import { execSync, spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
+const POPPLER_BIN = '/opt/homebrew/opt/poppler/bin';
+const EXTRA_PATH = fs.existsSync(POPPLER_BIN) ? `${POPPLER_BIN}:${process.env.PATH || ''}` : (process.env.PATH || '');
+const SHELL_ENV = { ...process.env, PATH: EXTRA_PATH };
+
 export interface PdfInfo {
   pages: number;
   title: string;
@@ -15,7 +19,7 @@ export interface TocNode {
 }
 
 export function getPdfInfo(filePath: string): PdfInfo {
-  const output = execSync(`pdfinfo "${filePath}"`, { encoding: 'utf-8' });
+  const output = execSync(`pdfinfo "${filePath}"`, { encoding: 'utf-8', env: SHELL_ENV });
   const info: Record<string, string> = {};
   for (const line of output.split('\n')) {
     const idx = line.indexOf(':');
@@ -97,7 +101,7 @@ export async function renderPages(
   const result = spawnSync('pdftoppm', [
     '-png', '-r', String(dpi),
     inputPath, prefix
-  ], { encoding: 'utf-8' });
+  ], { encoding: 'utf-8', env: SHELL_ENV });
 
   if (result.status !== 0) {
     throw new Error(`pdftoppm 渲染失败: ${result.stderr || result.stdout}`);
