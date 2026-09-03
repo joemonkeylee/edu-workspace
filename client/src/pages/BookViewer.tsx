@@ -86,15 +86,18 @@ export default function BookViewer() {
   const isDouble = effectiveLayout === 'double' && currentPage < (currentBook?.totalPages ?? 0);
 
   const calcZoom = useCallback(() => {
-    if (!fitMode || !mainRef.current || imgNatural.w === 0) return;
+    if (!fitMode || !mainRef.current) return;
     const container = mainRef.current;
     const cw = container.clientWidth - 32;
     const ch = container.clientHeight - 32;
     const pages = isDouble ? 2 : 1;
     if (fitMode === 'width') {
-      setZoom(cw / (imgNatural.w * pages));
+      setZoom(1 / pages);
     } else {
-      setZoom(Math.min(cw / (imgNatural.w * pages), ch / imgNatural.h));
+      if (imgNatural.w === 0 || imgNatural.h === 0) return;
+      const widthZoom = 1 / pages;
+      const heightZoom = (ch * imgNatural.w) / (cw * imgNatural.h);
+      setZoom(Math.min(widthZoom, heightZoom));
     }
   }, [fitMode, imgNatural, isDouble, setZoom]);
 

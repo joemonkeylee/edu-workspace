@@ -47,7 +47,7 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   setCurrentPage: (page: number) => set({ currentPage: page }),
-  setZoom: (zoom: number) => set({ zoom: Math.max(0.5, Math.min(4, zoom)) }),
+  setZoom: (zoom: number) => set({ zoom: Math.max(0.1, Math.min(8, zoom)) }),
   setTool: (tool: ToolMode) => set({ tool }),
 
   fetchAnnotations: async (bookId: number) => {
