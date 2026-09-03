@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import prisma from '../prisma.js';
+import { getAvailableDpis } from '../services/pdfProcessor.js';
 
 const router = Router();
 const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
@@ -31,7 +32,12 @@ router.get('/', async (req: Request, res: Response) => {
     prisma.book.count({ where }),
   ]);
 
-  res.json({ data, total, page, pageSize });
+  const booksWithDpi = data.map(b => {
+    const bookDir = path.join(STORAGE_ABS, 'books', String(b.id));
+    return { ...b, availableDpis: getAvailableDpis(bookDir) };
+  });
+
+  res.json({ data: booksWithDpi, total, page, pageSize });
 });
 
 router.put('/:id', async (req: Request, res: Response) => {

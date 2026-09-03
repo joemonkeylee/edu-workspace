@@ -101,7 +101,7 @@ export async function renderPages(
   const result = spawnSync('pdftoppm', [
     '-png', '-r', String(dpi),
     inputPath, prefix
-  ], { encoding: 'utf-8', env: SHELL_ENV });
+  ], { encoding: 'utf-8', env: SHELL_ENV, timeout: 600000 });
 
   if (result.status !== 0) {
     throw new Error(`pdftoppm 渲染失败: ${result.stderr || result.stdout}`);
@@ -130,4 +130,18 @@ export async function renderPages(
   });
 
   return renamed;
+}
+
+export function getAvailableDpis(bookDir: string): number[] {
+  if (!fs.existsSync(bookDir)) return [];
+  return fs.readdirSync(bookDir, { withFileTypes: true })
+    .filter(e => e.isDirectory() && /^\d+$/.test(e.name))
+    .map(e => parseInt(e.name, 10))
+    .sort((a, b) => b - a);
+}
+
+export function getBestDpiPath(bookDir: string): { dpi: number; dir: string } | null {
+  const dpis = getAvailableDpis(bookDir);
+  if (dpis.length === 0) return null;
+  return { dpi: dpis[0], dir: path.join(bookDir, String(dpis[0])) };
 }

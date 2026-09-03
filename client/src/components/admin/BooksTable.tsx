@@ -77,20 +77,21 @@ export default function BooksTable() {
                 <th className="text-left px-4 py-3 font-medium">书名</th>
                 <th className="text-left px-4 py-3 font-medium">分类</th>
                 <th className="text-left px-4 py-3 font-medium">页数</th>
+                <th className="text-left px-4 py-3 font-medium">DPI</th>
                 <th className="text-left px-4 py-3 font-medium">入库时间</th>
                 <th className="text-right px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">加载中...</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-gray-400">加载中...</td></tr>
               ) : books.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-gray-400">暂无数据</td></tr>
               ) : books.map((book) => (
                 <tr key={book.id} className="hover:bg-gray-50 transition">
                   <td className="px-4 py-3">
                     <img
-                      src={`${book.storagePath}page-0001.png`}
+                      src={`${book.storagePath}${book.availableDpis?.length ? book.availableDpis[0] + '/' : ''}page-0001.png`}
                       alt={book.title}
                       className="w-12 h-16 object-cover rounded border border-gray-200"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -119,6 +120,19 @@ export default function BooksTable() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{book.totalPages}</td>
+                  <td className="px-4 py-3">
+                    {book.availableDpis?.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {book.availableDpis.map((d: number) => (
+                          <span key={d} className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-xs font-medium">
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-xs">无</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {new Date(book.createdAt).toLocaleDateString('zh-CN')}
                   </td>
