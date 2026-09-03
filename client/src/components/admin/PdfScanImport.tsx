@@ -93,6 +93,18 @@ export default function PdfScanImport() {
 
   useEffect(() => () => esRef.current?.close(), []);
   useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
+  useEffect(() => {
+    if (!scanning) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '扫描正在进行中，离开页面会中断当前导入任务。';
+      return event.returnValue;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [scanning]);
 
   const pagePct = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
   const overallPct = progress?.overallPct ?? 0;

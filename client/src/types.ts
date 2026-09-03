@@ -2,15 +2,20 @@ export interface TocNode {
   title: string;
   page: number;
   children?: TocNode[];
+  ignored?: boolean;
 }
 
 export interface Book {
   id: number;
   title: string;
   category: string;
+  grade?: string;
+  subject?: string;
+  coverPage?: number;
   totalPages: number;
   storagePath: string;
   tocJson: TocNode[];
+  attributes?: Record<string, any>;
   createdAt: string;
   annotations?: Annotation[];
   availableDpis?: number[];

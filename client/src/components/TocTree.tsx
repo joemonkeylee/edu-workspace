@@ -9,13 +9,24 @@ interface TocTreeProps {
 }
 
 export default function TocTree({ toc, currentPage, onPageSelect }: TocTreeProps) {
+  const visibleToc = filterVisibleToc(toc);
+
   return (
     <div className="py-2">
-      {toc.map((node, i) => (
+      {visibleToc.map((node, i) => (
         <TocItem key={i} node={node} depth={0} currentPage={currentPage} onPageSelect={onPageSelect} />
       ))}
     </div>
   );
+}
+
+function filterVisibleToc(nodes: TocNode[]): TocNode[] {
+  return nodes
+    .filter((node) => !node.ignored)
+    .map((node) => ({
+      ...node,
+      children: node.children ? filterVisibleToc(node.children) : undefined,
+    }));
 }
 
 function TocItem({

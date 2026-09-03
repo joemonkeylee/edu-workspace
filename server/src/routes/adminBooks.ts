@@ -12,15 +12,21 @@ router.get('/', async (req: Request, res: Response) => {
   const pageSize = Number(req.query.pageSize) || 20;
   const search = req.query.search as string;
   const category = req.query.category as string;
+  const grade = req.query.grade as string;
+  const subject = req.query.subject as string;
 
   const where: any = {};
   if (search) {
     where.OR = [
       { title: { contains: search } },
       { category: { contains: search } },
+      { grade: { contains: search } },
+      { subject: { contains: search } },
     ];
   }
   if (category && category !== 'all') where.category = { contains: category };
+  if (grade && grade !== 'all') where.grade = { contains: grade };
+  if (subject && subject !== 'all') where.subject = { contains: subject };
 
   const [data, total] = await Promise.all([
     prisma.book.findMany({
@@ -42,10 +48,14 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
-  const { title, category } = req.body;
+  const { title, category, grade, subject, coverPage, attributes } = req.body;
   const data: any = {};
   if (title !== undefined) data.title = title;
   if (category !== undefined) data.category = category;
+  if (grade !== undefined) data.grade = grade;
+  if (subject !== undefined) data.subject = subject;
+  if (coverPage !== undefined) data.coverPage = Number(coverPage) || 1;
+  if (attributes !== undefined) data.attributes = attributes;
 
   try {
     const updated = await prisma.book.update({ where: { id }, data });

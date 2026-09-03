@@ -11,9 +11,13 @@ model Book {
   id          Int      @id @default(autoincrement())
   title       String
   category    String
+  grade       String   @default("")
+  subject     String   @default("")
+  coverPage   Int      @default(1)
   totalPages  Int
   storagePath String
   tocJson     Json
+  attributes  Json     @default("{}")
   createdAt   DateTime @default(now())
 
   annotations Annotation[]

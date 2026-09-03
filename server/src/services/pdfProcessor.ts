@@ -2,8 +2,23 @@ import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const POPPLER_BIN = '/opt/homebrew/opt/poppler/bin';
-const EXTRA_PATH = fs.existsSync(POPPLER_BIN) ? `${POPPLER_BIN}:${process.env.PATH || ''}` : (process.env.PATH || '');
+const POPPLER_CANDIDATES = [
+  '/opt/homebrew/opt/poppler/bin',
+  '/usr/local/opt/poppler/bin',
+  '/opt/local/lib/poppler/bin',
+  '/usr/local/bin',
+  '/opt/homebrew/bin',
+  '/usr/bin',
+];
+
+const POPPLER_BIN = POPPLER_CANDIDATES.find((dir) => {
+  if (!dir || !fs.existsSync(dir)) return false;
+  return fs.existsSync(path.join(dir, 'pdfinfo')) || fs.existsSync(path.join(dir, 'pdftoppm'));
+}) || POPPLER_CANDIDATES[0];
+
+const EXTRA_PATH = [POPPLER_BIN, process.env.PATH || '']
+  .filter(Boolean)
+  .join(':');
 const SHELL_ENV = { ...process.env, PATH: EXTRA_PATH };
 
 export interface PdfInfo {

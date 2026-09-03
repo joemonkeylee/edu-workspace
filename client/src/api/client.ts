@@ -56,7 +56,7 @@ export async function adminGetBooks(params?: Record<string, any>) {
   return data as { data: any[]; total: number; page: number; pageSize: number };
 }
 
-export async function adminUpdateBook(id: number, body: { title?: string; category?: string }) {
+export async function adminUpdateBook(id: number, body: { title?: string; category?: string; grade?: string; subject?: string; coverPage?: number; tocJson?: any[]; attributes?: Record<string, any> }) {
   const { data } = await api.put(`/admin/books/${id}`, body);
   return data;
 }
@@ -94,6 +94,24 @@ export async function adminDeleteMistake(id: number) {
 export function pageImageUrl(storagePath: string, pageNumber: number) {
   const padded = String(pageNumber).padStart(4, '0');
   return `${storagePath}page-${padded}.png`;
+}
+
+export function getBookCoverUrl(book: { id?: number; storagePath?: string; availableDpis?: number[]; coverPage?: number }, pageNumber?: number) {
+  const storagePath = (book.storagePath || '').replace(/\/+$/, '');
+  const bestDpi = Array.isArray(book.availableDpis) && book.availableDpis.length > 0 ? Number(book.availableDpis[0]) : 0;
+  const resolvedPage = pageNumber ?? book.coverPage ?? 1;
+  const page = String(resolvedPage).padStart(4, '0');
+
+  if (storagePath) {
+    const dir = bestDpi > 0 ? `${storagePath}/${bestDpi}/` : `${storagePath}/`;
+    return `${dir}page-${page}.png`;
+  }
+
+  if (book.id && bestDpi > 0) {
+    return `/storage/books/${book.id}/${bestDpi}/page-${page}.png`;
+  }
+
+  return `/storage/books/${book.id || 0}/page-${page}.png`;
 }
 
 export default api;
