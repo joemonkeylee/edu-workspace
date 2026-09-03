@@ -123,6 +123,28 @@ export default function BookViewer() {
     return () => observer.disconnect();
   }, [calcZoom]);
 
+  useEffect(() => {
+    if (!currentBook) return;
+    const step = effectiveLayout === 'double' ? 2 : 1;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+      const el = mainRef.current;
+      if (!el) return;
+      const atTop = el.scrollTop <= 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+      if (e.deltaY < 0 && atTop && currentPage > 1) {
+        e.preventDefault();
+        setCurrentPage(Math.max(1, currentPage - step));
+      } else if (e.deltaY > 0 && atBottom && currentPage < currentBook.totalPages) {
+        e.preventDefault();
+        setCurrentPage(Math.min(currentBook.totalPages, currentPage + step));
+      }
+    };
+    const el = mainRef.current;
+    el?.addEventListener('wheel', handler, { passive: false });
+    return () => el?.removeEventListener('wheel', handler);
+  }, [currentPage, currentBook, setCurrentPage, effectiveLayout]);
+
   const handleManualZoom = (delta: number) => {
     setFitMode(null);
     setZoom(zoom + delta);
@@ -135,6 +157,10 @@ export default function BookViewer() {
       const step = effectiveLayout === 'double' ? 2 : 1;
       if (e.key === 'ArrowLeft' && currentPage > 1) setCurrentPage(Math.max(1, currentPage - step));
       if (e.key === 'ArrowRight' && currentPage < currentBook.totalPages) setCurrentPage(Math.min(currentBook.totalPages, currentPage + step));
+      if ((e.key === 'PageUp' || e.key === ' ') && currentPage > 1) { e.preventDefault(); setCurrentPage(Math.max(1, currentPage - step)); }
+      if ((e.key === 'PageDown') && currentPage < currentBook.totalPages) { e.preventDefault(); setCurrentPage(Math.min(currentBook.totalPages, currentPage + step)); }
+      if (e.key === 'Home') setCurrentPage(1);
+      if (e.key === 'End') setCurrentPage(currentBook.totalPages);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
