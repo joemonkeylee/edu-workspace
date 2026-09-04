@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { TocNode } from '../types';
 import { ChevronRight, ChevronDown, FileText, LayoutGrid, List } from 'lucide-react';
 
@@ -13,11 +13,31 @@ interface TocTreeProps {
 export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect }: TocTreeProps) {
   const [view, setView] = useState<'toc' | 'thumbs'>('toc');
   const visibleToc = filterVisibleToc(toc);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
 
   function pageUrl(page: number) {
     const padded = String(page).padStart(4, '0');
     return `${storagePath}page-${padded}.png`;
   }
+
+  // Scroll active TOC item into view
+  useEffect(() => {
+    if (view !== 'toc' || !scrollRef.current) return;
+    const active = scrollRef.current.querySelector('[data-active="true"]');
+    if (active) {
+      active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentPage, view]);
+
+  // Scroll active thumbnail into view
+  useEffect(() => {
+    if (view !== 'thumbs' || !thumbRef.current) return;
+    const active = thumbRef.current.querySelector(`[data-page="${currentPage}"]`);
+    if (active) {
+      active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentPage, view]);
 
   return (
     <div className="h-full flex flex-col">
@@ -43,7 +63,7 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto scrollbar-thin">
+      <div className="flex-1 overflow-auto scrollbar-thin" ref={scrollRef}>
         {view === 'toc' ? (
           <div className="py-2">
             {visibleToc.map((node, i) => (
@@ -51,10 +71,11 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
             ))}
           </div>
         ) : (
-          <div className="p-2 grid grid-cols-2 gap-2">
+          <div className="p-2 grid grid-cols-2 gap-2" ref={thumbRef}>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <div
                 key={page}
+                data-page={page}
                 onClick={() => onPageSelect(page)}
                 className={`cursor-pointer rounded overflow-hidden border-2 transition ${
                   currentPage === page ? 'border-[#006064]' : 'border-transparent hover:border-white/20'
@@ -107,6 +128,7 @@ function TocItem({
   return (
     <div>
       <div
+        data-active={isActive}
         className={`flex items-center gap-1 px-2 py-1.5 cursor-pointer text-sm transition ${
           isActive ? 'bg-[#006064]/30 text-white font-medium border-l-2 border-[#006064]' : 'text-gray-300 hover:bg-white/5 border-l-2 border-transparent'
         }`}

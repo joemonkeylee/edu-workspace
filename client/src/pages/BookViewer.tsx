@@ -339,7 +339,7 @@ export default function BookViewer() {
                 const p = Number(e.target.value);
                 if (p >= 1 && p <= totalPages) setCurrentPage(p);
               }}
-              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:border-[#006064] focus:ring-1 focus:ring-[#006064] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             {isDouble && currentPage < totalPages && (
               <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
@@ -677,7 +677,7 @@ function MistakeList({
           onChange={(e) => onFilterChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onRefresh()}
           placeholder="按学科筛选..."
-          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#006064] focus:border-[#006064]"
         />
       </div>
       {mistakes.length === 0 ? (
