@@ -24,3 +24,5 @@ server/prisma/migrations/
 # IDE
 .vscode/
 .idea/
+
+.history

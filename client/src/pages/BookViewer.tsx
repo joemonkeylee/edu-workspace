@@ -104,12 +104,14 @@ export default function BookViewer() {
     const cw = container.clientWidth - 32;
     const ch = container.clientHeight - 32;
     const pages = isDouble ? 2 : 1;
+    if (imgNatural.w === 0 || imgNatural.h === 0) return;
+    const pageGap = (pages - 1) * 4; // gap-1 = 4px
+    const availPerPage = (cw - pageGap) / pages;
     if (fitMode === 'width') {
-      setZoom(1 / pages);
+      setZoom(availPerPage / imgNatural.w);
     } else {
-      if (imgNatural.w === 0 || imgNatural.h === 0) return;
-      const widthZoom = 1 / pages;
-      const heightZoom = (ch * imgNatural.w) / (cw * imgNatural.h);
+      const widthZoom = availPerPage / imgNatural.w;
+      const heightZoom = ch / imgNatural.h;
       setZoom(Math.min(widthZoom, heightZoom));
     }
   }, [fitMode, imgNatural, isDouble, setZoom]);
@@ -360,8 +362,9 @@ export default function BookViewer() {
         )}
 
         {/* Center - page image */}
-        <main ref={mainRef} className="flex-1 overflow-auto flex justify-center bg-gray-300/30">
-          <div className="p-4 flex gap-1">
+        <main ref={mainRef} className="flex-1 overflow-auto bg-gray-300/30">
+          <div className="min-h-full flex items-center justify-center p-4">
+            <div className="flex gap-1">
             {tool === 'crop' ? (
               <CropTool
                 storagePath={effectiveStoragePath}
@@ -399,6 +402,7 @@ export default function BookViewer() {
                 onSaveAnnotation={handleSaveAnnotation}
               />
             )}
+            </div>
           </div>
         </main>
 
