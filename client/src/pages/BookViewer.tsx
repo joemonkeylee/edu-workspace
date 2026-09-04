@@ -60,7 +60,7 @@ export default function BookViewer() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('annotations');
+  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('mistakes');
   const [mistakeFilter, setMistakeFilter] = useState('');
 
   const [fitMode, setFitMode] = useState<FitMode>('page');
@@ -579,14 +579,6 @@ export default function BookViewer() {
           <aside className="w-72 bg-white flex flex-col flex-shrink-0 border-l border-gray-200">
             <div className="flex border-b border-gray-200">
               <button
-                onClick={() => setRightTab('annotations')}
-                className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'annotations' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                批注 ({pageAnnotations.length})
-              </button>
-              <button
                 onClick={loadMistakes}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
                   rightTab === 'mistakes' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
@@ -594,15 +586,18 @@ export default function BookViewer() {
               >
                 错题本
               </button>
+              <button
+                onClick={() => setRightTab('annotations')}
+                className={`flex-1 py-2.5 text-sm font-medium transition ${
+                  rightTab === 'annotations' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                批注 ({pageAnnotations.length})
+              </button>
             </div>
 
             <div className="flex-1 overflow-auto scrollbar-thin">
-              {rightTab === 'annotations' ? (
-                <AnnotationList
-                  annotations={pageAnnotations}
-                  onDelete={removeAnnotation}
-                />
-              ) : (
+              {rightTab === 'mistakes' ? (
                 <MistakeList
                   mistakes={mistakes}
                   filter={mistakeFilter}
@@ -610,6 +605,11 @@ export default function BookViewer() {
                   onToggle={handleMistakeToggle}
                   onDelete={handleMistakeDelete}
                   onRefresh={() => fetchMistakes(mistakeFilter ? { subject: mistakeFilter } : undefined)}
+                />
+              ) : (
+                <AnnotationList
+                  annotations={pageAnnotations}
+                  onDelete={removeAnnotation}
                 />
               )}
             </div>
