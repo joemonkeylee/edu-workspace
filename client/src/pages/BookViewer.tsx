@@ -21,10 +21,6 @@ import {
   BookOpen,
   PanelLeft,
   PanelRight,
-  ChevronFirst,
-  ChevronLast,
-  ChevronLeft,
-  ChevronRight,
   Trash2,
   CheckCircle2,
   Circle,
@@ -288,56 +284,74 @@ export default function BookViewer() {
     { mode: 'crop', icon: Scissors, label: '裁剪' },
   ];
 
-  const step = effectiveLayout === 'double' ? 2 : 1;
-
   return (
-    <div className="h-full flex flex-col bg-gray-100">
+    <div className="h-full flex flex-col bg-[#525659]">
       {/* Top bar */}
-      <header className="bg-sidebar text-white px-4 py-2.5 flex items-center gap-3 flex-shrink-0">
+      <header className="bg-[#323639] text-white px-3 py-1.5 flex items-center gap-1 flex-shrink-0 select-none">
+        {/* Left: back + title */}
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-1 text-gray-300 hover:text-white transition text-sm"
+          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+          title="返回"
         >
           <ArrowLeft size={18} />
         </button>
-        <button
-          onClick={() => setLeftOpen(!leftOpen)}
-          className={`p-1.5 rounded transition ${leftOpen ? 'bg-white/10' : 'hover:bg-white/10'}`}
-        >
-          <PanelLeft size={18} />
-        </button>
-        <h1 className="font-semibold text-sm truncate flex-1">{currentBook.title}</h1>
+        <h1 className="text-sm text-gray-200 truncate max-w-xs" title={currentBook.title}>{currentBook.title}</h1>
 
-        {/* Tool buttons */}
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+        <div className="flex-1" />
+
+        {/* Tool buttons (icon-only) */}
+        <div className="flex items-center gap-0.5 bg-white/5 rounded px-0.5 py-0.5">
           {tools.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => setTool(mode)}
               title={label}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition ${
-                tool === mode ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'
+              className={`p-1.5 rounded transition ${
+                tool === mode ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
             >
               <Icon size={16} />
-              <span className="hidden md:inline">{label}</span>
             </button>
           ))}
         </div>
 
+        <div className="w-px h-5 bg-white/10 mx-1" />
+
+        {/* Page number input */}
+        <div className="flex items-center gap-1 text-xs">
+          <input
+            type="number"
+            value={currentPage}
+            min={1}
+            max={totalPages}
+            onChange={(e) => {
+              const p = Number(e.target.value);
+              if (p >= 1 && p <= totalPages) setCurrentPage(p);
+            }}
+            className="w-10 bg-white/10 text-center rounded px-1 py-0.5 text-white border border-white/10 focus:outline-none focus:border-primary text-xs"
+          />
+          {isDouble && currentPage < totalPages && (
+            <span className="text-gray-500">-{Math.min(currentPage + 1, totalPages)}</span>
+          )}
+          <span className="text-gray-500">/ {totalPages}</span>
+        </div>
+
+        <div className="w-px h-5 bg-white/10 mx-1" />
+
         {/* Fit mode toggles */}
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={() => setFitMode('page')}
             title="适应页面"
-            className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Minimize2 size={16} />
           </button>
           <button
             onClick={() => setFitMode('width')}
             title="适应宽度"
-            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Maximize2 size={16} />
           </button>
@@ -346,16 +360,18 @@ export default function BookViewer() {
         {/* Rotate button */}
         <button
           onClick={() => setRotation((r) => r - 90)}
-          className="p-1.5 rounded hover:bg-white/10 transition text-gray-300"
+          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
           title="逆时针旋转 90°"
         >
-          <RotateCcw size={18} />
+          <RotateCcw size={16} />
         </button>
 
+        <div className="w-px h-5 bg-white/10 mx-1" />
+
         {/* Zoom controls */}
-        <div className="flex items-center gap-1">
-          <button onClick={zoomOut} className="p-1.5 rounded hover:bg-white/10 transition" title="缩小">
-            <ZoomOut size={18} />
+        <div className="flex items-center gap-0.5">
+          <button onClick={zoomOut} className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition" title="缩小">
+            <ZoomOut size={16} />
           </button>
           {editingZoom ? (
             <input
@@ -368,35 +384,37 @@ export default function BookViewer() {
                 if (e.key === 'Escape') setEditingZoom(false);
               }}
               autoFocus
-              className="w-12 text-center text-xs bg-white/10 text-white rounded py-1 px-1 focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-12 text-center text-xs bg-white/10 text-white rounded py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           ) : (
             <button
               onClick={startEditZoom}
-              className="text-xs w-12 text-center text-gray-300 hover:text-white py-1 rounded"
+              className="text-xs w-12 text-center text-gray-300 hover:text-white py-0.5 rounded"
               title="点击输入缩放比例"
             >
               {Math.round(snapZoom(zoom) * 100)}%
             </button>
           )}
-          <button onClick={zoomIn} className="p-1.5 rounded hover:bg-white/10 transition" title="放大">
-            <ZoomIn size={18} />
+          <button onClick={zoomIn} className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition" title="放大">
+            <ZoomIn size={16} />
           </button>
         </div>
 
+        <div className="w-px h-5 bg-white/10 mx-1" />
+
         {/* Page layout toggles */}
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={() => setPageLayout('single')}
             title="单页"
-            className={`p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Book size={16} />
           </button>
           <button
             onClick={() => setPageLayout('double')}
             title="双页"
-            className={`p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <BookOpen size={16} />
           </button>
@@ -404,12 +422,12 @@ export default function BookViewer() {
 
         {/* DPI selector */}
         {availableDpis.length > 0 && (
-          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
-            <Layers size={14} className="text-gray-400 ml-1.5" />
+          <div className="flex items-center gap-1">
+            <Layers size={14} className="text-gray-500" />
             <select
               value={activeDpi}
-              onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('width'); }}
-              className="bg-transparent text-gray-200 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black"
+              onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
+              className="bg-transparent text-gray-300 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition"
               title="选择分辨率"
             >
               {availableDpis.map(d => (
@@ -419,9 +437,20 @@ export default function BookViewer() {
           </div>
         )}
 
+        <div className="w-px h-5 bg-white/10 mx-1" />
+
+        {/* Sidebar toggles */}
+        <button
+          onClick={() => setLeftOpen(!leftOpen)}
+          className={`p-1.5 rounded transition ${leftOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+          title="目录"
+        >
+          <PanelLeft size={18} />
+        </button>
         <button
           onClick={() => setRightOpen(!rightOpen)}
-          className={`p-1.5 rounded transition ${rightOpen ? 'bg-white/10' : 'hover:bg-white/10'}`}
+          className={`p-1.5 rounded transition ${rightOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+          title="批注 / 错题"
         >
           <PanelRight size={18} />
         </button>
@@ -431,8 +460,8 @@ export default function BookViewer() {
       <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar - TOC */}
         {leftOpen && (
-          <aside className="w-60 bg-sidebar text-white flex flex-col flex-shrink-0 border-r border-white/10">
-            <div className="px-3 py-2 text-xs text-gray-400 border-b border-white/10">目录</div>
+          <aside className="w-60 bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20">
+            <div className="px-3 py-2 text-xs text-gray-500 border-b border-black/20">目录</div>
             <div className="flex-1 overflow-auto scrollbar-thin">
               <TocTree toc={currentBook.tocJson || []} currentPage={currentPage} onPageSelect={setCurrentPage} />
             </div>
@@ -440,7 +469,7 @@ export default function BookViewer() {
         )}
 
         {/* Center - page image */}
-        <main ref={mainRef} className="flex-1 overflow-auto bg-gray-300/30">
+        <main ref={mainRef} className="flex-1 overflow-auto">
           <div className="min-h-full flex items-center justify-center p-4">
             <div
                 className="flex items-center justify-center"
@@ -547,57 +576,6 @@ export default function BookViewer() {
           </aside>
         )}
       </div>
-
-      {/* Bottom page navigation */}
-      <footer className="bg-sidebar text-white px-4 py-2 flex items-center justify-center gap-4 flex-shrink-0">
-        <button
-          onClick={() => setCurrentPage(1)}
-          disabled={currentPage <= 1}
-          className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
-        >
-          <ChevronFirst size={18} />
-        </button>
-        <button
-          onClick={() => setCurrentPage(Math.max(1, currentPage - step))}
-          disabled={currentPage <= 1}
-          className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <div className="flex items-center gap-2 text-sm">
-          <input
-            type="number"
-            value={currentPage}
-            min={1}
-            max={totalPages}
-            onChange={(e) => {
-              const p = Number(e.target.value);
-              if (p >= 1 && p <= totalPages) setCurrentPage(p);
-            }}
-            className="w-12 bg-white/10 text-center rounded px-1 py-0.5 text-white border border-white/10 focus:outline-none focus:border-primary"
-          />
-          {isDouble && (
-            <span className="text-gray-400">
-              -{Math.min(currentPage + 1, totalPages)}
-            </span>
-          )}
-          <span className="text-gray-400">/ {totalPages}</span>
-        </div>
-        <button
-          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + step))}
-          disabled={currentPage >= totalPages}
-          className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
-        >
-          <ChevronRight size={18} />
-        </button>
-        <button
-          onClick={() => setCurrentPage(totalPages)}
-          disabled={currentPage >= totalPages}
-          className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition"
-        >
-          <ChevronLast size={18} />
-        </button>
-      </footer>
     </div>
   );
 }

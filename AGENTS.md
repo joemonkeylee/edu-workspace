@@ -2,14 +2,22 @@
 
 > Instructions for AI agents working on this codebase. Read this before making any changes.
 
-## Commit Workflow
+## Commit & Reply Workflow
 
 After **every** feature/fix iteration, the agent must:
 
 1. Complete the code changes
 2. Verify the build (run `npx tsc --noEmit` in the relevant package)
-3. Stage and commit with a clear English commit message
-4. Reply to the user with the commit message summary
+3. **Do NOT auto-commit** unless the user explicitly says "提交" / "commit" / "push"
+4. Reply to the user with an **English commit message** (formatted as a code block or plain text) summarizing the changes
+
+### When to actually commit
+
+| User says... | Action |
+|---|---|
+| Nothing (default) | Reply with English commit message, do NOT commit |
+| "提交" / "commit" / "push" / "git commit" | Commit with English message, then reply |
+| "用中文" / "中文 commit" | Reply with Chinese commit message instead |
 
 ### Commit Message Format
 
@@ -59,3 +67,4 @@ edu-workspace/
 - **File operations** in deletion routes must be wrapped in individual `try/catch` — missing files must never block DB deletion
 - **Book covers** use the `<BookCover>` component with fade-in placeholder — never raw `<img>` tags
 - **Home page is browse-only** — no edit/delete actions for end users
+- **Feature parity first, UI polish second** — when refactoring UI, never change existing functionality
