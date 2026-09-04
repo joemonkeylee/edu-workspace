@@ -21,6 +21,10 @@ import {
   BookOpen,
   PanelLeft,
   PanelRight,
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
   Trash2,
   CheckCircle2,
   Circle,
@@ -277,6 +281,8 @@ export default function BookViewer() {
   const pageAnnotations = annotations.filter(
     (a) => a.pageNumber === currentPage || (isDouble && a.pageNumber === currentPage + 1)
   );
+  const step = isDouble ? 2 : 1;
+
   const tools: { mode: ToolMode; icon: any; label: string }[] = [
     { mode: 'view', icon: MousePointer2, label: '浏览' },
     { mode: 'note', icon: StickyNote, label: '笔记' },
@@ -305,23 +311,57 @@ export default function BookViewer() {
         </button>
         <h1 className="text-sm text-gray-200 truncate max-w-xs" title={currentBook.title}>{currentBook.title}</h1>
 
-        {/* Center: page number (Chrome-style) */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 text-sm">
-          <input
-            type="number"
-            value={currentPage}
-            min={1}
-            max={totalPages}
-            onChange={(e) => {
-              const p = Number(e.target.value);
-              if (p >= 1 && p <= totalPages) setCurrentPage(p);
-            }}
-            className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          {isDouble && currentPage < totalPages && (
-            <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
-          )}
-          <span className="text-gray-400">/ {totalPages}</span>
+        {/* Center: page navigation (Chrome-style) */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage <= 1}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            title="第一页"
+          >
+            <ChevronFirst size={18} />
+          </button>
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - step))}
+            disabled={currentPage <= 1}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            title="上一页"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <div className="flex items-center gap-1 text-sm">
+            <input
+              type="number"
+              value={currentPage}
+              min={1}
+              max={totalPages}
+              onChange={(e) => {
+                const p = Number(e.target.value);
+                if (p >= 1 && p <= totalPages) setCurrentPage(p);
+              }}
+              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            {isDouble && currentPage < totalPages && (
+              <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
+            )}
+            <span className="text-gray-400">/ {totalPages}</span>
+          </div>
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + step))}
+            disabled={currentPage >= totalPages}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            title="下一页"
+          >
+            <ChevronRight size={18} />
+          </button>
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage >= totalPages}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            title="最后一页"
+          >
+            <ChevronLast size={18} />
+          </button>
         </div>
 
         <div className="flex-1" />
@@ -541,7 +581,7 @@ export default function BookViewer() {
               <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'annotations' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'annotations' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 批注 ({pageAnnotations.length})
@@ -549,7 +589,7 @@ export default function BookViewer() {
               <button
                 onClick={loadMistakes}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'mistakes' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'mistakes' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 错题本
