@@ -143,19 +143,26 @@ export default function Home() {
               return (
                 <div
                   key={book.id}
-                  className="bg-white rounded-lg shadow p-2 hover:shadow-md transition cursor-pointer group"
+                  className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition cursor-pointer group"
                   onClick={() => navigate(`/book/${book.id}`)}
                 >
-                  <div className="mb-2 overflow-hidden rounded border border-gray-200 bg-gray-50" style={{ aspectRatio: '3/4' }}>
+                  <div className="relative overflow-hidden" style={{ aspectRatio: '3/4' }}>
                     <BookCover
                       book={book}
                       className="w-full h-full object-cover transition group-hover:scale-[1.02]"
                     />
-                  </div>
-                  <h3 className="font-medium text-xs line-clamp-2 leading-tight min-h-[2rem]" title={book.title}>{book.title}</h3>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {book.grade && <span className="bg-blue-50 text-blue-600 rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
-                    {book.subject && <span className="bg-amber-50 text-amber-600 rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
+                    {/* Bottom overlay with title, tags, page count */}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
+                      <h3 className="font-medium text-xs text-white line-clamp-2 leading-tight" title={book.title}>{book.title}</h3>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {book.category && <span className="bg-blue-600/90 text-white rounded px-1 py-0.5 text-[9px]">{book.category}</span>}
+                        {book.grade && <span className="bg-blue-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
+                        {book.subject && <span className="bg-blue-400/80 text-white rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
+                      </div>
+                      <div className="mt-1 text-right">
+                        <span className="text-[10px] text-white/80">{book.totalPages} 页</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
