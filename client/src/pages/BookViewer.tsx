@@ -677,7 +677,7 @@ function MistakeList({
           onChange={(e) => onFilterChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onRefresh()}
           placeholder="按学科筛选..."
-          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#006064] focus:border-[#006064]"
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#006064] focus:border-[#006064]"
         />
       </div>
       {mistakes.length === 0 ? (
