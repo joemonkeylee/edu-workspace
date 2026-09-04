@@ -442,15 +442,18 @@ export default function BookViewer() {
         <main ref={mainRef} className="flex-1 overflow-auto bg-gray-300/30">
           <div className="min-h-full flex items-center justify-center p-4">
             <div
-              className="flex items-center justify-center"
-              style={{
-                // Swap width/height for scroll layout when rotated 90 or 270
-                ...(rotation === 90 || rotation === 270
-                  ? { width: `${imgNatural.h * zoom * (isDouble ? 2 : 1) + (isDouble ? 4 : 0)}px`,
-                      height: `${imgNatural.w * zoom}px` }
-                  : {}),
-              }}
-            >
+                className="flex items-center justify-center"
+                style={{
+                  width: rotation === 90 || rotation === 270
+                    ? `${imgNatural.h * zoom * (isDouble ? 2 : 1) + (isDouble ? 4 : 0)}px`
+                    : `${imgNatural.w * zoom * (isDouble ? 2 : 1) + (isDouble ? 4 : 0)}px`,
+                  height: rotation === 90 || rotation === 270
+                    ? `${imgNatural.w * zoom}px`
+                    : `${imgNatural.h * zoom}px`,
+                  minWidth: imgNatural.w > 0 ? undefined : '100%',
+                  minHeight: imgNatural.h > 0 ? undefined : '100%',
+                }}
+              >
               <div
                 className="flex gap-1"
                 style={{
