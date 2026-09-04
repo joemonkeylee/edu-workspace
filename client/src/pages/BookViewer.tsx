@@ -569,7 +569,18 @@ function MistakeList({
         <div className="p-2 space-y-2">
           {mistakes.map((m) => (
             <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex gap-2 group">
-              <img src={m.imagePath} alt="错题" className="w-16 h-16 object-cover rounded flex-shrink-0" />
+              <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-amber-50 border border-amber-100 flex items-center justify-center">
+                {m.imagePath ? (
+                  <img
+                    src={m.imagePath}
+                    alt="错题"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="text-xs text-amber-400">无图</span>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-gray-700">{m.subject}</span>
