@@ -28,6 +28,7 @@ import {
   Trash2,
   CheckCircle2,
   Circle,
+  RotateCcw,
   Layers,
 } from 'lucide-react';
 
@@ -64,6 +65,7 @@ export default function BookViewer() {
 
   const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
+  const [rotation, setRotation] = useState(0); // 0, 90, 180, 270
   const mainRef = useRef<HTMLDivElement>(null);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
   const [selectedDpi, setSelectedDpi] = useState<number>(0);
@@ -106,15 +108,21 @@ export default function BookViewer() {
     const pages = isDouble ? 2 : 1;
     if (imgNatural.w === 0 || imgNatural.h === 0) return;
     const pageGap = (pages - 1) * 4; // gap-1 = 4px
+
+    // Swap dimensions when rotated 90 or 270 degrees
+    const isRotated = rotation === 90 || rotation === 270;
+    const natW = isRotated ? imgNatural.h : imgNatural.w;
+    const natH = isRotated ? imgNatural.w : imgNatural.h;
+
     const availPerPage = (cw - pageGap) / pages;
     if (fitMode === 'width') {
-      setZoom(availPerPage / imgNatural.w);
+      setZoom(availPerPage / natW);
     } else {
-      const widthZoom = availPerPage / imgNatural.w;
-      const heightZoom = ch / imgNatural.h;
+      const widthZoom = availPerPage / natW;
+      const heightZoom = ch / natH;
       setZoom(Math.min(widthZoom, heightZoom));
     }
-  }, [fitMode, imgNatural, isDouble, setZoom]);
+  }, [fitMode, imgNatural, isDouble, rotation, setZoom]);
 
   useEffect(() => { calcZoom(); }, [calcZoom]);
 
@@ -334,6 +342,15 @@ export default function BookViewer() {
           </button>
         </div>
 
+        {/* Rotate button */}
+        <button
+          onClick={() => setRotation((r) => (r + 270) % 360)}
+          className="p-1.5 rounded hover:bg-white/10 transition text-gray-300"
+          title="逆时针旋转 90°"
+        >
+          <RotateCcw size={18} />
+        </button>
+
         {/* Zoom controls */}
         <div className="flex items-center gap-1">
           <button onClick={zoomOut} className="p-1.5 rounded hover:bg-white/10 transition" title="缩小">
@@ -424,7 +441,24 @@ export default function BookViewer() {
         {/* Center - page image */}
         <main ref={mainRef} className="flex-1 overflow-auto bg-gray-300/30">
           <div className="min-h-full flex items-center justify-center p-4">
-            <div className="flex gap-1">
+            <div
+              className="flex items-center justify-center"
+              style={{
+                // Swap width/height for scroll layout when rotated 90 or 270
+                ...(rotation === 90 || rotation === 270
+                  ? { width: `${imgNatural.h * zoom * (isDouble ? 2 : 1) + (isDouble ? 4 : 0)}px`,
+                      height: `${imgNatural.w * zoom}px` }
+                  : {}),
+              }}
+            >
+              <div
+                className="flex gap-1"
+                style={{
+                  transform: `rotate(${rotation}deg)`,
+                  transition: 'transform 0.2s ease',
+                  transformOrigin: 'center center',
+                }}
+              >
             {tool === 'crop' ? (
               <CropTool
                 storagePath={effectiveStoragePath}
@@ -462,7 +496,8 @@ export default function BookViewer() {
                 onSaveAnnotation={handleSaveAnnotation}
               />
             )}
-            </div>
+              </div>{/* inner rotate div */}
+            </div>{/* outer rotation wrapper */}
           </div>
         </main>
 
