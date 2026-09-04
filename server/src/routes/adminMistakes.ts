@@ -56,7 +56,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const mistake = await prisma.mistake.findUnique({ where: { id } });
     if (mistake?.imagePath) {
       const filePath = path.join(STORAGE_ABS, mistake.imagePath.replace('/storage/', ''));
-      fs.rmSync(filePath, { force: true });
+      try { fs.rmSync(filePath, { force: true }); } catch { /* file may not exist in dev */ }
     }
     await prisma.mistake.delete({ where: { id } });
     res.json({ success: true });

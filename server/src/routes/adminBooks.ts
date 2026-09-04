@@ -69,9 +69,9 @@ router.delete('/:id', async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
     const bookDir = path.join(STORAGE_ABS, 'books', String(id));
-    fs.rmSync(bookDir, { recursive: true, force: true });
+    try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
     const cropDir = path.join(STORAGE_ABS, 'crops', String(id));
-    fs.rmSync(cropDir, { recursive: true, force: true });
+    try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
 
     await prisma.book.delete({ where: { id } });
     res.json({ success: true });
@@ -90,13 +90,13 @@ router.delete('/batch', async (req: Request, res: Response) => {
   for (const id of numIds) {
     try {
       const bookDir = path.join(STORAGE_ABS, 'books', String(id));
-      fs.rmSync(bookDir, { recursive: true, force: true });
+      try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
       const cropDir = path.join(STORAGE_ABS, 'crops', String(id));
-      fs.rmSync(cropDir, { recursive: true, force: true });
+      try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
       await prisma.book.delete({ where: { id } });
       deleted++;
     } catch {
-      // skip if not found
+      // skip if not found in DB
     }
   }
   res.json({ success: true, deleted });

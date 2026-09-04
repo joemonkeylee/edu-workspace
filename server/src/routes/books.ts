@@ -42,8 +42,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const bookDir = path.join(STORAGE_ABS, 'books', String(id));
     const cropDir = path.join(STORAGE_ABS, 'crops', String(id));
     const { rmSync } = await import('fs');
-    rmSync(bookDir, { recursive: true, force: true });
-    rmSync(cropDir, { recursive: true, force: true });
+    try { rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
+    try { rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
     await prisma.book.delete({ where: { id } });
     res.json({ success: true });
   } catch {
