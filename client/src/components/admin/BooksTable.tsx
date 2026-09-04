@@ -112,6 +112,7 @@ export default function BooksTable() {
   const [editAttributes, setEditAttributes] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState<{ current: number; total: number; title: string } | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -198,13 +199,30 @@ export default function BooksTable() {
   const handleBatchDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`确定删除选中的 ${selectedIds.size} 本书？将同时清理所有切图、批注和错题，无法恢复。`)) return;
+    const ids = Array.from(selectedIds);
     setDeleting(true);
+    setDeleteProgress({ current: 0, total: ids.length, title: '' });
     try {
-      await adminDeleteBooksBatch(Array.from(selectedIds));
-      setSelectedIds(new Set());
+      for (let i = 0; i < ids.length; i++) {
+        const book = books.find((b) => b.id === ids[i]);
+        setDeleteProgress({ current: i, total: ids.length, title: book?.title || `ID:${ids[i]}` });
+        try {
+          await adminDeleteBook(ids[i]);
+        } catch {
+          // skip failed deletions
+        }
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(ids[i]);
+          return next;
+        });
+      }
+      setDeleteProgress({ current: ids.length, total: ids.length, title: '完成' });
+      await new Promise((r) => setTimeout(r, 300));
       fetch();
     } finally {
       setDeleting(false);
+      setDeleteProgress(null);
     }
   };
 
@@ -213,16 +231,26 @@ export default function BooksTable() {
     if (!confirm('再次确认：真的要删除所有书籍吗？')) return;
     setDeleting(true);
     try {
-      // Fetch all IDs first
-      let allIds: number[] = [];
+      // Fetch all books first to get titles for progress display
       const res = await adminGetBooks({ page: 1, pageSize: 1000 });
-      allIds = res.data.map((b: any) => b.id);
-      if (allIds.length === 0) { setDeleting(false); return; }
-      await adminDeleteBooksBatch(allIds);
+      const allBooks = res.data;
+      if (allBooks.length === 0) { setDeleting(false); return; }
+      setDeleteProgress({ current: 0, total: allBooks.length, title: '' });
+      for (let i = 0; i < allBooks.length; i++) {
+        setDeleteProgress({ current: i, total: allBooks.length, title: allBooks[i].title });
+        try {
+          await adminDeleteBook(allBooks[i].id);
+        } catch {
+          // skip failed deletions
+        }
+      }
+      setDeleteProgress({ current: allBooks.length, total: allBooks.length, title: '完成' });
       setSelectedIds(new Set());
+      await new Promise((r) => setTimeout(r, 300));
       fetch();
     } finally {
       setDeleting(false);
+      setDeleteProgress(null);
     }
   };
 
@@ -601,6 +629,30 @@ export default function BooksTable() {
           </div>
         )}
       </div>
+
+      {deleteProgress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <Trash2 size={20} className="text-red-500" />
+              <h3 className="font-semibold text-gray-800">正在删除书籍</h3>
+            </div>
+            <div className="mb-2 text-sm text-gray-600 truncate" title={deleteProgress.title}>
+              {deleteProgress.title || '准备中...'}
+            </div>
+            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+              <div
+                className="h-full bg-red-500 transition-all duration-200"
+                style={{ width: `${deleteProgress.total > 0 ? (deleteProgress.current / deleteProgress.total) * 100 : 0}%` }}
+              />
+            </div>
+            <div className="text-xs text-gray-500 text-right">
+              {deleteProgress.current} / {deleteProgress.total}
+              {deleteProgress.total > 0 && ` (${Math.round((deleteProgress.current / deleteProgress.total) * 100)}%)`}
+            </div>
+          </div>
+        </div>
+      )}
 
       {tocBookId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
