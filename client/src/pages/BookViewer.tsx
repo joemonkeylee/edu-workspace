@@ -65,7 +65,8 @@ export default function BookViewer() {
 
   const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
-  const [rotation, setRotation] = useState(0); // 0, 90, 180, 270
+  const [rotation, setRotation] = useState(0); // degrees, negative = CCW
+  const effectiveRotation = ((rotation % 360) + 360) % 360; // normalize to 0-359
   const mainRef = useRef<HTMLDivElement>(null);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
   const [selectedDpi, setSelectedDpi] = useState<number>(0);
@@ -110,7 +111,7 @@ export default function BookViewer() {
     const pageGap = (pages - 1) * 4; // gap-1 = 4px
 
     // Swap dimensions when rotated 90 or 270 degrees
-    const isRotated = rotation === 90 || rotation === 270;
+    const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
     const natW = isRotated ? imgNatural.h : imgNatural.w;
     const natH = isRotated ? imgNatural.w : imgNatural.h;
 
@@ -344,7 +345,7 @@ export default function BookViewer() {
 
         {/* Rotate button */}
         <button
-          onClick={() => setRotation((r) => (r + 270) % 360)}
+          onClick={() => setRotation((r) => r - 90)}
           className="p-1.5 rounded hover:bg-white/10 transition text-gray-300"
           title="逆时针旋转 90°"
         >
@@ -444,10 +445,10 @@ export default function BookViewer() {
             <div
                 className="flex items-center justify-center"
                 style={{
-                  width: rotation === 90 || rotation === 270
+                  width: effectiveRotation === 90 || effectiveRotation === 270
                     ? `${imgNatural.h * zoom * (isDouble ? 2 : 1) + (isDouble ? 4 : 0)}px`
                     : `${imgNatural.w * zoom * (isDouble ? 2 : 1) + (isDouble ? 4 : 0)}px`,
-                  height: rotation === 90 || rotation === 270
+                  height: effectiveRotation === 90 || effectiveRotation === 270
                     ? `${imgNatural.w * zoom}px`
                     : `${imgNatural.h * zoom}px`,
                   minWidth: imgNatural.w > 0 ? undefined : '100%',
