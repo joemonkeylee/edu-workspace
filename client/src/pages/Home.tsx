@@ -21,6 +21,14 @@ export default function Home() {
     return Array.from(values).sort();
   }, [books]);
 
+  // Auto-switch selected category if current one has no books
+  useEffect(() => {
+    if (categoryOptions.length > 0 && !categoryOptions.includes(selectedCategory)) {
+      setSelectedCategory(categoryOptions[0]);
+      setSelectedFilters({});
+    }
+  }, [categoryOptions, selectedCategory]);
+
   const attributeKeys = useMemo(() => {
     const keys = new Set<string>();
     const currentCategoryBooks = (books || []).filter((book) => (book.category || DEFAULT_CATEGORY) === selectedCategory);
