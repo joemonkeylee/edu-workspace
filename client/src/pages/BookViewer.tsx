@@ -287,8 +287,15 @@ export default function BookViewer() {
   return (
     <div className="h-full flex flex-col bg-[#525659]">
       {/* Top bar */}
-      <header className="bg-[#323639] text-white px-3 py-1.5 flex items-center gap-1 flex-shrink-0 select-none">
-        {/* Left: back + title */}
+      <header className="bg-[#323639] text-white px-2 py-1.5 flex items-center gap-0.5 flex-shrink-0 select-none relative">
+        {/* Left: sidebar toggle + back + title */}
+        <button
+          onClick={() => setLeftOpen(!leftOpen)}
+          className={`p-1.5 rounded transition ${leftOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+          title="目录"
+        >
+          <PanelLeft size={18} />
+        </button>
         <button
           onClick={() => navigate('/')}
           className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
@@ -298,10 +305,30 @@ export default function BookViewer() {
         </button>
         <h1 className="text-sm text-gray-200 truncate max-w-xs" title={currentBook.title}>{currentBook.title}</h1>
 
+        {/* Center: page number (Chrome-style) */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 text-sm">
+          <input
+            type="number"
+            value={currentPage}
+            min={1}
+            max={totalPages}
+            onChange={(e) => {
+              const p = Number(e.target.value);
+              if (p >= 1 && p <= totalPages) setCurrentPage(p);
+            }}
+            className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          {isDouble && currentPage < totalPages && (
+            <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
+          )}
+          <span className="text-gray-400">/ {totalPages}</span>
+        </div>
+
         <div className="flex-1" />
 
+        {/* Right controls */}
         {/* Tool buttons (icon-only) */}
-        <div className="flex items-center gap-0.5 bg-white/5 rounded px-0.5 py-0.5">
+        <div className="flex items-center gap-0.5">
           {tools.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
@@ -316,28 +343,7 @@ export default function BookViewer() {
           ))}
         </div>
 
-        <div className="w-px h-5 bg-white/10 mx-1" />
-
-        {/* Page number input */}
-        <div className="flex items-center gap-1 text-xs">
-          <input
-            type="number"
-            value={currentPage}
-            min={1}
-            max={totalPages}
-            onChange={(e) => {
-              const p = Number(e.target.value);
-              if (p >= 1 && p <= totalPages) setCurrentPage(p);
-            }}
-            className="w-10 bg-white/10 text-center rounded px-1 py-0.5 text-white border border-white/10 focus:outline-none focus:border-primary text-xs"
-          />
-          {isDouble && currentPage < totalPages && (
-            <span className="text-gray-500">-{Math.min(currentPage + 1, totalPages)}</span>
-          )}
-          <span className="text-gray-500">/ {totalPages}</span>
-        </div>
-
-        <div className="w-px h-5 bg-white/10 mx-1" />
+        <div className="w-px h-5 bg-white/10 mx-0.5" />
 
         {/* Fit mode toggles */}
         <div className="flex items-center gap-0.5">
@@ -366,7 +372,7 @@ export default function BookViewer() {
           <RotateCcw size={16} />
         </button>
 
-        <div className="w-px h-5 bg-white/10 mx-1" />
+        <div className="w-px h-5 bg-white/10 mx-0.5" />
 
         {/* Zoom controls */}
         <div className="flex items-center gap-0.5">
@@ -400,7 +406,7 @@ export default function BookViewer() {
           </button>
         </div>
 
-        <div className="w-px h-5 bg-white/10 mx-1" />
+        <div className="w-px h-5 bg-white/10 mx-0.5" />
 
         {/* Page layout toggles */}
         <div className="flex items-center gap-0.5">
@@ -437,16 +443,7 @@ export default function BookViewer() {
           </div>
         )}
 
-        <div className="w-px h-5 bg-white/10 mx-1" />
-
-        {/* Sidebar toggles */}
-        <button
-          onClick={() => setLeftOpen(!leftOpen)}
-          className={`p-1.5 rounded transition ${leftOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-          title="目录"
-        >
-          <PanelLeft size={18} />
-        </button>
+        {/* Right sidebar toggle */}
         <button
           onClick={() => setRightOpen(!rightOpen)}
           className={`p-1.5 rounded transition ${rightOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
@@ -461,10 +458,13 @@ export default function BookViewer() {
         {/* Left sidebar - TOC */}
         {leftOpen && (
           <aside className="w-60 bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20">
-            <div className="px-3 py-2 text-xs text-gray-500 border-b border-black/20">目录</div>
-            <div className="flex-1 overflow-auto scrollbar-thin">
-              <TocTree toc={currentBook.tocJson || []} currentPage={currentPage} onPageSelect={setCurrentPage} />
-            </div>
+            <TocTree
+              toc={currentBook.tocJson || []}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              storagePath={currentBook.storagePath || ''}
+              onPageSelect={setCurrentPage}
+            />
           </aside>
         )}
 
