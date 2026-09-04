@@ -28,7 +28,7 @@ export default function AdminPanel() {
   return (
     <div className="h-full flex flex-col bg-surface">
       {/* Header */}
-      <header className="bg-sidebar text-white px-6 py-4 flex items-center gap-4 flex-shrink-0">
+      <header className="bg-sidebar text-white px-6 py-4 flex items-center gap-4 flex-shrink-0 h-14">
         <Link to="/" className="flex items-center gap-2 text-gray-300 hover:text-white transition">
           <ArrowLeft size={20} /> 返回
         </Link>

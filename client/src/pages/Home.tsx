@@ -81,11 +81,10 @@ export default function Home() {
 
   return (
     <div className="h-full flex flex-col bg-surface">
-      <header className="bg-sidebar text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <header className="bg-sidebar text-white px-6 py-4 flex items-center justify-between flex-shrink-0 h-14">
         <div className="flex items-center gap-3">
-          <BookOpen size={24} />
-          <h1 className="text-xl font-bold">edu-workspace</h1>
-          <span className="text-gray-400 text-sm">学习与错题管理</span>
+          <BookOpen size={22} />
+          <h1 className="text-lg font-bold">edu-workspace</h1>
         </div>
         <Link
           to="/admin"
