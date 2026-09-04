@@ -139,29 +139,25 @@ export default function Home() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
             {filteredBooks.map((book) => {
               return (
                 <div
                   key={book.id}
-                  className="bg-white rounded-lg shadow p-3 hover:shadow-md transition cursor-pointer group"
+                  className="bg-white rounded-lg shadow p-2 hover:shadow-md transition cursor-pointer group"
                   onClick={() => navigate(`/book/${book.id}`)}
                 >
-                  <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50" style={{ aspectRatio: '3/4' }}>
+                  <div className="mb-2 overflow-hidden rounded border border-gray-200 bg-gray-50" style={{ aspectRatio: '3/4' }}>
                     <BookCover
                       book={book}
                       className="w-full h-full object-cover transition group-hover:scale-[1.02]"
                     />
                   </div>
-                  <div className="mb-2">
-                    <h3 className="font-semibold text-sm line-clamp-2 leading-snug min-h-[2.5rem]" title={book.title}>{book.title}</h3>
+                  <h3 className="font-medium text-xs line-clamp-2 leading-tight min-h-[2rem]" title={book.title}>{book.title}</h3>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {book.grade && <span className="bg-blue-50 text-blue-600 rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
+                    {book.subject && <span className="bg-amber-50 text-amber-600 rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
                   </div>
-                  <div className="flex flex-wrap gap-1 text-[10px]">
-                    {book.grade && <span className="bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">{book.grade}</span>}
-                    {book.subject && <span className="bg-amber-50 text-amber-600 rounded px-1.5 py-0.5">{book.subject}</span>}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">{book.category}</p>
-                  <p className="text-xs text-gray-400 mt-1">{book.totalPages} 页</p>
                 </div>
               );
             })}

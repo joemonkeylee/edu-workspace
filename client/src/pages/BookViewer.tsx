@@ -62,7 +62,7 @@ export default function BookViewer() {
   const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('annotations');
   const [mistakeFilter, setMistakeFilter] = useState('');
 
-  const [fitMode, setFitMode] = useState<FitMode>('width');
+  const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
   const mainRef = useRef<HTMLDivElement>(null);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
@@ -150,6 +150,51 @@ export default function BookViewer() {
   const handleManualZoom = (delta: number) => {
     setFitMode(null);
     setZoom(zoom + delta);
+  };
+
+  // Chrome-style zoom levels
+  const ZOOM_LEVELS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
+
+  const snapZoom = (value: number) => {
+    const clamped = Math.max(ZOOM_LEVELS[0], Math.min(ZOOM_LEVELS[ZOOM_LEVELS.length - 1], value));
+    let nearest = ZOOM_LEVELS[0];
+    let minDiff = Math.abs(clamped - nearest);
+    for (const lvl of ZOOM_LEVELS) {
+      const diff = Math.abs(clamped - lvl);
+      if (diff < minDiff) { minDiff = diff; nearest = lvl; }
+    }
+    return nearest;
+  };
+
+  const zoomIn = () => {
+    setFitMode(null);
+    const snapped = snapZoom(zoom);
+    const next = ZOOM_LEVELS.find((lvl) => lvl > snapped + 0.001) || ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
+    setZoom(next);
+  };
+
+  const zoomOut = () => {
+    setFitMode(null);
+    const snapped = snapZoom(zoom);
+    const prev = [...ZOOM_LEVELS].reverse().find((lvl) => lvl < snapped - 0.001) || ZOOM_LEVELS[0];
+    setZoom(prev);
+  };
+
+  const [editingZoom, setEditingZoom] = useState(false);
+  const [zoomInput, setZoomInput] = useState('');
+
+  const startEditZoom = () => {
+    setZoomInput(String(Math.round(zoom * 100)));
+    setEditingZoom(true);
+  };
+
+  const commitZoom = () => {
+    const val = parseFloat(zoomInput);
+    if (!isNaN(val) && val > 0) {
+      setFitMode(null);
+      setZoom(snapZoom(val / 100));
+    }
+    setEditingZoom(false);
   };
 
   useEffect(() => {
@@ -274,34 +319,49 @@ export default function BookViewer() {
         {/* Fit mode toggles */}
         <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
           <button
-            onClick={() => setFitMode('width')}
-            title="适应宽度"
-            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
-          >
-            <Maximize2 size={16} />
-          </button>
-          <button
             onClick={() => setFitMode('page')}
             title="适应页面"
             className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
           >
             <Minimize2 size={16} />
           </button>
+          <button
+            onClick={() => setFitMode('width')}
+            title="适应宽度"
+            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-300 hover:bg-white/10'}`}
+          >
+            <Maximize2 size={16} />
+          </button>
         </div>
 
         {/* Zoom controls */}
         <div className="flex items-center gap-1">
-          <button onClick={() => handleManualZoom(-0.25)} className="p-1.5 rounded hover:bg-white/10 transition" title="缩小">
+          <button onClick={zoomOut} className="p-1.5 rounded hover:bg-white/10 transition" title="缩小">
             <ZoomOut size={18} />
           </button>
-          <button
-            onClick={() => { setFitMode(null); setZoom(1); }}
-            className="text-xs w-12 text-center text-gray-300 hover:text-white"
-            title="实际大小"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <button onClick={() => handleManualZoom(0.25)} className="p-1.5 rounded hover:bg-white/10 transition" title="放大">
+          {editingZoom ? (
+            <input
+              type="text"
+              value={zoomInput}
+              onChange={(e) => setZoomInput(e.target.value)}
+              onBlur={commitZoom}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitZoom();
+                if (e.key === 'Escape') setEditingZoom(false);
+              }}
+              autoFocus
+              className="w-12 text-center text-xs bg-white/10 text-white rounded py-1 px-1 focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          ) : (
+            <button
+              onClick={startEditZoom}
+              className="text-xs w-12 text-center text-gray-300 hover:text-white py-1 rounded"
+              title="点击输入缩放比例"
+            >
+              {Math.round(snapZoom(zoom) * 100)}%
+            </button>
+          )}
+          <button onClick={zoomIn} className="p-1.5 rounded hover:bg-white/10 transition" title="放大">
             <ZoomIn size={18} />
           </button>
         </div>
