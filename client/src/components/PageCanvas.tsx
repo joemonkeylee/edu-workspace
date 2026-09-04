@@ -26,6 +26,7 @@ export default function PageCanvas({
   const [rect, setRect] = useState({ x: 0, y: 0, w: 0, h: 0 });
   const [noteInput, setNoteInput] = useState<{ x: number; y: number } | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
 
   const src = pageImageUrl(storagePath, pageNumber);
 
@@ -154,7 +155,10 @@ export default function PageCanvas({
   };
 
   return (
-    <div className="relative inline-block" style={{ width: `${zoom * 100}%` }}>
+    <div
+      className="relative inline-block"
+      style={naturalSize.w > 0 ? { width: `${naturalSize.w * zoom}px` } : undefined}
+    >
       <img
         ref={imgRef}
         src={src}
@@ -163,6 +167,10 @@ export default function PageCanvas({
         draggable={false}
         loading="lazy"
         decoding="async"
+        onLoad={(e) => {
+          const img = e.currentTarget;
+          setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+        }}
       />
       <canvas
         ref={canvasRef}
