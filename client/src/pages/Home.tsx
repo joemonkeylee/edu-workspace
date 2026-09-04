@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { getBookCoverUrl } from '../api/client';
 import { BookOpen, Settings, Trash2 } from 'lucide-react';
+import BookCover from '../components/BookCover';
 
 const DEFAULT_CATEGORY = '学习';
 
@@ -133,8 +133,6 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredBooks.map((book) => {
-              const coverUrl = getBookCoverUrl(book, book.coverPage || 1);
-
               return (
                 <div
                   key={book.id}
@@ -142,15 +140,9 @@ export default function Home() {
                   onClick={() => navigate(`/book/${book.id}`)}
                 >
                   <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                    <img
-                      src={coverUrl}
-                      alt={book.title}
+                    <BookCover
+                      book={book}
                       className="h-48 w-full object-cover transition group-hover:scale-[1.02]"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = null;
-                        target.src = getBookCoverUrl(book, 1);
-                      }}
                     />
                   </div>
                   <div className="flex items-start justify-between mb-2">

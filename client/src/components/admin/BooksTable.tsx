@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { TocNode } from '../../types';
-import { adminGetBooks, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch, getBookCoverUrl } from '../../api/client';
+import { adminGetBooks, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch } from '../../api/client';
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import BookCover from '../BookCover';
 
 const PAGE_SIZE = 10;
 
@@ -440,15 +441,9 @@ export default function BooksTable() {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <img
-                      src={getBookCoverUrl(book, book.coverPage || 1)}
-                      alt={book.title}
+                    <BookCover
+                      book={book}
                       className="w-12 h-16 object-cover rounded border border-gray-200"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = null;
-                        target.src = getBookCoverUrl(book, 1);
-                      }}
                     />
                   </td>
                   <td className="px-4 py-3 max-w-xs">
