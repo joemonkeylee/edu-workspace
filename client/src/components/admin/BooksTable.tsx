@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { TocNode } from '../../types';
-import { adminGetBooks, adminUpdateBook, adminDeleteBook, getBookCoverUrl } from '../../api/client';
+import { adminGetBooks, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch, getBookCoverUrl } from '../../api/client';
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -110,6 +110,8 @@ export default function BooksTable() {
   const [tocSaving, setTocSaving] = useState(false);
   const [previewPage, setPreviewPage] = useState<PreviewState>(null);
   const [editAttributes, setEditAttributes] = useState<Record<string, string>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -160,7 +162,68 @@ export default function BooksTable() {
   const handleDelete = async (id: number, title: string) => {
     if (!confirm(`删除「${title}」？将同时清理所有切图、批注和错题。`)) return;
     await adminDeleteBook(id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     fetch();
+  };
+
+  const pageIds = books.map((b) => b.id);
+  const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const someSelected = pageIds.some((id) => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`确定删除选中的 ${selectedIds.size} 本书？将同时清理所有切图、批注和错题，无法恢复。`)) return;
+    setDeleting(true);
+    try {
+      await adminDeleteBooksBatch(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      fetch();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm(`确定清空全部 ${total} 本书？所有数据将被删除，无法恢复！`)) return;
+    if (!confirm('再次确认：真的要删除所有书籍吗？')) return;
+    setDeleting(true);
+    try {
+      // Fetch all IDs first
+      let allIds: number[] = [];
+      const res = await adminGetBooks({ page: 1, pageSize: 1000 });
+      allIds = res.data.map((b: any) => b.id);
+      if (allIds.length === 0) { setDeleting(false); return; }
+      await adminDeleteBooksBatch(allIds);
+      setSelectedIds(new Set());
+      fetch();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const openTocEditor = (book: any) => {
@@ -270,7 +333,7 @@ export default function BooksTable() {
   return (
     <div className="p-6">
       {/* Search bar */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
@@ -285,6 +348,28 @@ export default function BooksTable() {
         <button onClick={handleSearch} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
           搜索
         </button>
+        <div className="flex-1" />
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+            <span className="text-sm text-blue-700">已选 {selectedIds.size} 本</span>
+            <button
+              onClick={handleBatchDelete}
+              disabled={deleting}
+              className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
+            >
+              <Trash2 size={14} />
+              {deleting ? '删除中...' : '批量删除'}
+            </button>
+          </div>
+        )}
+        <button
+          onClick={handleClearAll}
+          disabled={deleting || total === 0}
+          className="flex items-center gap-1 border border-red-200 text-red-500 px-3 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-40"
+        >
+          <Trash2 size={14} />
+          一键清空
+        </button>
       </div>
 
       {/* Table */}
@@ -293,6 +378,15 @@ export default function BooksTable() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => { if (el) el.indeterminate = !allSelected && someSelected; }}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 cursor-pointer accent-primary"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 font-medium">封面</th>
                 <th className="text-left px-4 py-3 font-medium">书名</th>
                 <th className="text-left px-4 py-3 font-medium">分类</th>
@@ -304,11 +398,19 @@ export default function BooksTable() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-400">加载中...</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-gray-400">加载中...</td></tr>
               ) : books.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-gray-400">暂无数据</td></tr>
               ) : books.map((book) => (
-                <tr key={book.id} className="hover:bg-gray-50 transition">
+                <tr key={book.id} className={`transition ${selectedIds.has(book.id) ? 'bg-blue-50/60' : 'hover:bg-gray-50'}`}>
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(book.id)}
+                      onChange={() => toggleSelectOne(book.id)}
+                      className="w-4 h-4 cursor-pointer accent-primary"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <img
                       src={getBookCoverUrl(book, book.coverPage || 1)}

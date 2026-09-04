@@ -80,4 +80,26 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
+router.delete('/batch', async (req: Request, res: Response) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'ids 数组不能为空' });
+  }
+  const numIds = ids.map(Number).filter(Boolean);
+  let deleted = 0;
+  for (const id of numIds) {
+    try {
+      const bookDir = path.join(STORAGE_ABS, 'books', String(id));
+      fs.rmSync(bookDir, { recursive: true, force: true });
+      const cropDir = path.join(STORAGE_ABS, 'crops', String(id));
+      fs.rmSync(cropDir, { recursive: true, force: true });
+      await prisma.book.delete({ where: { id } });
+      deleted++;
+    } catch {
+      // skip if not found
+    }
+  }
+  res.json({ success: true, deleted });
+});
+
 export default router;

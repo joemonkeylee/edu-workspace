@@ -66,6 +66,11 @@ export async function adminDeleteBook(id: number) {
   return data;
 }
 
+export async function adminDeleteBooksBatch(ids: number[]) {
+  const { data } = await api.delete('/admin/books/batch', { data: { ids } });
+  return data;
+}
+
 export async function adminGetAnnotations(params?: Record<string, any>) {
   const { data } = await api.get('/admin/annotations', { params });
   return data as { data: any[]; total: number; page: number; pageSize: number };
