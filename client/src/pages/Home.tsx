@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, Trash2 } from 'lucide-react';
+import { BookOpen, Settings } from 'lucide-react';
 import BookCover from '../components/BookCover';
 
 const DEFAULT_CATEGORY = '学习';
 
 export default function Home() {
-  const { books, fetchBooks, removeBook, loading } = useStore();
+  const { books, fetchBooks, loading } = useStore();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState(DEFAULT_CATEGORY);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
@@ -144,31 +144,19 @@ export default function Home() {
               return (
                 <div
                   key={book.id}
-                  className="bg-white rounded-lg shadow p-4 hover:shadow-md transition cursor-pointer group"
+                  className="bg-white rounded-lg shadow p-3 hover:shadow-md transition cursor-pointer group"
                   onClick={() => navigate(`/book/${book.id}`)}
                 >
-                  <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                  <div className="mb-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50" style={{ aspectRatio: '3/4' }}>
                     <BookCover
                       book={book}
-                      className="h-48 w-full object-cover transition group-hover:scale-[1.02]"
+                      className="w-full h-full object-cover transition group-hover:scale-[1.02]"
                     />
                   </div>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="bg-primary/10 rounded-lg p-2">
-                      <BookOpen className="text-primary" size={20} />
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`删除「${book.title}」？`)) removeBook(book.id);
-                      }}
-                      className="text-gray-300 hover:text-red-500 transition"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                  <div className="mb-2">
+                    <h3 className="font-semibold text-sm line-clamp-2 leading-snug min-h-[2.5rem]" title={book.title}>{book.title}</h3>
                   </div>
-                  <h3 className="font-semibold text-sm truncate" title={book.title}>{book.title}</h3>
-                  <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
+                  <div className="flex flex-wrap gap-1 text-[10px]">
                     {book.grade && <span className="bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">{book.grade}</span>}
                     {book.subject && <span className="bg-amber-50 text-amber-600 rounded px-1.5 py-0.5">{book.subject}</span>}
                   </div>
