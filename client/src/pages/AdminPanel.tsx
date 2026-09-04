@@ -30,9 +30,9 @@ export default function AdminPanel() {
       {/* Header */}
       <header className="bg-sidebar text-white px-6 py-4 flex items-center gap-4 flex-shrink-0 h-14">
         <Link to="/" className="flex items-center gap-2 text-gray-300 hover:text-white transition">
-          <ArrowLeft size={20} /> 返回
+          <ArrowLeft size={20} /> 
         </Link>
-        <h1 className="text-lg font-bold">后台管理 · {TITLES[active]}</h1>
+        <h1 className="text-lg font-bold">后台 · {TITLES[active]}</h1>
       </header>
 
       {/* Body: sidebar + content */}
