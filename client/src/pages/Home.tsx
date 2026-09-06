@@ -101,7 +101,7 @@ export default function Home() {
   // Edit mode state
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [draftEdits, setDraftEdits] = useState<Map<number, { title: string; category: string }>>(new Map());
+  const [draftEdits, setDraftEdits] = useState<Map<number, { title: string; category: string; subject: string; grade: string }>>(new Map());
   const [pendingDeletes, setPendingDeletes] = useState<Set<number>>(new Set());
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [promptAction, setPromptAction] = useState<null | 'exit' | 'filter'>(null);
@@ -164,13 +164,23 @@ export default function Home() {
   };
 
   // ---- Edit mode helpers ----
-  const updateDraft = (id: number, field: 'title' | 'category', value: string) => {
+  const updateDraft = (id: number, field: 'title' | 'category' | 'subject' | 'grade', value: string) => {
     setDraftEdits((prev) => {
       const book = books.find((b) => b.id === id);
-      const base = prev.get(id) || { title: book?.title || '', category: book?.category || '' };
+      const base = prev.get(id) || {
+        title: book?.title || '',
+        category: book?.category || '',
+        subject: book?.subject || '',
+        grade: book?.grade || '',
+      };
       const next = { ...base, [field]: value };
       // Remove draft if it matches original
-      if (next.title === (book?.title || '') && next.category === (book?.category || '')) {
+      if (
+        next.title === (book?.title || '') &&
+        next.category === (book?.category || '') &&
+        next.subject === (book?.subject || '') &&
+        next.grade === (book?.grade || '')
+      ) {
         const n = new Map(prev);
         n.delete(id);
         return n;
@@ -185,6 +195,8 @@ export default function Home() {
     return {
       title: draft?.title ?? book?.title ?? '',
       category: draft?.category ?? book?.category ?? '',
+      subject: draft?.subject ?? book?.subject ?? '',
+      grade: draft?.grade ?? book?.grade ?? '',
     };
   };
 
@@ -238,6 +250,8 @@ export default function Home() {
         const changed: any = {};
         if (draft.title !== book.title) changed.title = draft.title;
         if (draft.category !== book.category) changed.category = draft.category;
+        if (draft.subject !== book.subject) changed.subject = draft.subject;
+        if (draft.grade !== book.grade) changed.grade = draft.grade;
         if (Object.keys(changed).length > 0) {
           try { await updateBook(id, changed); } catch { /* ignore */ }
         }
@@ -418,13 +432,41 @@ export default function Home() {
                             className="w-full rounded bg-black/40 px-1 py-0.5 text-xs font-medium text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-white/60"
                             placeholder="标题"
                           />
-                          <input
-                            value={draft.category}
-                            onChange={(e) => updateDraft(book.id, 'category', e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="mt-1 w-full rounded bg-black/40 px-1 py-0.5 text-[10px] text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-white/60"
-                            placeholder="分类"
-                          />
+                          <div className="mt-1 flex gap-1">
+                            <select
+                              value={draft.subject}
+                              onChange={(e) => updateDraft(book.id, 'subject', e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
+                            >
+                              <option value="" className="text-gray-800">学科</option>
+                              {subjectOptions.map((s) => (
+                                <option key={s} value={s} className="text-gray-800">{s}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={draft.grade}
+                              onChange={(e) => updateDraft(book.id, 'grade', e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
+                            >
+                              <option value="" className="text-gray-800">学期</option>
+                              {gradeOptions.map((g) => (
+                                <option key={g} value={g} className="text-gray-800">{g}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={draft.category}
+                              onChange={(e) => updateDraft(book.id, 'category', e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
+                            >
+                              <option value="" className="text-gray-800">分类</option>
+                              {categoryOptions.map((c) => (
+                                <option key={c} value={c} className="text-gray-800">{c}</option>
+                              ))}
+                            </select>
+                          </div>
                         </>
                       ) : (
                         <>
