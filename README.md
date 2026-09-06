@@ -65,7 +65,7 @@ npm run start:prod
 
 ## macOS 局域网部署
 
-项目使用 Caddy 提供前端静态文件和反向代理，使用 macOS `launchd` 守护后端与 Caddy。首次安装 Caddy：
+项目使用 Caddy 提供前端静态文件和反向代理，使用 macOS `launchd` 守护后端、Caddy，并可定时检查 `main` 分支自动发布。首次安装 Caddy：
 
 ```bash
 brew install caddy
@@ -117,6 +117,9 @@ http://192.168.1.6:5173
 
 # 查看 Caddy 日志
 ./scripts/logs-lan-service.sh caddy
+
+# 查看自动发布日志
+./scripts/logs-lan-service.sh autodeploy
 ```
 
 代码更新后的日常流程：
@@ -127,6 +130,21 @@ npm run build
 ```
 
 通常不需要重复执行安装脚本；只有修改了 `deploy/*.plist` 或首次配置服务时才需要执行 `install-lan-service.sh`。
+
+### main 分支自动发布
+
+安装脚本会注册 `com.edu-workspace.autodeploy`，每 5 分钟检查一次 `origin/main`。只有同时满足以下条件才会自动发布：
+
+- 当前分支是 `main`
+- 工作区没有未提交修改
+- `origin/main` 有新的提交
+- `npm run build` 成功
+
+发布成功后会执行 `./scripts/start-lan-service.sh`，重启后端和 Caddy。构建失败、无法快进合并或工作区不干净时会跳过，不影响当前线上版本。需要关闭自动发布时：
+
+```bash
+launchctl bootout "gui/$(id -u)/com.edu-workspace.autodeploy"
+```
 
 ## 数据清空与重新导入
 

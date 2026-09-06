@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { scanPdfUrl } from '../../api/client';
+import { getScanCapacity, scanPdfUrl, updateScanConcurrency } from '../../api/client';
 import { useStore } from '../../store/useStore';
 import { Scan, StopCircle, FolderOpen, Clock, Layers } from 'lucide-react';
 
@@ -21,13 +21,6 @@ const DPI_OPTIONS = [
   { value: 600, label: '600 (打印级)' },
 ];
 
-const CONCURRENCY_OPTIONS = [
-  { value: 2, label: '2 并发（低 CPU）' },
-  { value: 4, label: '4 并发（平衡）' },
-  { value: 6, label: '6 并发（高速）' },
-  { value: 8, label: '8 并发（极速，占满 CPU）' },
-];
-
 const fmtTime = (s: number) => {
   if (s < 60) return `${Math.round(s)}秒`;
   const m = Math.floor(s / 60);
@@ -40,14 +33,23 @@ export default function PdfScanImport() {
   const [category, setCategory] = useState('');
   const [dpi, setDpi] = useState(300);
   const [concurrency, setConcurrency] = useState(4);
+  const [maxConcurrency, setMaxConcurrency] = useState(1);
   const [logs, setLogs] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [scanTaskId, setScanTaskId] = useState('');
 
   const esRef = useRef<EventSource | null>(null);
   const doneRef = useRef(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const { fetchBooks } = useStore();
+
+  useEffect(() => {
+    getScanCapacity().then(({ maxConcurrency: max }) => {
+      setMaxConcurrency(max);
+      setConcurrency((current) => Math.min(current, max));
+    }).catch(() => setMaxConcurrency(1));
+  }, []);
 
   const startScan = () => {
     if (!targetPath.trim()) return;
@@ -56,7 +58,9 @@ export default function PdfScanImport() {
     setLogs([]);
     setProgress(null);
 
-    const url = scanPdfUrl(targetPath.trim(), category.trim(), dpi, concurrency);
+    const taskId = crypto.randomUUID();
+    setScanTaskId(taskId);
+    const url = scanPdfUrl(targetPath.trim(), category.trim(), dpi, concurrency, taskId);
     const es = new EventSource(url);
     esRef.current = es;
 
@@ -76,6 +80,7 @@ export default function PdfScanImport() {
       setScanning(false);
       setProgress(null);
       es.close();
+      setScanTaskId('');
       fetchBooks();
     });
     es.addEventListener('error', (e: Event) => {
@@ -90,6 +95,7 @@ export default function PdfScanImport() {
       setScanning(false);
       setProgress(null);
       es.close();
+      setScanTaskId('');
     });
   };
 
@@ -97,10 +103,19 @@ export default function PdfScanImport() {
     esRef.current?.close();
     setScanning(false);
     setProgress(null);
+    setScanTaskId('');
     setLogs((prev) => [...prev, '⏹ 已手动停止']);
   };
 
   useEffect(() => () => esRef.current?.close(), []);
+  useEffect(() => {
+    if (!scanning || !scanTaskId) return;
+    updateScanConcurrency(scanTaskId, concurrency).catch(() => {});
+    const interval = window.setInterval(() => {
+      updateScanConcurrency(scanTaskId, concurrency).catch(() => {});
+    }, 500);
+    return () => window.clearInterval(interval);
+  }, [scanning, scanTaskId, concurrency]);
   useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
   useEffect(() => {
     if (!scanning) return;
@@ -171,12 +186,12 @@ export default function PdfScanImport() {
               value={concurrency}
               onChange={(e) => setConcurrency(Number(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
-              disabled={scanning}
             >
-              {CONCURRENCY_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {Array.from({ length: maxConcurrency }, (_, index) => index + 1).map((value) => (
+                <option key={value} value={value}>{value} 并发</option>
               ))}
             </select>
+            {scanning && <p className="text-xs text-gray-400 mt-1">导入中修改后会逐步生效，不会中断当前任务</p>}
           </div>
         </div>
 

@@ -58,10 +58,21 @@ export async function deleteMistake(id: number) {
   return data;
 }
 
-export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number) {
+export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string) {
   const params = new URLSearchParams({ targetPath, category, dpi: String(dpi) });
   if (concurrency) params.set('concurrency', String(concurrency));
+  if (taskId) params.set('taskId', taskId);
   return `/api/admin/scan-pdf?${params}`;
+}
+
+export async function getScanCapacity() {
+  const { data } = await api.get('/admin/scan-pdf/capacity');
+  return data as { cores: number; maxConcurrency: number };
+}
+
+export async function updateScanConcurrency(taskId: string, concurrency: number) {
+  const { data } = await api.post('/admin/scan-pdf/concurrency', { taskId, concurrency });
+  return data as { concurrency: number };
 }
 
 export async function getStorageSettings() {

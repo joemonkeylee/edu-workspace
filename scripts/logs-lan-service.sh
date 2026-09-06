@@ -9,8 +9,11 @@ case "$SERVICE" in
   caddy)
     tail -f /tmp/edu-workspace-caddy.log /tmp/edu-workspace-caddy.error.log
     ;;
+  autodeploy)
+    tail -f /tmp/edu-workspace-auto-deploy.log /tmp/edu-workspace-autodeploy.error.log
+    ;;
   *)
-    echo "Usage: $0 [server|caddy]"
+    echo "Usage: $0 [server|caddy|autodeploy]"
     exit 1
     ;;
 esac

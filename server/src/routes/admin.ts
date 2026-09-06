@@ -2,13 +2,29 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 import prisma from '../prisma.js';
 import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, isDpiComplete, hashFile, mergeSourcePaths, normalizeSourcePaths } from '../services/pdfProcessor.js';
-import { runWithConcurrency } from '../utils/concurrency.js';
+import { runWithDynamicConcurrency } from '../utils/concurrency.js';
 import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
 import { execFile } from 'child_process';
 
 const router = Router();
+const maxConcurrency = Math.max(1, os.cpus().length - 1);
+const scanConcurrency = new Map<string, { value: number }>();
+
+router.get('/scan-pdf/capacity', (_req: Request, res: Response) => {
+  res.json({ cores: os.cpus().length, maxConcurrency });
+});
+
+router.post('/scan-pdf/concurrency', (req: Request, res: Response) => {
+  const taskId = typeof req.body?.taskId === 'string' ? req.body.taskId : '';
+  const requested = Number(req.body?.concurrency);
+  const task = scanConcurrency.get(taskId);
+  if (!task) return res.status(404).json({ error: '扫描任务不存在或已结束' });
+  task.value = Math.max(1, Math.min(maxConcurrency, Math.floor(requested)));
+  res.json({ concurrency: task.value });
+});
 
 router.get('/storage', async (_req: Request, res: Response) => {
   const current = await inspectStorageRoot(getStorageRoot());
@@ -58,7 +74,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   const explicitCategory = req.query.category as string;
   const dpi = parseInt((req.query.dpi as string) || '300', 10);
   // Concurrency: default to min(4, cores-1), cap at 8 to avoid choking the system
-  const concurrency = Math.min(parseInt((req.query.concurrency as string) || String(Math.min(4, os.cpus().length - 1)), 10), 8);
+  const taskId = typeof req.query.taskId === 'string' ? req.query.taskId : crypto.randomUUID();
+  const initialConcurrency = Math.max(1, Math.min(maxConcurrency, parseInt((req.query.concurrency as string) || String(Math.min(4, maxConcurrency)), 10)));
+  const concurrencyState = { value: initialConcurrency };
+  scanConcurrency.set(taskId, concurrencyState);
 
   // Batch ID: YYYYMMDDHHmm — all books imported in this scan share the same batchId
   const now = new Date();
@@ -115,11 +134,11 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       return res.end();
     }
 
-    send('log', { message: `扫描完成，找到 ${pdfFiles.length} 个 PDF 文件，目标 DPI=${dpi}，并发数=${concurrency}` });
+    send('log', { message: `扫描完成，找到 ${pdfFiles.length} 个 PDF 文件，目标 DPI=${dpi}，并发数=${concurrencyState.value}` });
 
     // Phase 1: collect PDF info (parallelized — pdfinfo is quick)
     const tasks: PdfTask[] = [];
-    await runWithConcurrency(pdfFiles, Math.min(8, concurrency * 2), async (pdfPath) => {
+    await runWithDynamicConcurrency(pdfFiles, () => Math.min(maxConcurrency, concurrencyState.value * 2), async (pdfPath: string) => {
       const fileName = path.basename(pdfPath);
       try {
         const info = getPdfInfo(pdfPath);
@@ -233,14 +252,14 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
     const pagesToProcess = toProcess.reduce((s, t) => s + t.pages, 0);
     const secPerPage = 0.3 * (dpi / 150);
-    send('log', { message: `预计渲染 ${pagesToProcess} 页，并发=${concurrency}，预计耗时: ${fmtTime(pagesToProcess * secPerPage / concurrency)}` });
+    send('log', { message: `预计渲染 ${pagesToProcess} 页，并发=${concurrencyState.value}，预计耗时: ${fmtTime(pagesToProcess * secPerPage / concurrencyState.value)}` });
 
     const startTime = Date.now();
     let processedPages = 0;
     const pageProgress: Record<number, number> = {};
 
     // Phase 2b: process books with a concurrency pool
-    await runWithConcurrency(toProcess, concurrency, async (task, idx) => {
+    await runWithDynamicConcurrency(toProcess, () => concurrencyState.value, async (task: PdfTask, idx: number) => {
       send('log', { message: `[${idx + 1}/${toProcess.length}] 正在处理: ${task.fileName}` });
 
       try {
@@ -326,7 +345,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           processedPages += delta;
           const elapsed = (Date.now() - startTime) / 1000;
           const overallProgress = (processedPages / pagesToProcess) * 100;
-          const remaining = (pagesToProcess - processedPages) * secPerPage / concurrency;
+          const remaining = (pagesToProcess - processedPages) * secPerPage / concurrencyState.value;
           send('progress', {
             current,
             total: task.pages,
@@ -363,6 +382,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   } catch (err: any) {
     send('error', { message: `系统错误: ${err.message}` });
   } finally {
+    scanConcurrency.delete(taskId);
     res.end();
   }
 });
