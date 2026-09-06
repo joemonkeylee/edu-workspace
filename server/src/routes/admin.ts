@@ -27,6 +27,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   // Concurrency: default to min(4, cores-1), cap at 8 to avoid choking the system
   const concurrency = Math.min(parseInt((req.query.concurrency as string) || String(Math.min(4, os.cpus().length - 1)), 10), 8);
 
+  // Batch ID: YYYYMMDDHHmm — all books imported in this scan share the same batchId
+  const now = new Date();
+  const batchId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -186,6 +190,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
               category: task.category,
               grade: task.grade,
               subject: task.subject,
+              batchId,
               totalPages: task.pages,
               storagePath: '',
               tocJson: toc as any,
@@ -224,7 +229,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const storagePath = `/storage/books/${bookId}/`;
         await prisma.book.update({
           where: { id: bookId },
-          data: { storagePath, totalPages: task.pages },
+          data: { storagePath, totalPages: task.pages, batchId },
         });
 
         send('log', { message: `  渲染完成，共 ${images.length} 张图片，可用 DPI: ${allDpis.join(', ')}` });

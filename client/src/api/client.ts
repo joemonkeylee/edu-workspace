@@ -71,6 +71,11 @@ export async function adminGetBooks(params?: Record<string, any>) {
   return data as { data: any[]; total: number; page: number; pageSize: number };
 }
 
+export async function adminGetBatches() {
+  const { data } = await api.get('/admin/books/batches');
+  return data as string[];
+}
+
 export async function adminUpdateBook(id: number, body: { title?: string; category?: string; grade?: string; subject?: string; coverPage?: number; tocJson?: any[]; attributes?: Record<string, any> }) {
   const { data } = await api.put(`/admin/books/${id}`, body);
   return data;

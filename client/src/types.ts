@@ -11,6 +11,7 @@ export interface Book {
   category: string;
   grade?: string;
   subject?: string;
+  batchId?: string;
   coverPage?: number;
   totalPages: number;
   storagePath: string;

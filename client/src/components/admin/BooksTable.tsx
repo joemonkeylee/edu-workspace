@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { TocNode } from '../../types';
-import { adminGetBooks, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch } from '../../api/client';
+import { adminGetBooks, adminGetBatches, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch } from '../../api/client';
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import BookCover from '../BookCover';
 
@@ -100,6 +100,8 @@ export default function BooksTable() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [batchFilter, setBatchFilter] = useState('');
+  const [batches, setBatches] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -121,13 +123,16 @@ export default function BooksTable() {
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminGetBooks({ page, pageSize: PAGE_SIZE, search });
+      const params: Record<string, any> = { page, pageSize: PAGE_SIZE, search };
+      if (batchFilter) params.batchId = batchFilter;
+      const res = await adminGetBooks(params);
       setBooks(res.data);
       setTotal(res.total);
     } finally { setLoading(false); }
-  }, [page, search]);
+  }, [page, search, batchFilter]);
 
   useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { adminGetBatches().then(setBatches).catch(() => {}); }, []);
 
   const handleSearch = () => { setPage(1); fetch(); };
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
@@ -380,6 +385,16 @@ export default function BooksTable() {
         <button onClick={handleSearch} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
           搜索
         </button>
+        <select
+          value={batchFilter}
+          onChange={(e) => { setBatchFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">全部批次</option>
+          {batches.map(b => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
         <div className="flex-1" />
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
@@ -424,6 +439,7 @@ export default function BooksTable() {
                 <th className="text-left px-4 py-3 font-medium">分类</th>
                 <th className="text-left px-4 py-3 font-medium">页数</th>
                 <th className="text-left px-4 py-3 font-medium">DPI</th>
+                <th className="text-left px-4 py-3 font-medium">批次</th>
                 <th className="text-left px-4 py-3 font-medium">入库时间</th>
                 <th className="text-right px-4 py-3 font-medium">操作</th>
               </tr>
@@ -576,6 +592,13 @@ export default function BooksTable() {
                       </div>
                     ) : (
                       <span className="text-gray-400 text-xs">无</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">
+                    {book.batchId ? (
+                      <span className="inline-block px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-xs font-mono">{book.batchId}</span>
+                    ) : (
+                      <span className="text-gray-300">-</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">

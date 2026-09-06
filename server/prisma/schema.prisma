@@ -13,6 +13,7 @@ model Book {
   category    String
   grade       String   @default("")
   subject     String   @default("")
+  batchId     String   @default("")
   coverPage   Int      @default(1)
   totalPages  Int
   storagePath String

@@ -14,6 +14,7 @@ router.get('/', async (req: Request, res: Response) => {
   const category = req.query.category as string;
   const grade = req.query.grade as string;
   const subject = req.query.subject as string;
+  const batchId = req.query.batchId as string;
 
   const where: any = {};
   if (search) {
@@ -27,6 +28,7 @@ router.get('/', async (req: Request, res: Response) => {
   if (category && category !== 'all') where.category = { contains: category };
   if (grade && grade !== 'all') where.grade = { contains: grade };
   if (subject && subject !== 'all') where.subject = { contains: subject };
+  if (batchId && batchId !== 'all') where.batchId = batchId;
 
   const [data, total] = await Promise.all([
     prisma.book.findMany({
@@ -44,6 +46,17 @@ router.get('/', async (req: Request, res: Response) => {
   });
 
   res.json({ data: booksWithDpi, total, page, pageSize });
+});
+
+// Get distinct batchIds (newest first) for the filter dropdown
+router.get('/batches', async (_req: Request, res: Response) => {
+  const books = await prisma.book.findMany({
+    select: { batchId: true },
+    where: { batchId: { not: '' } },
+    orderBy: { createdAt: 'desc' },
+  });
+  const batchIds = [...new Set(books.map(b => b.batchId))].filter(Boolean);
+  res.json(batchIds);
 });
 
 router.put('/:id', async (req: Request, res: Response) => {
