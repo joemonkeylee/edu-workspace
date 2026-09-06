@@ -21,7 +21,16 @@ cd server && npx prisma db push && cd ..
 npm run dev
 ```
 
-后端运行在 http://localhost:4000，前端运行在 http://localhost:5173
+开发后端运行在 http://localhost:4001，开发前端运行在 http://localhost:5174。生产局域网服务使用 `4000/5173`。
+
+开发环境不会占用生产端口：
+
+```text
+开发前端：5174 → 开发后端：4001
+生产前端：5173 → 生产后端：4000
+```
+
+因此开发时不需要停止局域网部署服务。
 
 ## 配置资源目录
 
