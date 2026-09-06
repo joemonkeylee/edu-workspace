@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { TocNode } from '../../types';
-import { adminGetBooks, adminGetBatches, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch } from '../../api/client';
+import { adminGetBooks, adminGetBatches, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch, adminClearBooks } from '../../api/client';
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import BookCover from '../BookCover';
 
@@ -258,22 +258,8 @@ export default function BooksTable() {
         setDeleteConfirm(null);
         setDeleting(true);
         try {
-          // Fetch all books first to get titles for progress display
-          const res = await adminGetBooks({ page: 1, pageSize: 1000 });
-          const allBooks = res.data;
-          if (allBooks.length === 0) { setDeleting(false); return; }
-          setDeleteProgress({ current: 0, total: allBooks.length, title: '' });
-          for (let i = 0; i < allBooks.length; i++) {
-            setDeleteProgress({ current: i, total: allBooks.length, title: allBooks[i].title });
-            try {
-              await adminDeleteBook(allBooks[i].id);
-            } catch {
-              // skip failed deletions
-            }
-          }
-          setDeleteProgress({ current: allBooks.length, total: allBooks.length, title: '完成' });
+          await adminClearBooks();
           setSelectedIds(new Set());
-          await new Promise((r) => setTimeout(r, 300));
           fetch();
         } finally {
           setDeleting(false);

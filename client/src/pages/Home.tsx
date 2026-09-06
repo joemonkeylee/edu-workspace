@@ -381,7 +381,7 @@ export default function Home() {
           <BookOpen size={22} />
           <h1 className="text-lg font-bold">edu-workspace</h1>
         </div>
-        <Link to="/admin" title="后台管理" className="flex items-center justify-center bg-primary hover:bg-primaryDark h-9 w-9 rounded-lg transition">
+        <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理" className="flex items-center justify-center bg-primary hover:bg-primaryDark h-9 w-9 rounded-lg transition">
           <Settings size={18} />
         </Link>
       </header>

@@ -58,6 +58,22 @@ router.get('/batches', async (_req: Request, res: Response) => {
   res.json(batchIds);
 });
 
+router.delete('/all', async (_req: Request, res: Response) => {
+  try {
+    const books = await prisma.book.findMany({ select: { id: true } });
+    const booksRoot = path.dirname(getBookRoot(0));
+    const cropsRoot = getCropsRoot();
+    try { fs.rmSync(booksRoot, { recursive: true, force: true }); } catch { /* files may not exist */ }
+    try { fs.rmSync(cropsRoot, { recursive: true, force: true }); } catch { /* files may not exist */ }
+
+    await prisma.book.deleteMany({});
+    await prisma.$executeRawUnsafe('ALTER TABLE `Book` AUTO_INCREMENT = 1');
+    res.json({ success: true, deleted: books.length });
+  } catch (error: any) {
+    res.status(500).json({ error: `清空书籍失败: ${error.message}` });
+  }
+});
+
 router.put('/:id', async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const { title, category, grade, subject, coverPage, attributes } = req.body;

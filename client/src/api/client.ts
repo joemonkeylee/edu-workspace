@@ -111,6 +111,11 @@ export async function adminDeleteBooksBatch(ids: number[]) {
   return data;
 }
 
+export async function adminClearBooks() {
+  const { data } = await api.delete('/admin/books/all');
+  return data as { success: boolean; deleted: number };
+}
+
 export async function adminGetAnnotations(params?: Record<string, any>) {
   const { data } = await api.get('/admin/annotations', { params });
   return data as { data: any[]; total: number; page: number; pageSize: number };
