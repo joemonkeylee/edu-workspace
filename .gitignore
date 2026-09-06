@@ -22,7 +22,8 @@ server/prisma/migrations/
 .DS_Store
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 
 .history
