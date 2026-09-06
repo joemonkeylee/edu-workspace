@@ -21,9 +21,9 @@ router.post('/scan-pdf/concurrency', (req: Request, res: Response) => {
   const taskId = typeof req.body?.taskId === 'string' ? req.body.taskId : '';
   const requested = Number(req.body?.concurrency);
   const task = scanConcurrency.get(taskId);
-  if (!task) return res.status(404).json({ error: '扫描任务不存在或已结束' });
+  if (!task) return res.json({ concurrency: requested, active: false });
   task.value = Math.max(1, Math.min(maxConcurrency, Math.floor(requested)));
-  res.json({ concurrency: task.value });
+  res.json({ concurrency: task.value, active: true });
 });
 
 router.get('/storage', async (_req: Request, res: Response) => {

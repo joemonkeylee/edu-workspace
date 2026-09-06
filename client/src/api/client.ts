@@ -72,7 +72,7 @@ export async function getScanCapacity() {
 
 export async function updateScanConcurrency(taskId: string, concurrency: number) {
   const { data } = await api.post('/admin/scan-pdf/concurrency', { taskId, concurrency });
-  return data as { concurrency: number };
+  return data as { concurrency: number; active: boolean };
 }
 
 export async function getStorageSettings() {
