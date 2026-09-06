@@ -15,7 +15,8 @@
     "build:client": "npm run build --workspace=client",
     "build": "npm run build:server && npm run build:client",
     "start:server": "npm run start --workspace=server",
-    "start:prod": "npm run build && npm run start:server"
+    "start:prod": "npm run build && npm run start:server",
+    "deploy:now": "./scripts/auto-deploy-main.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
