@@ -30,6 +30,7 @@ import {
   Circle,
   RotateCcw,
   Layers,
+  Download,
 } from 'lucide-react';
 
 type FitMode = 'width' | 'page' | null;
@@ -413,6 +414,24 @@ export default function BookViewer() {
         </button>
 
         <div className="w-px h-5 bg-white/10 mx-0.5" />
+
+        {/* Original PDF download */}
+        <a
+          href={currentBook.pdfUrl || undefined}
+          download={currentBook.pdfFileName || undefined}
+          aria-disabled={!currentBook.pdfUrl}
+          data-tooltip={currentBook.pdfFileName || '暂无 PDF'}
+          className={`relative p-1.5 rounded transition ${
+            currentBook.pdfUrl
+              ? 'text-gray-400 hover:text-white hover:bg-white/10'
+              : 'text-gray-600 cursor-not-allowed'
+          }`}
+          onClick={(event) => {
+            if (!currentBook.pdfUrl) event.preventDefault();
+          }}
+        >
+          <Download size={16} />
+        </a>
 
         {/* Zoom controls */}
         <div className="flex items-center gap-0.5">

@@ -22,6 +22,8 @@ export interface Book {
   createdAt: string;
   annotations?: Annotation[];
   availableDpis?: number[];
+  pdfFileName?: string | null;
+  pdfUrl?: string | null;
 }
 
 export interface Annotation {

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import prisma from '../prisma.js';
 import { getBestDpiPath, getAvailableDpisAsync } from '../services/pdfProcessor.js';
 import { getBookRoot, getCropsRoot } from '../services/storage.js';
@@ -72,7 +73,13 @@ router.get('/:id', async (req: Request, res: Response) => {
   const best = getBestDpiPath(bookDir);
   const storagePath = best ? `/storage/books/${id}/${best.dpi}/` : book.storagePath;
   const dpis = await getAvailableDpisAsync(bookDir);
-  res.json({ ...book, annotations, storagePath, availableDpis: dpis });
+  const pdfFileName = fs.existsSync(bookDir)
+    ? fs.readdirSync(bookDir).find((name) => name.toLowerCase().endsWith('.pdf')) || null
+    : null;
+  const pdfUrl = pdfFileName
+    ? `/storage/books/${id}/${encodeURIComponent(pdfFileName)}`
+    : null;
+  res.json({ ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl });
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {
