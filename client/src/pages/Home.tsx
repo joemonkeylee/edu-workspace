@@ -8,6 +8,7 @@ import { updateBook, deleteBook } from '../api/client';
 const PAGE_SIZE = 16; // 2 rows × 8 cols
 const STORAGE_KEY = 'edu-home-filters';
 const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST');
+const APP_COMMIT = import.meta.env.VITE_APP_COMMIT || '';
 const APP_ENV_CLASS = APP_ENV === 'PROD'
   ? 'bg-emerald-500/20 text-emerald-200'
   : APP_ENV === 'TEST'
@@ -389,6 +390,11 @@ export default function Home() {
           <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${APP_ENV_CLASS}`}>
             {APP_ENV}
           </span>
+          {APP_ENV === 'TEST' && APP_COMMIT && (
+            <span className="font-mono text-[10px] text-gray-400" title={`构建版本 ${APP_COMMIT}`}>
+              {APP_COMMIT}
+            </span>
+          )}
         </div>
         <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理" className="flex items-center justify-center bg-primary hover:bg-primaryDark h-9 w-9 rounded-lg transition">
           <Settings size={18} />
