@@ -75,11 +75,17 @@ function SavePrompt({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-80 rounded-xl bg-white p-6 shadow-xl">
+      <div className="relative w-80 rounded-xl bg-white p-6 shadow-xl">
+        <button
+          onClick={onCancel}
+          className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          title="取消"
+        >
+          <X size={16} />
+        </button>
         <h3 className="text-base font-semibold text-gray-800">有未保存的修改</h3>
         <p className="mt-2 text-sm text-gray-500">是否保存当前编辑？</p>
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onCancel} className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">取消</button>
           <button onClick={onDiscard} className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">不保存</button>
           <button onClick={onSave} className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primaryDark">保存</button>
         </div>
