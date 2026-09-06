@@ -338,8 +338,8 @@ export default function Home() {
           <BookOpen size={22} />
           <h1 className="text-lg font-bold">edu-workspace</h1>
         </div>
-        <Link to="/admin" className="flex items-center gap-2 bg-primary hover:bg-primaryDark px-4 py-2 rounded-lg transition text-sm">
-          <Settings size={18} /> 后台管理
+        <Link to="/admin" title="后台管理" className="flex items-center justify-center bg-primary hover:bg-primaryDark h-9 w-9 rounded-lg transition">
+          <Settings size={18} />
         </Link>
       </header>
 
@@ -372,7 +372,9 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <p className="text-gray-500">加载中...</p>
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+          </div>
         ) : filteredBooks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <BookOpen size={48} className="mb-4" />
@@ -439,7 +441,7 @@ export default function Home() {
                               onClick={(e) => e.stopPropagation()}
                               className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
                             >
-                              <option value="" className="text-gray-800">学科</option>
+                              <option value="" className="text-gray-800">&nbsp;</option>
                               {subjectOptions.map((s) => (
                                 <option key={s} value={s} className="text-gray-800">{s}</option>
                               ))}
@@ -450,7 +452,7 @@ export default function Home() {
                               onClick={(e) => e.stopPropagation()}
                               className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
                             >
-                              <option value="" className="text-gray-800">学期</option>
+                              <option value="" className="text-gray-800">&nbsp;</option>
                               {gradeOptions.map((g) => (
                                 <option key={g} value={g} className="text-gray-800">{g}</option>
                               ))}
@@ -461,7 +463,7 @@ export default function Home() {
                               onClick={(e) => e.stopPropagation()}
                               className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
                             >
-                              <option value="" className="text-gray-800">分类</option>
+                              <option value="" className="text-gray-800">&nbsp;</option>
                               {categoryOptions.map((c) => (
                                 <option key={c} value={c} className="text-gray-800">{c}</option>
                               ))}
