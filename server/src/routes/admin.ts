@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../prisma.js';
-import { getPdfInfo, extractOutline, renderPages, getAvailableDpis } from '../services/pdfProcessor.js';
+import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath } from '../services/pdfProcessor.js';
 
 const router = Router();
 
@@ -14,6 +14,8 @@ interface PdfTask {
   category: string;
   title: string;
   pages: number;
+  grade: string;
+  subject: string;
 }
 
 router.get('/scan-pdf', async (req: Request, res: Response) => {
@@ -82,7 +84,11 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       try {
         const info = getPdfInfo(pdfPath);
         const pdfCategory = explicitCategory || path.basename(path.dirname(pdfPath)) || '未分类';
-        tasks.push({ pdfPath, fileName, category: pdfCategory, title: info.title, pages: info.pages });
+        // Title uses the filename (without .pdf) as the authoritative source;
+        // PDF metadata title is only a fallback when filename is unavailable.
+        const title = path.basename(pdfPath, '.pdf') || info.title;
+        const { grade, subject } = parseGradeSubjectFromPath(pdfPath);
+        tasks.push({ pdfPath, fileName, category: pdfCategory, title, pages: info.pages, grade, subject });
       } catch {
         send('log', { message: `[${i + 1}/${pdfFiles.length}] 跳过（无法读取）: ${fileName}` });
       }
@@ -118,6 +124,18 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));
           const dpiDir = path.join(bookDir, String(dpi));
 
+          // Backfill grade/subject if the existing book is missing them
+          if ((!existing.grade || !existing.subject) && (task.grade || task.subject)) {
+            await prisma.book.update({
+              where: { id: bookId },
+              data: {
+                ...(task.grade && !existing.grade ? { grade: task.grade } : {}),
+                ...(task.subject && !existing.subject ? { subject: task.subject } : {}),
+              },
+            });
+            send('log', { message: `  补全阶段/学科: ${task.grade || '-'} / ${task.subject || '-'}` });
+          }
+
           // Check if this DPI already exists
           const existingDpis = getAvailableDpis(bookDir);
           if (existingDpis.includes(dpi)) {
@@ -136,6 +154,8 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
             data: {
               title: task.title,
               category: task.category,
+              grade: task.grade,
+              subject: task.subject,
               totalPages: task.pages,
               storagePath: '',
               tocJson: toc as any,
@@ -143,7 +163,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           });
           bookId = book.id;
           isNew = true;
-          send('log', { message: `  创建书籍记录: ID=${bookId}` });
+          send('log', { message: `  创建书籍记录: ID=${bookId} (阶段=${task.grade || '-'} 学科=${task.subject || '-'})` });
         }
 
         const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));

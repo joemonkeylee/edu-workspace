@@ -177,6 +177,55 @@ export function getAvailableDpis(bookDir: string): number[] {
     .sort((a, b) => b - a);
 }
 
+const SUBJECT_KEYWORDS = ['语文', '数学', '英语', '物理', '化学', '生物', '道法', '历史', '地理', '科学'];
+
+/**
+ * Parse grade (阶段) and subject (学科) from a PDF file path.
+ *
+ * Recognised folder naming patterns (walked from deepest folder to shallowest,
+ * skipping the filename itself):
+ *   七年级上册历史   → grade="七上", subject="历史"
+ *   八年级下册地理   → grade="八下", subject="地理"
+ *   九年级上册数学   → grade="九上", subject="数学"
+ *
+ * If no folder matches but the filename contains the pattern, the filename
+ * (without .pdf) is tried as a fallback. Subject is only set when a known
+ * subject keyword is found; otherwise it stays empty.
+ */
+export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; subject: string } {
+  const parts = pdfPath.split(path.sep);
+  const fullRegex = /([七八九])年级([上下])册(.*)/;
+
+  // 1) Walk through directory parts (exclude the filename at the end)
+  for (let i = parts.length - 2; i >= 0; i--) {
+    const m = parts[i].match(fullRegex);
+    if (m) {
+      const grade = `${m[1]}${m[2]}`;
+      const subject = extractSubject(m[3]);
+      return { grade, subject };
+    }
+  }
+
+  // 2) Fallback: try the filename (strip .pdf)
+  const fileName = parts[parts.length - 1].replace(/\.pdf$/i, '');
+  const m = fileName.match(fullRegex);
+  if (m) {
+    const grade = `${m[1]}${m[2]}`;
+    const subject = extractSubject(m[3]);
+    return { grade, subject };
+  }
+
+  return { grade: '', subject: '' };
+}
+
+function extractSubject(rest: string): string {
+  const trimmed = (rest || '').trim();
+  for (const kw of SUBJECT_KEYWORDS) {
+    if (trimmed.includes(kw)) return kw;
+  }
+  return '';
+}
+
 export function getBestDpiPath(bookDir: string): { dpi: number; dir: string } | null {
   const dpis = getAvailableDpis(bookDir);
   if (dpis.length === 0) return null;
