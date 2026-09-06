@@ -37,13 +37,11 @@ function ClearableSelect({
   options: string[];
 }) {
   return (
-    <div className="relative">
+    <div className="relative w-44">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary ${
-          value ? 'pr-9' : 'pr-8'
-        }`}
+        className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <option value="">{placeholder}</option>
         {options.map((opt) => (
