@@ -71,7 +71,7 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
             ))}
           </div>
         ) : (
-          <div className="p-2 grid grid-cols-2 gap-2" ref={thumbRef}>
+          <div className="p-3 space-y-3" ref={thumbRef}>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <div
                 key={page}
