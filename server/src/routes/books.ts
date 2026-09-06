@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import prisma from '../prisma.js';
-import { getBestDpiPath, getAvailableDpis } from '../services/pdfProcessor.js';
+import { getBestDpiPath, getAvailableDpisAsync } from '../services/pdfProcessor.js';
 
 const router = Router();
 
@@ -11,22 +11,52 @@ router.get('/', async (req: Request, res: Response) => {
   const category = req.query.category as string;
   const grade = req.query.grade as string;
   const subject = req.query.subject as string;
+  const page = parseInt(req.query.page as string, 10) || 1;
+  const pageSize = parseInt(req.query.pageSize as string, 10) || 16;
 
   const where: any = {};
   if (category && category !== 'all') where.category = category;
   if (grade && grade !== 'all') where.grade = grade;
   if (subject && subject !== 'all') where.subject = subject;
 
-  const books = await prisma.book.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-  });
-  const booksWithDpi = books.map(b => {
+  const skip = (page - 1) * pageSize;
+
+  // Paginated books (without tocJson to keep payload small)
+  const [books, total] = await Promise.all([
+    prisma.book.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        grade: true,
+        subject: true,
+        coverPage: true,
+        totalPages: true,
+        storagePath: true,
+        createdAt: true,
+      },
+    }),
+    prisma.book.count({ where }),
+  ]);
+
+  // Async compute availableDpis for the current page only (16 books)
+  const booksWithDpi = await Promise.all(books.map(async (b) => {
     const bookDir = path.join(STORAGE_ABS, 'books', String(b.id));
-    const dpis = getAvailableDpis(bookDir);
+    const dpis = await getAvailableDpisAsync(bookDir);
     return { ...b, availableDpis: dpis };
-  });
-  res.json(booksWithDpi);
+  }));
+
+  // Distinct filter options across all books
+  const distinct = await prisma.book.findMany({ select: { subject: true, grade: true, category: true } });
+  const subjects = [...new Set(distinct.map(b => b.subject).filter(Boolean))] as string[];
+  const grades = [...new Set(distinct.map(b => b.grade).filter(Boolean))] as string[];
+  const categories = [...new Set(distinct.map(b => b.category).filter(Boolean))] as string[];
+
+  res.json({ books: booksWithDpi, total, page, pageSize, options: { subjects, grades, categories } });
 });
 
 router.get('/:id', async (req: Request, res: Response) => {
@@ -42,7 +72,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   const bookDir = path.join(STORAGE_ABS, 'books', String(id));
   const best = getBestDpiPath(bookDir);
   const storagePath = best ? `/storage/books/${id}/${best.dpi}/` : book.storagePath;
-  const dpis = getAvailableDpis(bookDir);
+  const dpis = await getAvailableDpisAsync(bookDir);
   res.json({ ...book, annotations, storagePath, availableDpis: dpis });
 });
 

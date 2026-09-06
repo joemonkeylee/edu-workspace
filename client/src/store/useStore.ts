@@ -4,6 +4,10 @@ import * as api from '../api/client';
 
 interface StoreState {
   books: Book[];
+  total: number;
+  subjectOptions: string[];
+  gradeOptions: string[];
+  categoryOptions: string[];
   currentBook: Book | null;
   currentPage: number;
   zoom: number;
@@ -12,7 +16,7 @@ interface StoreState {
   mistakes: Mistake[];
   loading: boolean;
 
-  fetchBooks: (params?: { category?: string; grade?: string; subject?: string }) => Promise<void>;
+  fetchBooks: (params?: { category?: string; grade?: string; subject?: string; page?: number; pageSize?: number }) => Promise<void>;
   fetchBook: (id: number) => Promise<void>;
   setCurrentPage: (page: number) => void;
   setZoom: (zoom: number) => void;
@@ -26,6 +30,10 @@ interface StoreState {
 
 export const useStore = create<StoreState>((set, get) => ({
   books: [],
+  total: 0,
+  subjectOptions: [],
+  gradeOptions: [],
+  categoryOptions: [],
   currentBook: null,
   currentPage: 1,
   zoom: 1,
@@ -36,8 +44,15 @@ export const useStore = create<StoreState>((set, get) => ({
 
   fetchBooks: async (params) => {
     set({ loading: true });
-    const books = await api.getBooks(params);
-    set({ books, loading: false });
+    const res = await api.getBooks(params);
+    set({
+      books: res.books,
+      total: res.total,
+      subjectOptions: res.options.subjects,
+      gradeOptions: res.options.grades,
+      categoryOptions: res.options.categories,
+      loading: false,
+    });
   },
 
   fetchBook: async (id: number) => {

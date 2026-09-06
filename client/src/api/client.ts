@@ -1,10 +1,19 @@
 import axios from 'axios';
+import type { Book } from '../types';
 
 const api = axios.create({ baseURL: '/api' });
 
-export async function getBooks(params?: { category?: string; grade?: string; subject?: string }) {
+export interface BooksResponse {
+  books: Book[];
+  total: number;
+  page: number;
+  pageSize: number;
+  options: { subjects: string[]; grades: string[]; categories: string[] };
+}
+
+export async function getBooks(params?: { category?: string; grade?: string; subject?: string; page?: number; pageSize?: number }) {
   const { data } = await api.get('/books', { params });
-  return data;
+  return data as BooksResponse;
 }
 
 export async function getBook(id: number) {

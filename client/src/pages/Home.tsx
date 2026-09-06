@@ -95,7 +95,7 @@ function SavePrompt({
 }
 
 export default function Home() {
-  const { books, fetchBooks, loading } = useStore();
+  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading } = useStore();
 
   const saved = useMemo(loadSavedFilters, []);
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
@@ -114,9 +114,27 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
+  // Sort filter options from server
+  const subjectOptions = useMemo(() =>
+    [...rawSubjectOptions].sort((a, b) => (SUBJECT_ORDER.indexOf(a) + 1 || 999) - (SUBJECT_ORDER.indexOf(b) + 1 || 999)),
+    [rawSubjectOptions]
+  );
+  const gradeOptions = useMemo(() =>
+    [...rawGradeOptions].sort((a, b) => (GRADE_ORDER.indexOf(a) + 1 || 999) - (GRADE_ORDER.indexOf(b) + 1 || 999)),
+    [rawGradeOptions]
+  );
+  const categoryOptions = useMemo(() => [...rawCategoryOptions].sort(), [rawCategoryOptions]);
+
+  // Server-side fetch: whenever page or filters change
   useEffect(() => {
-    fetchBooks();
-  }, []);
+    fetchBooks({
+      category: selectedCategory || undefined,
+      grade: selectedGrade || undefined,
+      subject: selectedSubject || undefined,
+      page,
+      pageSize: PAGE_SIZE,
+    });
+  }, [page, selectedSubject, selectedGrade, selectedCategory]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -126,43 +144,17 @@ export default function Home() {
     }));
   }, [selectedSubject, selectedGrade, selectedCategory]);
 
-  const subjectOptions = useMemo(() => {
-    const values = new Set((books || []).map((b) => (b.subject || '').trim()).filter(Boolean));
-    return Array.from(values).sort((a, b) => (SUBJECT_ORDER.indexOf(a) + 1 || 999) - (SUBJECT_ORDER.indexOf(b) + 1 || 999));
-  }, [books]);
-
-  const gradeOptions = useMemo(() => {
-    const values = new Set((books || []).map((b) => (b.grade || '').trim()).filter(Boolean));
-    return Array.from(values).sort((a, b) => (GRADE_ORDER.indexOf(a) + 1 || 999) - (GRADE_ORDER.indexOf(b) + 1 || 999));
-  }, [books]);
-
-  const categoryOptions = useMemo(() => {
-    const values = new Set((books || []).map((b) => (b.category || '').trim()).filter(Boolean));
-    return Array.from(values).sort();
-  }, [books]);
-
-  const filteredBooks = useMemo(() => {
-    return (books || []).filter((book) => {
-      if (selectedSubject && (book.subject || '') !== selectedSubject) return false;
-      if (selectedGrade && (book.grade || '') !== selectedGrade) return false;
-      if (selectedCategory && (book.category || '') !== selectedCategory) return false;
-      return true;
-    });
-  }, [books, selectedSubject, selectedGrade, selectedCategory]);
-
   const hasUnsavedChanges = draftEdits.size > 0 || pendingDeletes.size > 0;
 
+  // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
     setPageInput('1');
   }, [selectedSubject, selectedGrade, selectedCategory]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pagedBooks = useMemo(
-    () => filteredBooks.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filteredBooks, safePage]
-  );
+  const pagedBooks = books; // server already paginates
 
   const goPage = (p: number) => {
     const np = Math.max(1, Math.min(totalPages, p));
@@ -239,11 +231,11 @@ export default function Home() {
     });
   };
 
-  const selectAll = () => setSelectedIds(new Set(filteredBooks.map((b) => b.id)));
+  const selectAll = () => setSelectedIds(new Set(books.map((b) => b.id)));
   const deselectAll = () => setSelectedIds(new Set());
   const invertSelection = () => {
     setSelectedIds((prev) => {
-      const all = new Set(filteredBooks.map((b) => b.id));
+      const all = new Set(books.map((b) => b.id));
       for (const id of prev) all.delete(id);
       return all;
     });
@@ -291,7 +283,13 @@ export default function Home() {
       setDraftEdits(new Map());
       setPendingDeletes(new Set());
       setSelectedIds(new Set());
-      await fetchBooks();
+      await fetchBooks({
+        category: selectedCategory || undefined,
+        grade: selectedGrade || undefined,
+        subject: selectedSubject || undefined,
+        page: safePage,
+        pageSize: PAGE_SIZE,
+      });
     }
   };
 
@@ -405,7 +403,7 @@ export default function Home() {
           <div className="flex flex-col items-center justify-center h-full">
             <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
           </div>
-        ) : filteredBooks.length === 0 ? (
+        ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <BookOpen size={48} className="mb-4" />
             <p className="mb-2">暂无书籍</p>
@@ -522,7 +520,7 @@ export default function Home() {
         )}
 
         {/* Pager (below the list): select actions on left, pager on right */}
-        {!loading && filteredBooks.length > 0 && (
+        {!loading && total > 0 && (
           <div className="mt-5 flex items-center gap-3">
             {editMode && (
               <div className="flex items-center gap-2">
@@ -549,7 +547,7 @@ export default function Home() {
               <span className="text-xs text-gray-500">/ {totalPages}</span>
               <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
               <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
-              <span className="text-xs text-gray-500 ml-2">共计 {filteredBooks.length} 本</span>
+              <span className="text-xs text-gray-500 ml-2">共计 {total} 本</span>
             </div>
           </div>
         )}

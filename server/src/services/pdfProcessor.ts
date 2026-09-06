@@ -177,6 +177,18 @@ export function getAvailableDpis(bookDir: string): number[] {
     .sort((a, b) => b - a);
 }
 
+export async function getAvailableDpisAsync(bookDir: string): Promise<number[]> {
+  try {
+    const entries = await fs.promises.readdir(bookDir, { withFileTypes: true });
+    return entries
+      .filter(e => e.isDirectory() && /^\d+$/.test(e.name))
+      .map(e => parseInt(e.name, 10))
+      .sort((a, b) => b - a);
+  } catch {
+    return [];
+  }
+}
+
 const SUBJECT_KEYWORDS = ['语文', '数学', '英语', '物理', '化学', '生物', '道法', '历史', '地理', '科学'];
 
 /**
