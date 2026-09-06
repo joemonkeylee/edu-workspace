@@ -373,8 +373,8 @@ export default function BookViewer() {
             <button
               key={mode}
               onClick={() => setTool(mode)}
-              title={label}
-              className={`p-1.5 rounded transition ${
+              data-tooltip={label}
+              className={`relative p-1.5 rounded transition ${
                 tool === mode ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
             >
@@ -389,15 +389,15 @@ export default function BookViewer() {
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setFitMode('page')}
-            title="适应页面"
-            className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            data-tooltip="适应页面"
+            className={`relative p-1.5 rounded transition ${fitMode === 'page' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Minimize2 size={16} />
           </button>
           <button
             onClick={() => setFitMode('width')}
-            title="适应宽度"
-            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            data-tooltip="适应宽度"
+            className={`relative p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Maximize2 size={16} />
           </button>
@@ -406,8 +406,8 @@ export default function BookViewer() {
         {/* Rotate button */}
         <button
           onClick={() => setRotation((r) => r - 90)}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
-          title="逆时针旋转 90°"
+          data-tooltip="逆时针旋转 90°"
+          className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
         >
           <RotateCcw size={16} />
         </button>
@@ -416,7 +416,7 @@ export default function BookViewer() {
 
         {/* Zoom controls */}
         <div className="flex items-center gap-0.5">
-          <button onClick={zoomOut} className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition" title="缩小">
+          <button onClick={zoomOut} data-tooltip="缩小" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition">
             <ZoomOut size={16} />
           </button>
           {editingZoom ? (
@@ -435,13 +435,13 @@ export default function BookViewer() {
           ) : (
             <button
               onClick={startEditZoom}
-              className="text-xs w-12 text-center text-gray-300 hover:text-white py-0.5 rounded"
-              title="点击输入缩放比例"
+              data-tooltip="点击输入缩放比例"
+              className="relative text-xs w-12 text-center text-gray-300 hover:text-white py-0.5 rounded"
             >
               {Math.round(snapZoom(zoom) * 100)}%
             </button>
           )}
-          <button onClick={zoomIn} className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition" title="放大">
+          <button onClick={zoomIn} data-tooltip="放大" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition">
             <ZoomIn size={16} />
           </button>
         </div>
@@ -452,15 +452,15 @@ export default function BookViewer() {
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setPageLayout('single')}
-            title="单页"
-            className={`p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            data-tooltip="单页"
+            className={`relative p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Book size={16} />
           </button>
           <button
             onClick={() => setPageLayout('double')}
-            title="双页"
-            className={`p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            data-tooltip="双页"
+            className={`relative p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <BookOpen size={16} />
           </button>
@@ -473,8 +473,8 @@ export default function BookViewer() {
             <select
               value={activeDpi}
               onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
-              className="bg-transparent text-gray-300 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition"
-              title="选择分辨率"
+              data-tooltip="选择分辨率"
+              className="relative bg-transparent text-gray-300 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition"
             >
               {availableDpis.map(d => (
                 <option key={d} value={d}>{d} DPI</option>
@@ -486,8 +486,8 @@ export default function BookViewer() {
         {/* Right sidebar toggle */}
         <button
           onClick={() => setRightOpen(!rightOpen)}
-          className={`p-1.5 rounded transition ${rightOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-          title="批注 / 错题"
+          data-tooltip="批注 / 错题"
+          className={`relative p-1.5 rounded transition ${rightOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
         >
           <PanelRight size={18} />
         </button>
