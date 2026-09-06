@@ -473,9 +473,9 @@ export default function Home() {
                 className="w-14 rounded-md border border-gray-300 px-2 py-1 text-center text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <span className="text-xs text-gray-500">/ {totalPages}</span>
+              <span className="text-xs text-gray-500 ml-1">共 {filteredBooks.length} 本</span>
               <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
               <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
-              <span className="text-xs text-gray-500 ml-1">共 {filteredBooks.length} 本</span>
             </div>
           </div>
         )}
