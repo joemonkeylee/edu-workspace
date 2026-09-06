@@ -38,7 +38,7 @@ const fmtTime = (s: number) => {
 export default function PdfScanImport() {
   const [targetPath, setTargetPath] = useState('');
   const [category, setCategory] = useState('');
-  const [dpi, setDpi] = useState(200);
+  const [dpi, setDpi] = useState(300);
   const [concurrency, setConcurrency] = useState(4);
   const [logs, setLogs] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
