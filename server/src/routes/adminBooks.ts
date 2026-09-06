@@ -108,21 +108,50 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/batch', async (req: Request, res: Response) => {
+router.post('/all/stream', async (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (type: string, data: any) => {
+    res.write(`event: ${type}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
-    return res.status(400).json({ error: 'ids 数组不能为空' });
-  }
-  const numIds = ids.map(Number).filter(Boolean);
-  let deleted = 0;
+    send('start', { total: books.length });
+
+    for (let index = 0; index < books.length; index += 1) {
+      const book = books[index];
+      try { fs.rmSync(getBookRoot(book.id), { recursive: true, force: true }); } catch { /* files may not exist */ }
+      try { fs.rmSync(path.join(getCropsRoot(), String(book.id)), { recursive: true, force: true }); } catch { /* files may not exist */ }
+      send('progress', { current: index + 1, total: books.length, title: book.title });
+    }
   for (const id of numIds) {
     try {
       const bookDir = getBookRoot(id);
-      try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
+    send('done', { success: true, deleted: books.length });
       const cropDir = path.join(getCropsRoot(), String(id));
-      try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
+    send('error', { error: `清空书籍失败: ${error.message}` });
+  } finally {
+    res.end();
       await prisma.book.delete({ where: { id } });
       deleted++;
+
+router.delete('/all', async (_req: Request, res: Response) => {
+  try {
+    const books = await prisma.book.findMany({ select: { id: true } });
+    try { fs.rmSync(path.dirname(getBookRoot(0)), { recursive: true, force: true }); } catch { /* files may not exist */ }
+    try { fs.rmSync(getCropsRoot(), { recursive: true, force: true }); } catch { /* files may not exist */ }
+    await prisma.book.deleteMany({});
+    await prisma.$executeRawUnsafe('ALTER TABLE `Book` AUTO_INCREMENT = 1');
+    res.json({ success: true, deleted: books.length });
+  } catch (error: any) {
+    res.status(500).json({ error: `清空书籍失败: ${error.message}` });
+  }
+});
     } catch {
       // skip if not found in DB
     }

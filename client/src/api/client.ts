@@ -111,9 +111,31 @@ export async function adminDeleteBooksBatch(ids: number[]) {
   return data;
 }
 
-export async function adminClearBooks() {
-  const { data } = await api.delete('/admin/books/all');
-  return data as { success: boolean; deleted: number };
+export async function adminClearBooks(onProgress: (progress: { current: number; total: number; title: string }) => void) {
+  const response = await fetch('/api/admin/books/all/stream', { method: 'POST' });
+  if (!response.ok || !response.body) throw new Error('清空书籍失败');
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result: { success: boolean; deleted: number } | null = null;
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const events = buffer.split('\n\n');
+    buffer = events.pop() || '';
+    for (const event of events) {
+      const dataLine = event.split('\n').find((line) => line.startsWith('data: '));
+      if (!dataLine) continue;
+      const data = JSON.parse(dataLine.slice(6));
+      if (event.startsWith('event: progress')) onProgress(data);
+      if (event.startsWith('event: done')) result = data;
+      if (event.startsWith('event: error')) throw new Error(data.error || '清空书籍失败');
+    }
+    if (done) break;
+  }
+  if (!result) throw new Error('清空书籍未完成');
+  return result;
 }
 
 export async function adminGetAnnotations(params?: Record<string, any>) {

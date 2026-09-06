@@ -258,7 +258,9 @@ export default function BooksTable() {
         setDeleteConfirm(null);
         setDeleting(true);
         try {
-          await adminClearBooks();
+          await adminClearBooks((progress) => {
+            setDeleteProgress(progress);
+          });
           setSelectedIds(new Set());
           fetch();
         } finally {
