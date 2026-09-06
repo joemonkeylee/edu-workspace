@@ -119,6 +119,7 @@ export default function BooksTable() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState<{ current: number; total: number; title: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -169,15 +170,21 @@ export default function BooksTable() {
     fetch();
   };
 
-  const handleDelete = async (id: number, title: string) => {
-    if (!confirm(`删除「${title}」？将同时清理所有切图、批注和错题。`)) return;
-    await adminDeleteBook(id);
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
+  const handleDelete = (id: number, title: string) => {
+    setDeleteConfirm({
+      title: '确认删除',
+      message: `删除「${title}」？将同时清理所有切图、批注和错题，无法恢复。`,
+      onConfirm: async () => {
+        setDeleteConfirm(null);
+        await adminDeleteBook(id);
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        fetch();
+      },
     });
-    fetch();
   };
 
   const pageIds = books.map((b) => b.id);
@@ -205,62 +212,75 @@ export default function BooksTable() {
     });
   };
 
-  const handleBatchDelete = async () => {
+  const handleBatchDelete = () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`确定删除选中的 ${selectedIds.size} 本书？将同时清理所有切图、批注和错题，无法恢复。`)) return;
-    const ids = Array.from(selectedIds);
-    setDeleting(true);
-    setDeleteProgress({ current: 0, total: ids.length, title: '' });
-    try {
-      for (let i = 0; i < ids.length; i++) {
-        const book = books.find((b) => b.id === ids[i]);
-        setDeleteProgress({ current: i, total: ids.length, title: book?.title || `ID:${ids[i]}` });
+    const count = selectedIds.size;
+    setDeleteConfirm({
+      title: '批量删除确认',
+      message: `确定删除选中的 ${count} 本书？将同时清理所有切图、批注和错题，无法恢复。`,
+      onConfirm: async () => {
+        setDeleteConfirm(null);
+        const ids = Array.from(selectedIds);
+        setDeleting(true);
+        setDeleteProgress({ current: 0, total: ids.length, title: '' });
         try {
-          await adminDeleteBook(ids[i]);
-        } catch {
-          // skip failed deletions
+          for (let i = 0; i < ids.length; i++) {
+            const book = books.find((b) => b.id === ids[i]);
+            setDeleteProgress({ current: i, total: ids.length, title: book?.title || `ID:${ids[i]}` });
+            try {
+              await adminDeleteBook(ids[i]);
+            } catch {
+              // skip failed deletions
+            }
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(ids[i]);
+              return next;
+            });
+          }
+          setDeleteProgress({ current: ids.length, total: ids.length, title: '完成' });
+          await new Promise((r) => setTimeout(r, 300));
+          fetch();
+        } finally {
+          setDeleting(false);
+          setDeleteProgress(null);
         }
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(ids[i]);
-          return next;
-        });
-      }
-      setDeleteProgress({ current: ids.length, total: ids.length, title: '完成' });
-      await new Promise((r) => setTimeout(r, 300));
-      fetch();
-    } finally {
-      setDeleting(false);
-      setDeleteProgress(null);
-    }
+      },
+    });
   };
 
-  const handleClearAll = async () => {
-    if (!confirm(`确定清空全部 ${total} 本书？所有数据将被删除，无法恢复！`)) return;
-    if (!confirm('再次确认：真的要删除所有书籍吗？')) return;
-    setDeleting(true);
-    try {
-      // Fetch all books first to get titles for progress display
-      const res = await adminGetBooks({ page: 1, pageSize: 1000 });
-      const allBooks = res.data;
-      if (allBooks.length === 0) { setDeleting(false); return; }
-      setDeleteProgress({ current: 0, total: allBooks.length, title: '' });
-      for (let i = 0; i < allBooks.length; i++) {
-        setDeleteProgress({ current: i, total: allBooks.length, title: allBooks[i].title });
+  const handleClearAll = () => {
+    if (total === 0) return;
+    setDeleteConfirm({
+      title: '⚠️ 清空全部书籍',
+      message: `确定清空全部 ${total} 本书？所有数据将被删除，无法恢复！`,
+      onConfirm: async () => {
+        setDeleteConfirm(null);
+        setDeleting(true);
         try {
-          await adminDeleteBook(allBooks[i].id);
-        } catch {
-          // skip failed deletions
+          // Fetch all books first to get titles for progress display
+          const res = await adminGetBooks({ page: 1, pageSize: 1000 });
+          const allBooks = res.data;
+          if (allBooks.length === 0) { setDeleting(false); return; }
+          setDeleteProgress({ current: 0, total: allBooks.length, title: '' });
+          for (let i = 0; i < allBooks.length; i++) {
+            setDeleteProgress({ current: i, total: allBooks.length, title: allBooks[i].title });
+            try {
+              await adminDeleteBook(allBooks[i].id);
+            } catch {
+              // skip failed deletions
+            }
+          }
+          setDeleteProgress({ current: allBooks.length, total: allBooks.length, title: '完成' });
+          setSelectedIds(new Set());
+          await new Promise((r) => setTimeout(r, 300));
+          fetch();
+        } finally {
+          setDeleting(false);
+          setDeleteProgress(null);
         }
-      }
-      setDeleteProgress({ current: allBooks.length, total: allBooks.length, title: '完成' });
-      setSelectedIds(new Set());
-      await new Promise((r) => setTimeout(r, 300));
-      fetch();
-    } finally {
-      setDeleting(false);
-      setDeleteProgress(null);
-    }
+      },
+    });
   };
 
   const openTocEditor = (book: any) => {
@@ -753,6 +773,36 @@ export default function BooksTable() {
               >
                 <Save size={15} />
                 {tocSaving ? '保存中...' : '保存目录'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-80 rounded-xl bg-white p-6 shadow-xl">
+            <button
+              onClick={() => setDeleteConfirm(null)}
+              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              title="取消"
+            >
+              <X size={16} />
+            </button>
+            <h3 className="text-base font-semibold text-gray-800">{deleteConfirm.title}</h3>
+            <p className="mt-2 text-sm text-gray-500">{deleteConfirm.message}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={deleteConfirm.onConfirm}
+                className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white hover:bg-red-600"
+              >
+                删除
               </button>
             </div>
           </div>
