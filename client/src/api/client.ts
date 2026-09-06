@@ -17,6 +17,11 @@ export async function deleteBook(id: number) {
   return data;
 }
 
+export async function updateBook(id: number, body: { title?: string; category?: string; grade?: string; subject?: string }) {
+  const { data } = await api.put(`/books/${id}`, body);
+  return data;
+}
+
 export async function saveAnnotation(formData: FormData) {
   const { data } = await api.post('/annotations', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

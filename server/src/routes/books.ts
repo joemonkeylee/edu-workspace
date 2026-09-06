@@ -61,4 +61,23 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
+router.put('/:id', async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  const { title, category, grade, subject } = req.body;
+  const data: any = {};
+  if (typeof title === 'string') data.title = title;
+  if (typeof category === 'string') data.category = category;
+  if (typeof grade === 'string') data.grade = grade;
+  if (typeof subject === 'string') data.subject = subject;
+  if (Object.keys(data).length === 0) {
+    return res.status(400).json({ error: '没有可更新的字段' });
+  }
+  try {
+    const updated = await prisma.book.update({ where: { id }, data });
+    res.json(updated);
+  } catch {
+    res.status(404).json({ error: '书籍不存在' });
+  }
+});
+
 export default router;
