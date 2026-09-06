@@ -8,7 +8,7 @@ After **every** feature/fix iteration, the agent must:
 
 1. Complete the code changes
 2. Verify the build (run `npx tsc --noEmit` in the relevant package)
-3. **Auto-commit** by default (unless the user explicitly says "don't commit" / "先别提交")
+3. **Auto-commit by default** — always run `git commit` after tsc passes. The ONLY exception is when the user's message explicitly says "don't commit" / "不提交" / "先别提交" / "别提交". If the user says nothing about committing, you MUST commit.
 4. Reply to the user with an **English commit message** (formatted as a code block or plain text) summarizing the changes
 
 ### When to actually commit
