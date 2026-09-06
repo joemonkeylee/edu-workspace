@@ -17,10 +17,13 @@ model Book {
   coverPage   Int      @default(1)
   totalPages  Int
   storagePath String
+  fileHash    String?  @db.VarChar(64)
+  sourcePaths Json?    @default("[]")
   tocJson     Json
   attributes  Json     @default("{}")
   createdAt   DateTime @default(now())
 
+  @@index([fileHash])
   annotations Annotation[]
   mistakes    Mistake[]
 }

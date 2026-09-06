@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import prisma from '../prisma.js';
-import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, isDpiComplete } from '../services/pdfProcessor.js';
+import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, isDpiComplete, hashFile, mergeSourcePaths, normalizeSourcePaths } from '../services/pdfProcessor.js';
 import { runWithConcurrency } from '../utils/concurrency.js';
 
 const router = Router();
@@ -16,6 +16,7 @@ interface PdfTask {
   category: string;
   title: string;
   pages: number;
+  fileHash: string;
   grade: string;
   subject: string;
 }
@@ -93,7 +94,8 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const pdfCategory = explicitCategory || path.basename(path.dirname(pdfPath)) || '未分类';
         const title = path.basename(pdfPath, '.pdf') || info.title;
         const { grade, subject } = parseGradeSubjectFromPath(pdfPath);
-        tasks.push({ pdfPath, fileName, category: pdfCategory, title, pages: info.pages, grade, subject });
+        const fileHash = hashFile(pdfPath);
+        tasks.push({ pdfPath, fileName, category: pdfCategory, title, pages: info.pages, fileHash, grade, subject });
       } catch {
         send('log', { message: `跳过（无法读取）: ${fileName}` });
       }
@@ -102,15 +104,25 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
     const totalPages = tasks.reduce((s, t) => s + t.pages, 0);
     send('log', { message: `共 ${tasks.length} 个有效 PDF，合计 ${totalPages} 页` });
 
-    // Pre-scan: build a lookup of existing books by title::category
-    const existingBooks = await prisma.book.findMany({ select: { id: true, title: true, category: true } });
+    // Pre-scan: build lookup maps for existing books by title::category and by file hash.
+    const existingBooks = await prisma.book.findMany({
+      select: { id: true, title: true, category: true, fileHash: true, sourcePaths: true },
+    });
     const existingMap = new Map<string, number>();
+    const hashLookup = new Map<string, number[]>();
     for (const b of existingBooks) {
       existingMap.set(`${b.title}::${b.category}`, b.id);
+      if (b.fileHash) {
+        const bookIds = hashLookup.get(b.fileHash) || [];
+        bookIds.push(b.id);
+        hashLookup.set(b.fileHash, bookIds);
+      }
     }
 
-    // Phase 2a: separate already-complete tasks from ones needing processing
+    // Phase 2a: separate already-complete tasks from ones needing processing,
+    // while also skipping any duplicate PDF content discovered in this batch.
     const toProcess: PdfTask[] = [];
+    const seenHashes = new Set<string>();
     let skippedComplete = 0;
     let skippedIncomplete = 0;
 
@@ -125,6 +137,30 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         }
         skippedIncomplete++;
       }
+
+      if (seenHashes.has(task.fileHash)) {
+        send('log', { message: `跳过（重复 hash）: ${task.fileName} (${task.fileHash})` });
+        continue;
+      }
+
+      const duplicateIds = hashLookup.get(task.fileHash) || [];
+      if (duplicateIds.length > 0) {
+        const sourceBooks = await prisma.book.findMany({
+          where: { id: { in: duplicateIds } },
+          select: { id: true, sourcePaths: true },
+        });
+        const mergedPaths = mergeSourcePaths(...sourceBooks.map((book) => book.sourcePaths), task.pdfPath);
+
+        await Promise.all(sourceBooks.map((book) => prisma.book.update({
+          where: { id: book.id },
+          data: { fileHash: task.fileHash, sourcePaths: mergedPaths as any },
+        })));
+
+        send('log', { message: `跳过（重复文件内容）: ${task.fileName} (${task.fileHash})` });
+        continue;
+      }
+
+      seenHashes.add(task.fileHash);
       toProcess.push(task);
     }
 
@@ -160,6 +196,17 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));
           const dpiDir = path.join(bookDir, String(dpi));
 
+          const mergedSourcePaths = mergeSourcePaths(existing.sourcePaths, task.pdfPath);
+          if (!existing.fileHash || existing.fileHash !== task.fileHash) {
+            await prisma.book.update({
+              where: { id: bookId },
+              data: {
+                fileHash: task.fileHash,
+                sourcePaths: mergedSourcePaths as any,
+              },
+            });
+          }
+
           if ((!existing.grade || !existing.subject) && (task.grade || task.subject)) {
             await prisma.book.update({
               where: { id: bookId },
@@ -193,6 +240,8 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
               batchId,
               totalPages: task.pages,
               storagePath: '',
+              fileHash: task.fileHash,
+              sourcePaths: [task.pdfPath] as any,
               tocJson: toc as any,
             },
           });
@@ -227,9 +276,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
         const allDpis = getAvailableDpis(bookDir);
         const storagePath = `/storage/books/${bookId}/`;
+        const finalSourcePaths = mergeSourcePaths(existing?.sourcePaths, task.pdfPath);
         await prisma.book.update({
           where: { id: bookId },
-          data: { storagePath, totalPages: task.pages, batchId },
+          data: { storagePath, totalPages: task.pages, batchId, fileHash: task.fileHash, sourcePaths: finalSourcePaths as any },
         });
 
         send('log', { message: `  渲染完成，共 ${images.length} 张图片，可用 DPI: ${allDpis.join(', ')}` });

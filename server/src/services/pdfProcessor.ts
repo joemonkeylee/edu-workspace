@@ -1,4 +1,5 @@
 import { execSync, spawn } from 'child_process';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -257,4 +258,27 @@ export function getBestDpiPath(bookDir: string): { dpi: number; dir: string } | 
   const dpis = getAvailableDpis(bookDir);
   if (dpis.length === 0) return null;
   return { dpi: dpis[0], dir: path.join(bookDir, String(dpis[0])) };
+}
+
+export function hashFile(filePath: string): string {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+export function normalizeSourcePaths(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const normalized = value
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return [...new Set(normalized)];
+}
+
+export function mergeSourcePaths(...groups: unknown[]): string[] {
+  const merged = new Set<string>();
+  for (const group of groups) {
+    for (const item of normalizeSourcePaths(group)) {
+      merged.add(item);
+    }
+  }
+  return [...merged];
 }
