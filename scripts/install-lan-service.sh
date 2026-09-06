@@ -16,7 +16,7 @@ launchctl bootout "gui/$(id -u)/com.edu-workspace.caddy" 2>/dev/null || true
 launchctl bootout "gui/$(id -u)/com.edu-workspace.autodeploy" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENTS/com.edu-workspace.server.plist"
 launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENTS/com.edu-workspace.caddy.plist"
-launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENTS/com.edu-workspace.autodeploy.plist"
 
 echo "LAN services installed and started."
+echo "Auto deploy is installed but disabled by default."
 echo "Open: http://$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1)/"
