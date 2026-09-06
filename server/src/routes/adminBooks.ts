@@ -93,21 +93,6 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id, 10);
-  try {
-    const bookDir = getBookRoot(id);
-    try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
-    const cropDir = path.join(getCropsRoot(), String(id));
-    try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
-
-    await prisma.book.delete({ where: { id } });
-    res.json({ success: true });
-  } catch {
-    res.status(404).json({ error: '书籍不存在' });
-  }
-});
-
 router.post('/all/stream', async (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -119,8 +104,8 @@ router.post('/all/stream', async (_req: Request, res: Response) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
-  const { ids } = req.body;
-  if (!Array.isArray(ids) || ids.length === 0) {
+  try {
+    const books = await prisma.book.findMany({ select: { id: true, title: true } });
     send('start', { total: books.length });
 
     for (let index = 0; index < books.length; index += 1) {
@@ -129,16 +114,16 @@ router.post('/all/stream', async (_req: Request, res: Response) => {
       try { fs.rmSync(path.join(getCropsRoot(), String(book.id)), { recursive: true, force: true }); } catch { /* files may not exist */ }
       send('progress', { current: index + 1, total: books.length, title: book.title });
     }
-  for (const id of numIds) {
-    try {
-      const bookDir = getBookRoot(id);
+
+    await prisma.book.deleteMany({});
+    await prisma.$executeRawUnsafe('ALTER TABLE `Book` AUTO_INCREMENT = 1');
     send('done', { success: true, deleted: books.length });
-      const cropDir = path.join(getCropsRoot(), String(id));
+  } catch (error: any) {
     send('error', { error: `清空书籍失败: ${error.message}` });
   } finally {
     res.end();
-      await prisma.book.delete({ where: { id } });
-      deleted++;
+  }
+});
 
 router.delete('/all', async (_req: Request, res: Response) => {
   try {
@@ -152,11 +137,42 @@ router.delete('/all', async (_req: Request, res: Response) => {
     res.status(500).json({ error: `清空书籍失败: ${error.message}` });
   }
 });
+
+router.delete('/batch', async (req: Request, res: Response) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'ids 数组不能为空' });
+  }
+  const numIds = ids.map(Number).filter(Boolean);
+  let deleted = 0;
+  for (const id of numIds) {
+    try {
+      const bookDir = getBookRoot(id);
+      try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
+      const cropDir = path.join(getCropsRoot(), String(id));
+      try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
+      await prisma.book.delete({ where: { id } });
+      deleted++;
     } catch {
       // skip if not found in DB
     }
   }
   res.json({ success: true, deleted });
+});
+
+router.delete('/:id', async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const bookDir = getBookRoot(id);
+    try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
+    const cropDir = path.join(getCropsRoot(), String(id));
+    try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
+
+    await prisma.book.delete({ where: { id } });
+    res.json({ success: true });
+  } catch {
+    res.status(404).json({ error: '书籍不存在' });
+  }
 });
 
 export default router;
