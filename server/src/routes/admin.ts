@@ -5,10 +5,42 @@ import os from 'os';
 import prisma from '../prisma.js';
 import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, isDpiComplete, hashFile, mergeSourcePaths, normalizeSourcePaths } from '../services/pdfProcessor.js';
 import { runWithConcurrency } from '../utils/concurrency.js';
+import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
+import { execFile } from 'child_process';
 
 const router = Router();
 
-const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
+router.get('/storage', async (_req: Request, res: Response) => {
+  const current = await inspectStorageRoot(getStorageRoot());
+  res.json(current);
+});
+
+router.post('/storage/inspect', async (req: Request, res: Response) => {
+  const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
+  if (!targetPath) return res.status(400).json({ error: '资源目录不能为空' });
+  res.json(await inspectStorageRoot(targetPath));
+});
+
+router.put('/storage', async (req: Request, res: Response) => {
+  const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
+  if (!targetPath) return res.status(400).json({ error: '资源目录不能为空' });
+  const inspection = await inspectStorageRoot(targetPath);
+  if (!inspection.exists) fs.mkdirSync(inspection.path, { recursive: true });
+  const storagePath = await setStorageRoot(inspection.path);
+  res.json({ path: storagePath, matchedBooks: inspection.matchedBooks, totalBooks: inspection.totalBooks });
+});
+
+router.post('/storage/open', (req: Request, res: Response) => {
+  const targetPath = typeof req.body?.path === 'string' && req.body.path.trim()
+    ? path.resolve(req.body.path.trim())
+    : getStorageRoot();
+  fs.mkdirSync(targetPath, { recursive: true });
+  const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
+  execFile(command, [targetPath], (error) => {
+    if (error) return res.status(500).json({ error: `无法打开目录: ${error.message}` });
+    res.json({ success: true });
+  });
+});
 
 interface PdfTask {
   pdfPath: string;
@@ -134,7 +166,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       const existing = bookId ? existingBooks.find((b) => b.id === bookId) : null;
 
       if (existing) {
-        const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));
+        const bookDir = getBookRoot(existing.id);
 
         // Same title + category AND same content (hash matches)
         if (existing.fileHash === task.fileHash) {
@@ -220,7 +252,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
         if (existing) {
           bookId = existing.id;
-          const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));
+          const bookDir = getBookRoot(bookId);
           const dpiDir = path.join(bookDir, String(dpi));
 
           const mergedSourcePaths = mergeSourcePaths(existing.sourcePaths, task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || []));
@@ -277,7 +309,12 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           send('log', { message: `  创建书籍记录: ID=${bookId} (阶段=${task.grade || '-'} 学科=${task.subject || '-'})` });
         }
 
-        const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));
+        const bookDir = getBookRoot(bookId);
+        fs.mkdirSync(bookDir, { recursive: true });
+        const hasArchivedPdf = fs.readdirSync(bookDir).some((name) => name.toLowerCase().endsWith('.pdf'));
+        if (!hasArchivedPdf) {
+          fs.copyFileSync(task.pdfPath, path.join(bookDir, path.basename(task.fileName)));
+        }
         const dpiDir = path.join(bookDir, String(dpi));
         send('log', { message: `  开始渲染 ${task.pages} 页 (DPI=${dpi})...` });
 

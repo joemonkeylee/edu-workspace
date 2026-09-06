@@ -2,10 +2,9 @@ import { Router, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import prisma from '../prisma.js';
+import { getStorageRoot } from '../services/storage.js';
 
 const router = Router();
-const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
-
 router.get('/', async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 20;
@@ -55,7 +54,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const mistake = await prisma.mistake.findUnique({ where: { id } });
     if (mistake?.imagePath) {
-      const filePath = path.join(STORAGE_ABS, mistake.imagePath.replace('/storage/', ''));
+      const filePath = path.join(getStorageRoot(), mistake.imagePath.replace('/storage/', ''));
       try { fs.rmSync(filePath, { force: true }); } catch { /* file may not exist in dev */ }
     }
     await prisma.mistake.delete({ where: { id } });

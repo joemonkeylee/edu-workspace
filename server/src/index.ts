@@ -2,8 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
 import adminRouter from './routes/admin.js';
 import adminBooksRouter from './routes/adminBooks.js';
@@ -12,6 +12,7 @@ import adminMistakesRouter from './routes/adminMistakes.js';
 import booksRouter from './routes/books.js';
 import annotationsRouter from './routes/annotations.js';
 import mistakesRouter from './routes/mistakes.js';
+import { getStorageRoot, initializeStorageRoot } from './services/storage.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -20,10 +21,6 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 app.use(compression());
 app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(express.json({ limit: '50mb' }));
-
-const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
-fs.mkdirSync(STORAGE_ABS, { recursive: true });
-app.use('/storage', express.static(STORAGE_ABS));
 
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/books', adminBooksRouter);
@@ -37,6 +34,16 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-  console.log(`[edu-workspace] 后端服务已启动: http://localhost:${PORT}`);
+async function start() {
+  await initializeStorageRoot();
+  fs.mkdirSync(getStorageRoot(), { recursive: true });
+  app.use('/storage', (req, res, next) => express.static(getStorageRoot())(req, res, next));
+  app.listen(PORT, () => {
+    console.log(`[edu-workspace] 后端服务已启动: http://localhost:${PORT}`);
+  });
+}
+
+start().catch((error) => {
+  console.error('[edu-workspace] 后端启动失败:', error);
+  process.exit(1);
 });

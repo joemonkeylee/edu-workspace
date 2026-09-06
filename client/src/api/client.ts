@@ -64,6 +64,26 @@ export function scanPdfUrl(targetPath: string, category: string, dpi: number = 2
   return `/api/admin/scan-pdf?${params}`;
 }
 
+export async function getStorageSettings() {
+  const { data } = await api.get('/admin/storage');
+  return data as { path: string; exists: boolean; matchedBooks: number; totalBooks: number };
+}
+
+export async function inspectStorageSettings(path: string) {
+  const { data } = await api.post('/admin/storage/inspect', { path });
+  return data as { path: string; exists: boolean; matchedBooks: number; totalBooks: number };
+}
+
+export async function updateStorageSettings(path: string) {
+  const { data } = await api.put('/admin/storage', { path });
+  return data as { path: string; matchedBooks: number; totalBooks: number };
+}
+
+export async function openStorageDirectory(path?: string) {
+  const { data } = await api.post('/admin/storage/open', path ? { path } : {});
+  return data;
+}
+
 // ===== Admin APIs =====
 
 export async function adminGetBooks(params?: Record<string, any>) {

@@ -4,10 +4,9 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import prisma from '../prisma.js';
+import { getCropsRoot } from '../services/storage.js';
 
 const router = Router();
-
-const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -32,7 +31,7 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
   });
 
   if (type === 'crop' && req.file) {
-    const cropDir = path.join(STORAGE_ABS, 'crops', String(bookId));
+    const cropDir = path.join(getCropsRoot(), String(bookId));
     fs.mkdirSync(cropDir, { recursive: true });
     const ext = path.extname(req.file.originalname) || '.png';
     const filename = `${uuidv4()}${ext}`;

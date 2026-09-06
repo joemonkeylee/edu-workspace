@@ -3,10 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../prisma.js';
 import { getAvailableDpis } from '../services/pdfProcessor.js';
+import { getBookRoot, getCropsRoot } from '../services/storage.js';
 
 const router = Router();
-const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
-
 router.get('/', async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 20;
@@ -41,7 +40,7 @@ router.get('/', async (req: Request, res: Response) => {
   ]);
 
   const booksWithDpi = data.map(b => {
-    const bookDir = path.join(STORAGE_ABS, 'books', String(b.id));
+    const bookDir = getBookRoot(b.id);
     return { ...b, availableDpis: getAvailableDpis(bookDir) };
   });
 
@@ -81,9 +80,9 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
-    const bookDir = path.join(STORAGE_ABS, 'books', String(id));
+    const bookDir = getBookRoot(id);
     try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
-    const cropDir = path.join(STORAGE_ABS, 'crops', String(id));
+    const cropDir = path.join(getCropsRoot(), String(id));
     try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
 
     await prisma.book.delete({ where: { id } });
@@ -102,9 +101,9 @@ router.delete('/batch', async (req: Request, res: Response) => {
   let deleted = 0;
   for (const id of numIds) {
     try {
-      const bookDir = path.join(STORAGE_ABS, 'books', String(id));
+      const bookDir = getBookRoot(id);
       try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
-      const cropDir = path.join(STORAGE_ABS, 'crops', String(id));
+      const cropDir = path.join(getCropsRoot(), String(id));
       try { fs.rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
       await prisma.book.delete({ where: { id } });
       deleted++;

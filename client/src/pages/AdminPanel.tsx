@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle, FolderCog } from 'lucide-react';
 import PdfScanImport from '../components/admin/PdfScanImport';
 import BooksTable from '../components/admin/BooksTable';
 import AnnotationsTable from '../components/admin/AnnotationsTable';
 import MistakesTable from '../components/admin/MistakesTable';
+import StorageSettings from '../components/admin/StorageSettings';
 
-type MenuKey = 'scan' | 'books' | 'annotations' | 'mistakes';
+type MenuKey = 'scan' | 'books' | 'annotations' | 'mistakes' | 'storage';
 
 const MENU_ITEMS: { key: MenuKey; label: string; icon: React.ReactNode }[] = [
   { key: 'scan', label: 'PDF 扫描导入', icon: <Scan size={18} /> },
   { key: 'books', label: '书籍资产管理', icon: <BookOpen size={18} /> },
   { key: 'annotations', label: '批注数据管理', icon: <Highlighter size={18} /> },
   { key: 'mistakes', label: '错题本管理', icon: <AlertCircle size={18} /> },
+  { key: 'storage', label: '资源目录设置', icon: <FolderCog size={18} /> },
 ];
 
 const TITLES: Record<MenuKey, string> = {
@@ -20,6 +22,7 @@ const TITLES: Record<MenuKey, string> = {
   books: '书籍资产管理',
   annotations: '批注数据管理',
   mistakes: '错题本数据管理',
+  storage: '资源目录设置',
 };
 
 export default function AdminPanel() {
@@ -61,6 +64,7 @@ export default function AdminPanel() {
           {active === 'books' && <BooksTable />}
           {active === 'annotations' && <AnnotationsTable />}
           {active === 'mistakes' && <MistakesTable />}
+          {active === 'storage' && <StorageSettings />}
         </main>
       </div>
     </div>

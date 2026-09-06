@@ -2,10 +2,9 @@ import { Router, Request, Response } from 'express';
 import path from 'path';
 import prisma from '../prisma.js';
 import { getBestDpiPath, getAvailableDpisAsync } from '../services/pdfProcessor.js';
+import { getBookRoot, getCropsRoot } from '../services/storage.js';
 
 const router = Router();
-
-const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
 
 router.get('/', async (req: Request, res: Response) => {
   const category = req.query.category as string;
@@ -45,7 +44,7 @@ router.get('/', async (req: Request, res: Response) => {
 
   // Async compute availableDpis for the current page only (16 books)
   const booksWithDpi = await Promise.all(books.map(async (b) => {
-    const bookDir = path.join(STORAGE_ABS, 'books', String(b.id));
+    const bookDir = getBookRoot(b.id);
     const dpis = await getAvailableDpisAsync(bookDir);
     return { ...b, availableDpis: dpis };
   }));
@@ -69,7 +68,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     where: { bookId: id },
     orderBy: { pageNumber: 'asc' },
   });
-  const bookDir = path.join(STORAGE_ABS, 'books', String(id));
+  const bookDir = getBookRoot(id);
   const best = getBestDpiPath(bookDir);
   const storagePath = best ? `/storage/books/${id}/${best.dpi}/` : book.storagePath;
   const dpis = await getAvailableDpisAsync(bookDir);
@@ -79,8 +78,8 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
-    const bookDir = path.join(STORAGE_ABS, 'books', String(id));
-    const cropDir = path.join(STORAGE_ABS, 'crops', String(id));
+    const bookDir = getBookRoot(id);
+    const cropDir = path.join(getCropsRoot(), String(id));
     const { rmSync } = await import('fs');
     try { rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
     try { rmSync(cropDir, { recursive: true, force: true }); } catch { /* files may not exist in dev */ }
