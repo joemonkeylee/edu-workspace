@@ -162,6 +162,25 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
     let skippedDupBatch = 0;
 
     for (const task of tasks) {
+      // Content identity wins over filename/category. A PDF that already exists
+      // anywhere in the library only adds its source path and is never rendered again.
+      const duplicateIds = hashLookup.get(task.fileHash) || [];
+      if (duplicateIds.length > 0) {
+        const sourceBooks = await prisma.book.findMany({
+          where: { id: { in: duplicateIds } },
+          select: { id: true, sourcePaths: true },
+        });
+        const mergedPaths = mergeSourcePaths(...sourceBooks.map((book) => book.sourcePaths), task.pdfPath);
+        await Promise.all(sourceBooks.map((book) => prisma.book.update({
+          where: { id: book.id },
+          data: { sourcePaths: mergedPaths as any },
+        })));
+        seenHashes.add(task.fileHash);
+        skippedDupContent++;
+        send('log', { message: `跳过（重复文件内容）: ${task.fileName} → 已记录路径到已有书籍` });
+        continue;
+      }
+
       const bookId = existingMap.get(`${task.title}::${task.category}`);
       const existing = bookId ? existingBooks.find((b) => b.id === bookId) : null;
 
@@ -197,24 +216,6 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         extraPathsByHash.set(task.fileHash, extras);
         skippedDupBatch++;
         send('log', { message: `跳过（本批次重复内容）: ${task.fileName}` });
-        continue;
-      }
-
-      const duplicateIds = hashLookup.get(task.fileHash) || [];
-      if (duplicateIds.length > 0) {
-        // Same content exists in DB under different title/category
-        const sourceBooks = await prisma.book.findMany({
-          where: { id: { in: duplicateIds } },
-          select: { id: true, sourcePaths: true },
-        });
-        const mergedPaths = mergeSourcePaths(...sourceBooks.map((book) => book.sourcePaths), task.pdfPath);
-        await Promise.all(sourceBooks.map((book) => prisma.book.update({
-          where: { id: book.id },
-          data: { fileHash: task.fileHash, sourcePaths: mergedPaths as any },
-        })));
-        seenHashes.add(task.fileHash);
-        skippedDupContent++;
-        send('log', { message: `跳过（重复文件内容）: ${task.fileName} → 已记录路径到已有书籍` });
         continue;
       }
 
