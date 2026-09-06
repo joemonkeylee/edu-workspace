@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check } from 'lucide-react';
 import BookCover from '../components/BookCover';
@@ -90,7 +90,6 @@ function SavePrompt({
 
 export default function Home() {
   const { books, fetchBooks, loading } = useStore();
-  const navigate = useNavigate();
 
   const saved = useMemo(loadSavedFilters, []);
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
@@ -406,7 +405,7 @@ export default function Home() {
                   <div
                     className={`relative overflow-hidden ${editMode ? '' : 'cursor-pointer hover:shadow-md group'}`}
                     style={{ aspectRatio: '3/4' }}
-                    onClick={() => { if (!editMode) navigate(`/book/${book.id}`); }}
+                    onClick={() => { if (!editMode) window.open(`/book/${book.id}`, '_blank'); }}
                   >
                     <BookCover book={book} className={`w-full h-full object-cover ${editMode ? '' : 'transition group-hover:scale-[1.02]'}`} />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
