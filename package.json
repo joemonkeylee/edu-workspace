@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
     "deploy:now": "./scripts/auto-deploy-main.sh",
+    "setup:ssh": "./scripts/setup-github-ssh.sh",
     "build": "npm run build:server && npm run build:client",
     "build:prod": "npm run build:server && npm run build:client:prod",
     "dev:server": "PORT=4001 CLIENT_ORIGIN=http://localhost:5174 npm run dev --workspace=server",

@@ -32,6 +32,52 @@ npm run dev
 
 因此开发时不需要停止局域网部署服务。
 
+## GitHub SSH 配置
+
+推荐每台机器单独生成一把 SSH key，并把对应的 `.pub` 公钥添加到 GitHub。不要把私钥提交到仓库或通过聊天工具传输。
+
+如果确实要让另一台机器复用当前项目 key，需要在**第一台机器**安全复制以下两个文件到第二台机器的相同目录：
+
+```text
+~/.ssh/id_ed25519_edu_workspace
+~/.ssh/id_ed25519_edu_workspace.pub
+```
+
+可以使用 AirDrop、加密 U 盘或其他可信的端到端传输方式。私钥不要粘贴到聊天窗口。复制完成后，在**第二台机器的工程根目录**执行：
+
+```bash
+npm install
+npm run setup:ssh
+```
+
+脚本会自动：
+
+- 检查 SSH key 是否存在
+- 写入 `~/.ssh/config` 的 `github-edu-workspace` 配置
+- 设置 SSH 文件权限
+- 将 key 加载到 macOS Keychain
+- 把当前仓库 GitHub remote 切换为专用 SSH 别名
+- 测试 GitHub SSH 登录
+
+手动验证：
+
+```bash
+ssh -T git@github-edu-workspace
+git remote -v
+```
+
+看到 `You've successfully authenticated` 后，就可以执行：
+
+```bash
+npm run deploy:now
+```
+
+如果第二台机器使用自己的 key，则不需要复制私钥，只需将新机器生成的公钥添加到 GitHub，再运行：
+
+```bash
+npm run setup:ssh /path/to/private-key
+```
+
 ## 配置资源目录
 
 书籍页面、原始 PDF、DPI 图片和错题裁剪图片统一存放在资源根目录。当前目录可在后台“资源目录设置”中修改，修改后立即生效，不需要重启服务。
