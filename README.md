@@ -131,6 +131,16 @@ npm run build
 ./scripts/start-lan-service.sh
 ```
 
+首页左上角会显示当前运行环境：
+
+```text
+npm run dev       → DEV  本地开发
+npm run build     → TEST 局域网发布
+npm run build:prod → PROD 未来公网部署
+```
+
+局域网发布继续使用 `npm run build`。未来部署到公网服务器时使用 `npm run build:prod`，前端会显示 `PROD` 标识。
+
 通常不需要重复执行安装脚本；只有修改了 `deploy/*.plist` 或首次配置服务时才需要执行 `install-lan-service.sh`。
 
 ### main 分支自动发布（手动开启）

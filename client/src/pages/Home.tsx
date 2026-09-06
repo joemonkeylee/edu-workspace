@@ -7,6 +7,12 @@ import { updateBook, deleteBook } from '../api/client';
 
 const PAGE_SIZE = 16; // 2 rows × 8 cols
 const STORAGE_KEY = 'edu-home-filters';
+const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST');
+const APP_ENV_CLASS = APP_ENV === 'PROD'
+  ? 'bg-emerald-500/20 text-emerald-200'
+  : APP_ENV === 'TEST'
+    ? 'bg-amber-500/20 text-amber-200'
+    : 'bg-blue-500/20 text-blue-200';
 
 const SUBJECT_ORDER = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '科学', '道法'];
 const GRADE_ORDER = ['七上', '七下', '八上', '八下', '九上', '九下'];
@@ -380,6 +386,9 @@ export default function Home() {
         <div className="flex items-center gap-3">
           <BookOpen size={22} />
           <h1 className="text-lg font-bold">edu-workspace</h1>
+          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${APP_ENV_CLASS}`}>
+            {APP_ENV}
+          </span>
         </div>
         <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理" className="flex items-center justify-center bg-primary hover:bg-primaryDark h-9 w-9 rounded-lg transition">
           <Settings size={18} />
