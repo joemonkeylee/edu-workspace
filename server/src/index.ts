@@ -16,10 +16,15 @@ import { getStorageRoot, initializeStorageRoot } from './services/storage.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(compression());
-app.use(cors({ origin: CLIENT_ORIGIN }));
+app.use(cors({
+  origin: CLIENT_ORIGINS.includes('*') ? true : CLIENT_ORIGINS,
+}));
 app.use(express.json({ limit: '50mb' }));
 
 app.use('/api/admin', adminRouter);

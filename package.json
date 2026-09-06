@@ -13,7 +13,9 @@
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
     "build:server": "npm run build --workspace=server",
     "build:client": "npm run build --workspace=client",
-    "build": "npm run build:server && npm run build:client"
+    "build": "npm run build:server && npm run build:client",
+    "start:server": "npm run start --workspace=server",
+    "start:prod": "npm run build && npm run start:server"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

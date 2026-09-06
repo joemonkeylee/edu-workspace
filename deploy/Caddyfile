@@ -1,0 +1,17 @@
+:5173 {
+    root * /Users/{user}/工作/github/edu-workspace/client/dist
+    encode gzip zstd
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:4000
+    }
+
+    handle /storage/* {
+        reverse_proxy 127.0.0.1:4000
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}
