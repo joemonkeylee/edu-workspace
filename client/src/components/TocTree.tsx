@@ -11,7 +11,7 @@ interface TocTreeProps {
 }
 
 export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect }: TocTreeProps) {
-  const [view, setView] = useState<'toc' | 'thumbs'>('toc');
+  const [view, setView] = useState<'toc' | 'thumbs'>('thumbs');
   const visibleToc = filterVisibleToc(toc);
   const scrollRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -44,6 +44,15 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
       {/* View tabs */}
       <div className="flex border-b border-black/20 flex-shrink-0">
         <button
+          onClick={() => setView('thumbs')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
+            view === 'thumbs' ? 'text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          <LayoutGrid size={14} />
+          页码
+        </button>
+        <button
           onClick={() => setView('toc')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
             view === 'toc' ? 'text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
@@ -51,15 +60,6 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
         >
           <List size={14} />
           目录
-        </button>
-        <button
-          onClick={() => setView('thumbs')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-            view === 'thumbs' ? 'text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          <LayoutGrid size={14} />
-          缩略图
         </button>
       </div>
 
