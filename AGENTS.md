@@ -8,16 +8,17 @@ After **every** feature/fix iteration, the agent must:
 
 1. Complete the code changes
 2. Verify the build (run `npx tsc --noEmit` in the relevant package)
-3. **Do NOT auto-commit** unless the user explicitly says "提交" / "commit" / "push"
+3. **Auto-commit** by default (unless the user explicitly says "don't commit" / "先别提交")
 4. Reply to the user with an **English commit message** (formatted as a code block or plain text) summarizing the changes
 
 ### When to actually commit
 
 | User says... | Action |
 |---|---|
-| Nothing (default) | Reply with English commit message, do NOT commit |
+| Nothing (default) | **Auto-commit** with English message, then reply |
 | "提交" / "commit" / "push" / "git commit" | Commit with English message, then reply |
 | "用中文" / "中文 commit" | Reply with Chinese commit message instead |
+| "别提交" / "不提交" / "don't commit" / "先别提交" | Do NOT commit, only reply with commit message |
 
 ### Commit Message Format
 
