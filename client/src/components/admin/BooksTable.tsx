@@ -6,6 +6,9 @@ import BookCover from '../BookCover';
 
 const PAGE_SIZE = 10;
 
+const GRADE_PRESETS = ['7上', '7下', '8上', '8下', '9上', '9下', '高一', '高二', '高三', '小学', '初一', '初二', '初三'];
+const SUBJECT_PRESETS = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '科学'];
+
 type TocPath = number[];
 type PreviewState = { bookId: number; page: number } | null;
 
@@ -456,17 +459,25 @@ export default function BooksTable() {
                         />
                         <div className="grid grid-cols-2 gap-2">
                           <input
+                            list="grade-presets"
                             value={editGrade}
                             onChange={(e) => setEditGrade(e.target.value)}
-                            placeholder="年级"
+                            placeholder="阶段 (如 7上)"
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
+                          <datalist id="grade-presets">
+                            {GRADE_PRESETS.map((g) => <option key={g} value={g} />)}
+                          </datalist>
                           <input
+                            list="subject-presets"
                             value={editSubject}
                             onChange={(e) => setEditSubject(e.target.value)}
-                            placeholder="学科"
+                            placeholder="学科 (如 语文)"
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
+                          <datalist id="subject-presets">
+                            {SUBJECT_PRESETS.map((s) => <option key={s} value={s} />)}
+                          </datalist>
                         </div>
                         <input
                           type="number"

@@ -12,7 +12,7 @@ interface StoreState {
   mistakes: Mistake[];
   loading: boolean;
 
-  fetchBooks: () => Promise<void>;
+  fetchBooks: (params?: { category?: string; grade?: string; subject?: string }) => Promise<void>;
   fetchBook: (id: number) => Promise<void>;
   setCurrentPage: (page: number) => void;
   setZoom: (zoom: number) => void;
@@ -34,9 +34,9 @@ export const useStore = create<StoreState>((set, get) => ({
   mistakes: [],
   loading: false,
 
-  fetchBooks: async () => {
+  fetchBooks: async (params) => {
     set({ loading: true });
-    const books = await api.getBooks();
+    const books = await api.getBooks(params);
     set({ books, loading: false });
   },
 

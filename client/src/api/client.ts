@@ -2,8 +2,8 @@ import axios from 'axios';
 
 const api = axios.create({ baseURL: '/api' });
 
-export async function getBooks() {
-  const { data } = await api.get('/books');
+export async function getBooks(params?: { category?: string; grade?: string; subject?: string }) {
+  const { data } = await api.get('/books', { params });
   return data;
 }
 

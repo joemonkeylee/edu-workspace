@@ -4,80 +4,47 @@ import { useStore } from '../store/useStore';
 import { BookOpen, Settings } from 'lucide-react';
 import BookCover from '../components/BookCover';
 
-const DEFAULT_CATEGORY = '学习';
-
 export default function Home() {
   const { books, fetchBooks, loading } = useStore();
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState(DEFAULT_CATEGORY);
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedGrade, setSelectedGrade] = useState('all');
+  const [selectedSubject, setSelectedSubject] = useState('all');
 
   useEffect(() => {
     fetchBooks();
   }, []);
 
   const categoryOptions = useMemo(() => {
-    const values = new Set((books || []).map((book) => (book.category || DEFAULT_CATEGORY).trim()).filter(Boolean));
+    const values = new Set((books || []).map((book) => (book.category || '').trim()).filter(Boolean));
+    return Array.from(values).sort();
+  }, [books]);
+
+  const gradeOptions = useMemo(() => {
+    const values = new Set((books || []).map((book) => (book.grade || '').trim()).filter(Boolean));
+    return Array.from(values).sort();
+  }, [books]);
+
+  const subjectOptions = useMemo(() => {
+    const values = new Set((books || []).map((book) => (book.subject || '').trim()).filter(Boolean));
     return Array.from(values).sort();
   }, [books]);
 
   // Auto-switch selected category if current one has no books
   useEffect(() => {
-    if (categoryOptions.length > 0 && !categoryOptions.includes(selectedCategory)) {
-      setSelectedCategory(categoryOptions[0]);
-      setSelectedFilters({});
+    if (categoryOptions.length > 0 && !categoryOptions.includes(selectedCategory) && selectedCategory !== 'all') {
+      setSelectedCategory('all');
     }
   }, [categoryOptions, selectedCategory]);
 
-  const attributeKeys = useMemo(() => {
-    const keys = new Set<string>();
-    const currentCategoryBooks = (books || []).filter((book) => (book.category || DEFAULT_CATEGORY) === selectedCategory);
-    currentCategoryBooks.forEach((book) => {
-      if (book.grade) keys.add('grade');
-      if (book.subject) keys.add('subject');
-      const attrs = book.attributes || {};
-      Object.keys(attrs || {}).forEach((key) => keys.add(key));
-    });
-    return Array.from(keys).sort();
-  }, [books, selectedCategory]);
-
-  const attributeOptions = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    const currentCategoryBooks = (books || []).filter((book) => (book.category || DEFAULT_CATEGORY) === selectedCategory);
-
-    currentCategoryBooks.forEach((book) => {
-      const attrs = typeof book.attributes === 'object' && book.attributes ? book.attributes as Record<string, any> : {};
-      const entries = [...attributeKeys];
-      entries.forEach((key) => {
-        const value = key === 'grade' ? book.grade : key === 'subject' ? book.subject : attrs[key];
-        if (value !== undefined && value !== null && value !== '') {
-          map[key] ??= new Set<string>();
-          map[key].add(String(value));
-        }
-      });
-    });
-
-    return Object.fromEntries(
-      Object.entries(map).map(([key, values]) => [key, Array.from(values).sort()])
-    );
-  }, [attributeKeys, books, selectedCategory]);
-
   const filteredBooks = useMemo(() => {
     return (books || []).filter((book) => {
-      const matchCategory = (book.category || DEFAULT_CATEGORY) === selectedCategory;
-      if (!matchCategory) return false;
-      return attributeKeys.every((key) => {
-        const selected = selectedFilters[key];
-        if (!selected || selected === 'all') return true;
-        const value = key === 'grade' ? book.grade : key === 'subject' ? book.subject : (book.attributes as Record<string, any> | undefined)?.[key];
-        return String(value ?? '') === selected;
-      });
+      if (selectedCategory !== 'all' && (book.category || '') !== selectedCategory) return false;
+      if (selectedGrade !== 'all' && (book.grade || '') !== selectedGrade) return false;
+      if (selectedSubject !== 'all' && (book.subject || '') !== selectedSubject) return false;
+      return true;
     });
-  }, [attributeKeys, books, selectedCategory, selectedFilters]);
-
-  const setFilter = (key: string, value: string) => {
-    setSelectedFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  }, [books, selectedCategory, selectedGrade, selectedSubject]);
 
   return (
     <div className="h-full flex flex-col bg-surface">
@@ -98,33 +65,36 @@ export default function Home() {
         <div className="mb-4 flex flex-wrap gap-3 items-center">
           <select
             value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setSelectedFilters({});
-            }}
+            onChange={(e) => setSelectedCategory(e.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
           >
+            <option value="all">全部分类</option>
             {categoryOptions.map((category) => (
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
 
-          {attributeKeys.map((key) => {
-            const options = attributeOptions[key] || [];
-            return (
-              <select
-                key={key}
-                value={selectedFilters[key] || 'all'}
-                onChange={(e) => setFilter(key, e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
-              >
-                <option value="all">全部{key}</option>
-                {options.map((value) => (
-                  <option key={value} value={value}>{value}</option>
-                ))}
-              </select>
-            );
-          })}
+          <select
+            value={selectedGrade}
+            onChange={(e) => setSelectedGrade(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+          >
+            <option value="all">全部阶段</option>
+            {gradeOptions.map((grade) => (
+              <option key={grade} value={grade}>{grade}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedSubject}
+            onChange={(e) => setSelectedSubject(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+          >
+            <option value="all">全部学科</option>
+            {subjectOptions.map((subject) => (
+              <option key={subject} value={subject}>{subject}</option>
+            ))}
+          </select>
         </div>
 
         {loading ? (

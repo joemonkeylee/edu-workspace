@@ -7,8 +7,18 @@ const router = Router();
 
 const STORAGE_ABS = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
+  const category = req.query.category as string;
+  const grade = req.query.grade as string;
+  const subject = req.query.subject as string;
+
+  const where: any = {};
+  if (category && category !== 'all') where.category = category;
+  if (grade && grade !== 'all') where.grade = grade;
+  if (subject && subject !== 'all') where.subject = subject;
+
   const books = await prisma.book.findMany({
+    where,
     orderBy: { createdAt: 'desc' },
   });
   const booksWithDpi = books.map(b => {
