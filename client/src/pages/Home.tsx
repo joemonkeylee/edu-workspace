@@ -1,22 +1,96 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import BookCover from '../components/BookCover';
+
+const PAGE_SIZE = 16; // 2 rows × 8 cols
+const STORAGE_KEY = 'edu-home-filters';
+
+interface SavedFilters {
+  subject: string;
+  grade: string;
+  category: string;
+}
+
+function loadSavedFilters(): SavedFilters {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as SavedFilters;
+  } catch { /* ignore */ }
+  return { subject: '', grade: '', category: '' };
+}
+
+/** Native <select> with a clear (×) button; empty value means "no filter". */
+function ClearableSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: string[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary ${
+          value ? 'pr-9' : 'pr-8'
+        }`}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+      {/* dropdown arrow */}
+      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+        ▾
+      </span>
+      {/* clear button */}
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="absolute right-7 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
+          title="清除"
+        >
+          <X size={10} strokeWidth={3} />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const { books, fetchBooks, loading } = useStore();
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedGrade, setSelectedGrade] = useState('all');
-  const [selectedSubject, setSelectedSubject] = useState('all');
+
+  const saved = useMemo(loadSavedFilters, []);
+  const [selectedSubject, setSelectedSubject] = useState(saved.subject);
+  const [selectedGrade, setSelectedGrade] = useState(saved.grade);
+  const [selectedCategory, setSelectedCategory] = useState(saved.category);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchBooks();
   }, []);
 
-  const categoryOptions = useMemo(() => {
-    const values = new Set((books || []).map((book) => (book.category || '').trim()).filter(Boolean));
+  // Persist filters to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      subject: selectedSubject,
+      grade: selectedGrade,
+      category: selectedCategory,
+    }));
+  }, [selectedSubject, selectedGrade, selectedCategory]);
+
+  const subjectOptions = useMemo(() => {
+    const values = new Set((books || []).map((book) => (book.subject || '').trim()).filter(Boolean));
     return Array.from(values).sort();
   }, [books]);
 
@@ -25,26 +99,34 @@ export default function Home() {
     return Array.from(values).sort();
   }, [books]);
 
-  const subjectOptions = useMemo(() => {
-    const values = new Set((books || []).map((book) => (book.subject || '').trim()).filter(Boolean));
+  const categoryOptions = useMemo(() => {
+    const values = new Set((books || []).map((book) => (book.category || '').trim()).filter(Boolean));
     return Array.from(values).sort();
   }, [books]);
 
-  // Auto-switch selected category if current one has no books
-  useEffect(() => {
-    if (categoryOptions.length > 0 && !categoryOptions.includes(selectedCategory) && selectedCategory !== 'all') {
-      setSelectedCategory('all');
-    }
-  }, [categoryOptions, selectedCategory]);
-
   const filteredBooks = useMemo(() => {
     return (books || []).filter((book) => {
-      if (selectedCategory !== 'all' && (book.category || '') !== selectedCategory) return false;
-      if (selectedGrade !== 'all' && (book.grade || '') !== selectedGrade) return false;
-      if (selectedSubject !== 'all' && (book.subject || '') !== selectedSubject) return false;
+      if (selectedSubject && (book.subject || '') !== selectedSubject) return false;
+      if (selectedGrade && (book.grade || '') !== selectedGrade) return false;
+      if (selectedCategory && (book.category || '') !== selectedCategory) return false;
       return true;
     });
-  }, [books, selectedCategory, selectedGrade, selectedSubject]);
+  }, [books, selectedSubject, selectedGrade, selectedCategory]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedSubject, selectedGrade, selectedCategory]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedBooks = useMemo(
+    () => filteredBooks.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filteredBooks, safePage]
+  );
+
+  const goPrev = () => setPage((p) => Math.max(1, p - 1));
+  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
     <div className="h-full flex flex-col bg-surface">
@@ -62,39 +144,29 @@ export default function Home() {
       </header>
 
       <main className="flex-1 overflow-auto p-6">
+        {/* Filters: 学科 → 学期 → 分类 */}
         <div className="mb-4 flex flex-wrap gap-3 items-center">
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
-          >
-            <option value="all">全部分类</option>
-            {categoryOptions.map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
-
-          <select
-            value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
-          >
-            <option value="all">全部阶段</option>
-            {gradeOptions.map((grade) => (
-              <option key={grade} value={grade}>{grade}</option>
-            ))}
-          </select>
-
-          <select
+          <ClearableSelect
             value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
-          >
-            <option value="all">全部学科</option>
-            {subjectOptions.map((subject) => (
-              <option key={subject} value={subject}>{subject}</option>
-            ))}
-          </select>
+            onChange={setSelectedSubject}
+            placeholder="全部学科"
+            options={subjectOptions}
+          />
+          <ClearableSelect
+            value={selectedGrade}
+            onChange={setSelectedGrade}
+            placeholder="全部学期"
+            options={gradeOptions}
+          />
+          <ClearableSelect
+            value={selectedCategory}
+            onChange={setSelectedCategory}
+            placeholder="全部分类"
+            options={categoryOptions}
+          />
+          <span className="text-sm text-gray-500 ml-1">
+            共 {filteredBooks.length} 本
+          </span>
         </div>
 
         {loading ? (
@@ -108,36 +180,60 @@ export default function Home() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-            {filteredBooks.map((book) => {
-              return (
-                <div
-                  key={book.id}
-                  className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition cursor-pointer group"
-                  onClick={() => navigate(`/book/${book.id}`)}
-                >
-                  <div className="relative overflow-hidden" style={{ aspectRatio: '3/4' }}>
-                    <BookCover
-                      book={book}
-                      className="w-full h-full object-cover transition group-hover:scale-[1.02]"
-                    />
-                    {/* Bottom overlay with title, tags, page count */}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
-                      <h3 className="font-medium text-xs text-white line-clamp-2 leading-tight" title={book.title}>{book.title}</h3>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {book.category && <span className="bg-blue-600/90 text-white rounded px-1 py-0.5 text-[9px]">{book.category}</span>}
-                        {book.grade && <span className="bg-blue-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
-                        {book.subject && <span className="bg-blue-400/80 text-white rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
-                      </div>
-                      <div className="mt-1 text-right">
-                        <span className="text-[10px] text-white/80">{book.totalPages} 页</span>
+          <>
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
+              {pagedBooks.map((book) => {
+                return (
+                  <div
+                    key={book.id}
+                    className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition cursor-pointer group"
+                    onClick={() => navigate(`/book/${book.id}`)}
+                  >
+                    <div className="relative overflow-hidden" style={{ aspectRatio: '3/4' }}>
+                      <BookCover
+                        book={book}
+                        className="w-full h-full object-cover transition group-hover:scale-[1.02]"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
+                        <h3 className="font-medium text-xs text-white line-clamp-2 leading-tight" title={book.title}>{book.title}</h3>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {book.subject && <span className="bg-emerald-500/90 text-white rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
+                          {book.grade && <span className="bg-blue-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
+                          {book.category && <span className="bg-violet-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.category}</span>}
+                        </div>
+                        <div className="mt-1 text-right">
+                          <span className="text-[10px] text-white/80">{book.totalPages} 页</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-5 flex items-center justify-center gap-2">
+                <button
+                  onClick={goPrev}
+                  disabled={safePage <= 1}
+                  className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={16} /> 上一页
+                </button>
+                <span className="text-sm text-gray-600">
+                  {safePage} / {totalPages}
+                </span>
+                <button
+                  onClick={goNext}
+                  disabled={safePage >= totalPages}
+                  className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  下一页 <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
