@@ -20,6 +20,19 @@ info() {
   log "$*"
 }
 
+wait_for_http() {
+  local url="$1"
+  local attempts=0
+  while (( attempts < 15 )); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    attempts=$((attempts + 1))
+    sleep 1
+  done
+  return 1
+}
+
 fail() {
   print -r -- "[deploy] FAILED: $*" >&2
   log "FAILED: $*"
@@ -70,6 +83,6 @@ npm run build >> "$LOG_FILE" 2>&1 || fail "Build failed"
 info "Restarting production services..."
 ./scripts/start-lan-service.sh >> "$LOG_FILE" 2>&1 || fail "Service restart failed"
 info "Checking production health..."
-curl -fsS http://127.0.0.1:4000/api/health >> "$LOG_FILE" 2>&1 || fail "Backend health check failed"
-curl -fsS http://127.0.0.1:5173/ >/dev/null 2>&1 || fail "Caddy health check failed"
+wait_for_http http://127.0.0.1:4000/api/health || fail "Backend health check failed"
+wait_for_http http://127.0.0.1:5173/ || fail "Caddy health check failed"
 info "Deployment completed successfully. Site: http://$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1):5173"
