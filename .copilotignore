@@ -1,0 +1,18 @@
+# Build outputs
+**/dist/**
+**/build/**
+
+# Dependencies
+**/node_modules/**
+
+# Git
+**/.git/**
+
+# Uploaded book page images (huge number of PNGs)
+**/server/storage/**
+
+# Logs
+**/*.log
+
+# Prisma migrations
+**/prisma/migrations/**
