@@ -68,3 +68,4 @@ edu-workspace/
 - **Book covers** use the `<BookCover>` component with fade-in placeholder — never raw `<img>` tags
 - **Home page is browse-only** — no edit/delete actions for end users
 - **Feature parity first, UI polish second** — when refactoring UI, never change existing functionality
+- **Do NOT start dev servers** — never run `npm run dev` (or any long-running dev script) in `client/` or `server/`. The user manages dev servers themselves. Only run short-lived commands like `npx tsc --noEmit`, `npm run build`, or one-off scripts.
