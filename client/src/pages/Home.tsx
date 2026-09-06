@@ -112,6 +112,7 @@ export default function Home() {
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [promptAction, setPromptAction] = useState<null | 'exit' | 'filter'>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
     fetchBooks();
@@ -207,10 +208,26 @@ export default function Home() {
   };
 
   const toggleDelete = (id: number) => {
-    setPendingDeletes((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else n.add(id);
-      return n;
+    // If already marked for deletion, unmark immediately (no confirm needed)
+    if (pendingDeletes.has(id)) {
+      setPendingDeletes((prev) => {
+        const n = new Set(prev);
+        n.delete(id);
+        return n;
+      });
+      return;
+    }
+    const book = books.find((b) => b.id === id);
+    setDeleteConfirm({
+      message: `确定删除《${book?.title || '这本书'}》吗？`,
+      onConfirm: () => {
+        setPendingDeletes((prev) => {
+          const n = new Set(prev);
+          n.add(id);
+          return n;
+        });
+        setDeleteConfirm(null);
+      },
     });
   };
 
@@ -232,12 +249,19 @@ export default function Home() {
     });
   };
 
-  // Delete selected (marks for pending delete)
+  // Delete selected (marks for pending delete) — with confirmation
   const deleteSelected = () => {
-    setPendingDeletes((prev) => {
-      const n = new Set(prev);
-      selectedIds.forEach((id) => n.add(id));
-      return n;
+    if (selectedIds.size === 0) return;
+    setDeleteConfirm({
+      message: `确定删除选中的 ${selectedIds.size} 本书吗？`,
+      onConfirm: () => {
+        setPendingDeletes((prev) => {
+          const n = new Set(prev);
+          selectedIds.forEach((id) => n.add(id));
+          return n;
+        });
+        setDeleteConfirm(null);
+      },
     });
   };
 
@@ -544,6 +568,26 @@ export default function Home() {
       {saving && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="rounded-lg bg-white px-6 py-4 text-sm text-gray-700 shadow-xl">保存中...</div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-80 rounded-xl bg-white p-6 shadow-xl">
+            <button
+              onClick={() => setDeleteConfirm(null)}
+              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              title="取消"
+            >
+              <X size={16} />
+            </button>
+            <h3 className="text-base font-semibold text-gray-800">确认删除</h3>
+            <p className="mt-2 text-sm text-gray-500">{deleteConfirm.message}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={deleteConfirm.onConfirm} className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white hover:bg-red-600">删除</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
