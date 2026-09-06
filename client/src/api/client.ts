@@ -58,8 +58,9 @@ export async function deleteMistake(id: number) {
   return data;
 }
 
-export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200) {
+export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number) {
   const params = new URLSearchParams({ targetPath, category, dpi: String(dpi) });
+  if (concurrency) params.set('concurrency', String(concurrency));
   return `/api/admin/scan-pdf?${params}`;
 }
 

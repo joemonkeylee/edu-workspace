@@ -189,6 +189,21 @@ export async function getAvailableDpisAsync(bookDir: string): Promise<number[]> 
   }
 }
 
+/**
+ * Check if a DPI directory exists and contains the expected number of pages.
+ * Used to skip re-rendering books that have already been imported.
+ */
+export function isDpiComplete(bookDir: string, dpi: number, expectedPages: number): boolean {
+  const dpiDir = path.join(bookDir, String(dpi));
+  if (!fs.existsSync(dpiDir)) return false;
+  try {
+    const files = fs.readdirSync(dpiDir).filter(f => /^page-\d{4}\.png$/.test(f));
+    return files.length >= expectedPages;
+  } catch {
+    return false;
+  }
+}
+
 const SUBJECT_KEYWORDS = ['语文', '数学', '英语', '物理', '化学', '生物', '道法', '历史', '地理', '科学'];
 
 /**

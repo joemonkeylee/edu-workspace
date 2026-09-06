@@ -16,8 +16,16 @@ interface ProgressData {
 
 const DPI_OPTIONS = [
   { value: 150, label: '150 (快速预览)' },
+  { value: 200, label: '200 (推荐)' },
   { value: 300, label: '300 (高清)' },
   { value: 600, label: '600 (打印级)' },
+];
+
+const CONCURRENCY_OPTIONS = [
+  { value: 2, label: '2 并发（低 CPU）' },
+  { value: 4, label: '4 并发（平衡）' },
+  { value: 6, label: '6 并发（高速）' },
+  { value: 8, label: '8 并发（极速，占满 CPU）' },
 ];
 
 const fmtTime = (s: number) => {
@@ -30,7 +38,8 @@ const fmtTime = (s: number) => {
 export default function PdfScanImport() {
   const [targetPath, setTargetPath] = useState('');
   const [category, setCategory] = useState('');
-  const [dpi, setDpi] = useState(300);
+  const [dpi, setDpi] = useState(200);
+  const [concurrency, setConcurrency] = useState(4);
   const [logs, setLogs] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -47,7 +56,7 @@ export default function PdfScanImport() {
     setLogs([]);
     setProgress(null);
 
-    const url = scanPdfUrl(targetPath.trim(), category.trim(), dpi);
+    const url = scanPdfUrl(targetPath.trim(), category.trim(), dpi, concurrency);
     const es = new EventSource(url);
     esRef.current = es;
 
@@ -127,7 +136,7 @@ export default function PdfScanImport() {
         </div>
         <p className="text-xs text-gray-400 mt-1.5">支持递归扫描子目录，自动以一级子目录名作为分类</p>
 
-        <div className="grid grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-3 gap-4 mt-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">分类（可选）</label>
             <input
@@ -150,6 +159,21 @@ export default function PdfScanImport() {
               disabled={scanning}
             >
               {DPI_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-2">
+              <Layers size={14} /> 并发数
+            </label>
+            <select
+              value={concurrency}
+              onChange={(e) => setConcurrency(Number(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
+              disabled={scanning}
+            >
+              {CONCURRENCY_OPTIONS.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
