@@ -7,6 +7,9 @@ import BookCover from '../components/BookCover';
 const PAGE_SIZE = 16; // 2 rows × 8 cols
 const STORAGE_KEY = 'edu-home-filters';
 
+const SUBJECT_ORDER = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '科学', '道法'];
+const GRADE_ORDER = ['七上', '七下', '八上', '八下', '九上', '九下'];
+
 interface SavedFilters {
   subject: string;
   grade: string;
@@ -91,12 +94,16 @@ export default function Home() {
 
   const subjectOptions = useMemo(() => {
     const values = new Set((books || []).map((book) => (book.subject || '').trim()).filter(Boolean));
-    return Array.from(values).sort();
+    return Array.from(values).sort(
+      (a, b) => (SUBJECT_ORDER.indexOf(a) + 1 || 999) - (SUBJECT_ORDER.indexOf(b) + 1 || 999)
+    );
   }, [books]);
 
   const gradeOptions = useMemo(() => {
     const values = new Set((books || []).map((book) => (book.grade || '').trim()).filter(Boolean));
-    return Array.from(values).sort();
+    return Array.from(values).sort(
+      (a, b) => (GRADE_ORDER.indexOf(a) + 1 || 999) - (GRADE_ORDER.indexOf(b) + 1 || 999)
+    );
   }, [books]);
 
   const categoryOptions = useMemo(() => {
