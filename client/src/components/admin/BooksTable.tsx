@@ -436,9 +436,9 @@ export default function BooksTable() {
                 </th>
                 <th className="text-left px-4 py-3 font-medium">封面</th>
                 <th className="text-left px-4 py-3 font-medium">书名</th>
-                <th className="text-left px-4 py-3 font-medium">分类</th>
                 <th className="text-left px-4 py-3 font-medium">页数</th>
                 <th className="text-left px-4 py-3 font-medium">DPI</th>
+                <th className="text-left px-4 py-3 font-medium">封皮</th>
                 <th className="text-left px-4 py-3 font-medium">批次</th>
                 <th className="text-left px-4 py-3 font-medium">入库时间</th>
                 <th className="text-right px-4 py-3 font-medium">操作</th>
@@ -495,6 +495,12 @@ export default function BooksTable() {
                             {SUBJECT_PRESETS.map((s) => <option key={s} value={s} />)}
                           </datalist>
                         </div>
+                        <input
+                          value={editCategory}
+                          onChange={(e) => setEditCategory(e.target.value)}
+                          placeholder="分类"
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
                         <input
                           type="number"
                           min={1}
@@ -562,22 +568,11 @@ export default function BooksTable() {
                       <div className="space-y-1">
                         <span className="truncate block" title={book.title}>{book.title}</span>
                         <div className="flex flex-wrap gap-1 text-[11px]">
+                          {book.subject && <span className="bg-emerald-50 text-emerald-600 rounded px-1.5 py-0.5">{book.subject}</span>}
                           {book.grade && <span className="bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">{book.grade}</span>}
-                          {book.subject && <span className="bg-amber-50 text-amber-600 rounded px-1.5 py-0.5">{book.subject}</span>}
-                          {book.coverPage && <span className="bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">封皮 {book.coverPage}</span>}
+                          {book.category && <span className="bg-violet-50 text-violet-600 rounded px-1.5 py-0.5">{book.category}</span>}
                         </div>
                       </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {editingId === book.id ? (
-                      <input
-                        value={editCategory}
-                        onChange={(e) => setEditCategory(e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    ) : (
-                      <span className="text-gray-600">{book.category}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{book.totalPages}</td>
@@ -594,6 +589,7 @@ export default function BooksTable() {
                       <span className="text-gray-400 text-xs">无</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-gray-600">{book.coverPage || 1}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {book.batchId ? (
                       <span className="inline-block px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-xs font-mono">{book.batchId}</span>
