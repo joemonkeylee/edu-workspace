@@ -20,6 +20,14 @@ After **every** feature/fix iteration, the agent must:
 | "用中文" / "中文 commit" | Reply with Chinese commit message instead |
 | "别提交" / "不提交" / "don't commit" / "先别提交" | Do NOT commit, only reply with commit message |
 
+### Accumulating commits across "don't commit" turns
+
+When the user says "don't commit" in multiple consecutive turns, the agent must
+**accumulate** the commit messages from each turn (do not lose them). When the user
+finally asks to commit (or the default auto-commit resumes), produce a **single
+consolidated commit** that summarizes all the accumulated changes together, rather
+than committing them one-by-one or discarding earlier summaries.
+
 ### Commit Message Format
 
 Use conventional commits with English messages:
