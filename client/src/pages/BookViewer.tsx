@@ -339,7 +339,7 @@ export default function BookViewer() {
                 const p = Number(e.target.value);
                 if (p >= 1 && p <= totalPages) setCurrentPage(p);
               }}
-              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:border-[#006064] focus:ring-1 focus:ring-[#006064] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             {isDouble && currentPage < totalPages && (
               <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
@@ -375,7 +375,7 @@ export default function BookViewer() {
               onClick={() => setTool(mode)}
               title={label}
               className={`p-1.5 rounded transition ${
-                tool === mode ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
+                tool === mode ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
             >
               <Icon size={16} />
@@ -390,14 +390,14 @@ export default function BookViewer() {
           <button
             onClick={() => setFitMode('page')}
             title="适应页面"
-            className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Minimize2 size={16} />
           </button>
           <button
             onClick={() => setFitMode('width')}
             title="适应宽度"
-            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Maximize2 size={16} />
           </button>
@@ -453,14 +453,14 @@ export default function BookViewer() {
           <button
             onClick={() => setPageLayout('single')}
             title="单页"
-            className={`p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Book size={16} />
           </button>
           <button
             onClick={() => setPageLayout('double')}
             title="双页"
-            className={`p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-[#006064] text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <BookOpen size={16} />
           </button>
@@ -581,7 +581,7 @@ export default function BookViewer() {
               <button
                 onClick={loadMistakes}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'mistakes' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'mistakes' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 错题本
@@ -589,7 +589,7 @@ export default function BookViewer() {
               <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'annotations' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'annotations' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 批注 ({pageAnnotations.length})
@@ -677,7 +677,7 @@ function MistakeList({
           onChange={(e) => onFilterChange(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onRefresh()}
           placeholder="按学科筛选..."
-          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-[#006064] focus:border-[#006064]"
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
         />
       </div>
       {mistakes.length === 0 ? (
@@ -709,7 +709,7 @@ function MistakeList({
                   <button
                     onClick={() => onToggle(m.id, m.reviewStatus)}
                     className={`flex items-center gap-1 text-xs transition ${
-                      m.reviewStatus === 1 ? 'text-green-600' : 'text-gray-400 hover:text-green-600'
+                      m.reviewStatus === 1 ? 'text-primary' : 'text-gray-400 hover:text-primary'
                     }`}
                   >
                     {m.reviewStatus === 1 ? <CheckCircle2 size={14} /> : <Circle size={14} />}

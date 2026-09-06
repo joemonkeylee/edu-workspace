@@ -46,7 +46,7 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
         <button
           onClick={() => setView('toc')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-            view === 'toc' ? 'text-white border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-300'
+            view === 'toc' ? 'text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
           }`}
         >
           <List size={14} />
@@ -55,7 +55,7 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
         <button
           onClick={() => setView('thumbs')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-            view === 'thumbs' ? 'text-white border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-300'
+            view === 'thumbs' ? 'text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
           }`}
         >
           <LayoutGrid size={14} />
@@ -78,7 +78,7 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
                 data-page={page}
                 onClick={() => onPageSelect(page)}
                 className={`cursor-pointer rounded overflow-hidden border-2 transition ${
-                  currentPage === page ? 'border-[#006064]' : 'border-transparent hover:border-white/20'
+                  currentPage === page ? 'border-primary' : 'border-transparent hover:border-white/20'
                 }`}
               >
                 <img
@@ -88,7 +88,7 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
                   className="w-full h-auto block bg-white"
                 />
                 <div className={`text-[10px] text-center py-0.5 ${
-                  currentPage === page ? 'text-white bg-[#006064]' : 'text-gray-500 bg-black/20'
+                  currentPage === page ? 'text-white bg-primary' : 'text-gray-500 bg-black/20'
                 }`}>
                   {page}
                 </div>
@@ -130,7 +130,7 @@ function TocItem({
       <div
         data-active={isActive}
         className={`flex items-center gap-1 px-2 py-1.5 cursor-pointer text-sm transition ${
-          isActive ? 'bg-[#006064]/30 text-white font-medium border-l-2 border-[#006064]' : 'text-gray-300 hover:bg-white/5 border-l-2 border-transparent'
+          isActive ? 'bg-primary/30 text-white font-medium border-l-2 border-primary' : 'text-gray-300 hover:bg-white/5 border-l-2 border-transparent'
         }`}
         style={{ paddingLeft: `${depth * 12 + 8 - 2}px` }}
         onClick={() => {
