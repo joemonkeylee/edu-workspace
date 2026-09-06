@@ -28,6 +28,15 @@ const fmtTime = (s: number) => {
   return `${m}分${r}秒`;
 };
 
+function createTaskId() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.random() * 16 | 0;
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
 export default function PdfScanImport() {
   const [targetPath, setTargetPath] = useState('');
   const [category, setCategory] = useState('');
@@ -58,7 +67,7 @@ export default function PdfScanImport() {
     setLogs([]);
     setProgress(null);
 
-    const taskId = crypto.randomUUID();
+    const taskId = createTaskId();
     setScanTaskId(taskId);
     const url = scanPdfUrl(targetPath.trim(), category.trim(), dpi, concurrency, taskId);
     const es = new EventSource(url);
