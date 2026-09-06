@@ -43,7 +43,14 @@ info "Checking origin/main..."
 git fetch origin main >> "$LOG_FILE" 2>&1 || fail "Unable to fetch origin/main"
 LOCAL_COMMIT="$(git rev-parse main)"
 REMOTE_COMMIT="$(git rev-parse origin/main)"
-if [[ "$LOCAL_COMMIT" == "$REMOTE_COMMIT" ]]; then
+BUILT_COMMIT="$(cat client/dist/build-commit.txt 2>/dev/null || true)"
+NEEDS_BUILD=false
+if [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]]; then
+  NEEDS_BUILD=true
+elif [[ "$BUILT_COMMIT" != "${LOCAL_COMMIT:0:8}" ]]; then
+  NEEDS_BUILD=true
+  info "Source is current, but the deployed build is ${BUILT_COMMIT:-missing}; rebuilding for ${LOCAL_COMMIT:0:8}."
+else
   info "Already up to date (${LOCAL_COMMIT:0:8}). No deployment needed."
   exit 0
 fi
@@ -53,9 +60,11 @@ if ! git merge-base --is-ancestor "$LOCAL_COMMIT" "$REMOTE_COMMIT"; then
   exit 0
 fi
 
-info "New commit found: ${LOCAL_COMMIT:0:8} -> ${REMOTE_COMMIT:0:8}"
-info "Pulling main..."
-git pull --ff-only origin main >> "$LOG_FILE" 2>&1 || fail "Git pull failed"
+if [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]]; then
+  info "New commit found: ${LOCAL_COMMIT:0:8} -> ${REMOTE_COMMIT:0:8}"
+  info "Pulling main..."
+  git pull --ff-only origin main >> "$LOG_FILE" 2>&1 || fail "Git pull failed"
+fi
 info "Building server and client..."
 npm run build >> "$LOG_FILE" 2>&1 || fail "Build failed"
 info "Restarting production services..."
