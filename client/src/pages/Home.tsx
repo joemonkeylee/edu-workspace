@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check, RotateCcw } from 'lucide-react';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
@@ -349,6 +349,21 @@ export default function Home() {
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
 
+  const resetFilters = () => {
+    const reset = () => {
+      setSelectedSubject('');
+      setSelectedGrade('');
+      setSelectedCategory('');
+    };
+    if (editMode && hasUnsavedChanges) {
+      setPromptAction('filter');
+      setShowSavePrompt(true);
+      (window as any).__pendingFilter = { setter: reset, value: undefined };
+    } else {
+      reset();
+    }
+  };
+
   const handlePromptSaveFilter = async () => {
     await handlePromptSave();
     applyPendingFilter();
@@ -377,6 +392,15 @@ export default function Home() {
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 transition hover:border-primary hover:text-primary"
+            title="重置所有筛选条件"
+          >
+            <RotateCcw size={14} />
+            重置
+          </button>
           <div className="flex-1" />
           {editMode && (
             <button
