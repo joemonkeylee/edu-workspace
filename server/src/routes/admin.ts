@@ -123,48 +123,75 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
     // while also skipping any duplicate PDF content discovered in this batch.
     const toProcess: PdfTask[] = [];
     const seenHashes = new Set<string>();
+    const extraPathsByHash = new Map<string, string[]>(); // within-batch duplicate paths to merge later
     let skippedComplete = 0;
     let skippedIncomplete = 0;
+    let skippedDupContent = 0;
+    let skippedDupBatch = 0;
 
     for (const task of tasks) {
       const bookId = existingMap.get(`${task.title}::${task.category}`);
-      if (bookId) {
+      const existing = bookId ? existingBooks.find((b) => b.id === bookId) : null;
+
+      if (existing) {
         const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));
-        if (isDpiComplete(bookDir, dpi, task.pages)) {
-          skippedComplete++;
-          send('log', { message: `跳过（已导入）: ${task.fileName}` });
+
+        // Same title + category AND same content (hash matches)
+        if (existing.fileHash === task.fileHash) {
+          if (isDpiComplete(bookDir, dpi, task.pages)) {
+            skippedComplete++;
+            send('log', { message: `跳过（已导入）: ${task.fileName}` });
+            continue;
+          }
+          // Incomplete but same content → re-render to complete the pages
+          skippedIncomplete++;
+          seenHashes.add(task.fileHash);
+          toProcess.push(task);
           continue;
         }
+
+        // Same title + category but different content (hash changed) → re-render
         skippedIncomplete++;
+        seenHashes.add(task.fileHash);
+        toProcess.push(task);
+        continue;
       }
 
+      // Different title/category. Check if content already exists in DB.
       if (seenHashes.has(task.fileHash)) {
-        send('log', { message: `跳过（重复 hash）: ${task.fileName} (${task.fileHash})` });
+        // Duplicate within this batch — record path for the first occurrence
+        const extras = extraPathsByHash.get(task.fileHash) || [];
+        extras.push(task.pdfPath);
+        extraPathsByHash.set(task.fileHash, extras);
+        skippedDupBatch++;
+        send('log', { message: `跳过（本批次重复内容）: ${task.fileName}` });
         continue;
       }
 
       const duplicateIds = hashLookup.get(task.fileHash) || [];
       if (duplicateIds.length > 0) {
+        // Same content exists in DB under different title/category
         const sourceBooks = await prisma.book.findMany({
           where: { id: { in: duplicateIds } },
           select: { id: true, sourcePaths: true },
         });
         const mergedPaths = mergeSourcePaths(...sourceBooks.map((book) => book.sourcePaths), task.pdfPath);
-
         await Promise.all(sourceBooks.map((book) => prisma.book.update({
           where: { id: book.id },
           data: { fileHash: task.fileHash, sourcePaths: mergedPaths as any },
         })));
-
-        send('log', { message: `跳过（重复文件内容）: ${task.fileName} (${task.fileHash})` });
+        seenHashes.add(task.fileHash);
+        skippedDupContent++;
+        send('log', { message: `跳过（重复文件内容）: ${task.fileName} → 已记录路径到已有书籍` });
         continue;
       }
 
+      // Brand new book
       seenHashes.add(task.fileHash);
       toProcess.push(task);
     }
 
-    send('log', { message: `预检完成: 跳过已导入 ${skippedComplete} 本，需渲染 ${toProcess.length} 本（其中 ${skippedIncomplete} 本为不完整重渲）` });
+    send('log', { message: `预检完成: 已导入跳过 ${skippedComplete}，重渲 ${skippedIncomplete}，内容重复跳过 ${skippedDupContent + skippedDupBatch}，需渲染 ${toProcess.length} 本` });
 
     if (toProcess.length === 0) {
       send('done', { message: `全部完成，所有 ${tasks.length} 个 PDF 均已导入，无需处理`, count: tasks.length, elapsed: 0 });
@@ -196,7 +223,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           const bookDir = path.join(STORAGE_ABS, 'books', String(bookId));
           const dpiDir = path.join(bookDir, String(dpi));
 
-          const mergedSourcePaths = mergeSourcePaths(existing.sourcePaths, task.pdfPath);
+          const mergedSourcePaths = mergeSourcePaths(existing.sourcePaths, task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || []));
           if (!existing.fileHash || existing.fileHash !== task.fileHash) {
             await prisma.book.update({
               where: { id: bookId },
@@ -241,7 +268,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
               totalPages: task.pages,
               storagePath: '',
               fileHash: task.fileHash,
-              sourcePaths: [task.pdfPath] as any,
+              sourcePaths: [task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || [])] as any,
               tocJson: toc as any,
             },
           });
@@ -276,7 +303,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
         const allDpis = getAvailableDpis(bookDir);
         const storagePath = `/storage/books/${bookId}/`;
-        const finalSourcePaths = mergeSourcePaths(existing?.sourcePaths, task.pdfPath);
+        const finalSourcePaths = mergeSourcePaths(existing?.sourcePaths, task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || []));
         await prisma.book.update({
           where: { id: bookId },
           data: { storagePath, totalPages: task.pages, batchId, fileHash: task.fileHash, sourcePaths: finalSourcePaths as any },

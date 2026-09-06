@@ -15,6 +15,8 @@ export interface Book {
   coverPage?: number;
   totalPages: number;
   storagePath: string;
+  fileHash?: string;
+  sourcePaths?: string[];
   tocJson: TocNode[];
   attributes?: Record<string, any>;
   createdAt: string;
