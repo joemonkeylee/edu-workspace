@@ -57,10 +57,11 @@ cd /Users/{user}/工作/github/edu-workspace
 npm run build
 ```
 
-生产启动命令：
+生产构建完成后，由 launchd 启动后端和 Caddy。手动更新发布：
 
 ```bash
-npm run start:prod
+npm run build
+./scripts/start-lan-service.sh
 ```
 
 ## macOS 局域网部署

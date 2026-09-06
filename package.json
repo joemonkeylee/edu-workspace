@@ -8,17 +8,16 @@
     "client"
   ],
   "scripts": {
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "deploy:now": "./scripts/auto-deploy-main.sh",
+    "build": "npm run build:server && npm run build:client",
+    "build:prod": "npm run build:server && npm run build:client:prod",
     "dev:server": "PORT=4001 CLIENT_ORIGIN=http://localhost:5174 npm run dev --workspace=server",
     "dev:client": "npm run dev --workspace=client -- --port 5174",
-    "dev": "./scripts/dev-local.sh",
     "build:server": "npm run build --workspace=server",
     "build:client": "VITE_APP_ENV=${VITE_APP_ENV:-TEST} npm run build --workspace=client",
     "build:client:prod": "VITE_APP_ENV=PROD npm run build --workspace=client",
-    "build": "npm run build:server && npm run build:client",
-    "build:prod": "npm run build:server && npm run build:client:prod",
-    "start:server": "npm run start --workspace=server",
-    "start:prod": "npm run build && npm run start:server",
-    "deploy:now": "./scripts/auto-deploy-main.sh"
+    "start:server": "npm run start --workspace=server"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
