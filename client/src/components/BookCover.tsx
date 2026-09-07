@@ -26,7 +26,7 @@ export default function BookCover({ book, className, pageNumber }: BookCoverProp
   const onLoad = () => setLoaded(true);
 
   return (
-    <div className={`relative overflow-hidden bg-gradient-to-br from-indigo-500 to-violet-500 ${className || ''}`}>
+    <div className={`relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-400 ${className || ''}`}>
       {/* Placeholder */}
       <div
         className={`absolute inset-0 flex flex-col items-center justify-center text-white transition-opacity duration-200 ${
