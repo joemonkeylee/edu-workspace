@@ -63,7 +63,7 @@ export default function BookViewer() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('mistakes');
+  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('annotations');
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
@@ -313,7 +313,7 @@ export default function BookViewer() {
 
   const tools: { mode: ToolMode; icon: any; label: string }[] = [
     { mode: 'view', icon: MousePointer2, label: '浏览' },
-    { mode: 'note', icon: StickyNote, label: '笔记' },
+    { mode: 'note', icon: StickyNote, label: '批注' },
     { mode: 'highlight', icon: Highlighter, label: '高亮' },
     { mode: 'crop', icon: Scissors, label: '裁剪' },
   ];
@@ -582,7 +582,7 @@ export default function BookViewer() {
                   side="left"
                   isDouble={isDouble}
                   currentPage={currentPage}
-                  onNavigate={(p) => { skipClearRef.current = true; setCurrentPage(p); }}
+                  onNavigate={(p) => { setTool('view'); setShowAnnotations(true); skipClearRef.current = true; setCurrentPage(p); }}
                 />
               )}
 
@@ -669,7 +669,7 @@ export default function BookViewer() {
                   side="right"
                   isDouble={isDouble}
                   currentPage={currentPage}
-                  onNavigate={(p) => { skipClearRef.current = true; setCurrentPage(p); }}
+                  onNavigate={(p) => { setTool('view'); setShowAnnotations(true); skipClearRef.current = true; setCurrentPage(p); }}
                 />
               )}
 
@@ -698,20 +698,20 @@ export default function BookViewer() {
           <aside className="w-72 bg-white flex flex-col flex-shrink-0 border-l border-gray-200">
             <div className="flex border-b border-gray-200">
               <button
-                onClick={loadMistakes}
-                className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'mistakes' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                错题本
-              </button>
-              <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
                   rightTab === 'annotations' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 批注 ({annotations.length})
+              </button>
+              <button
+                onClick={loadMistakes}
+                className={`flex-1 py-2.5 text-sm font-medium transition ${
+                  rightTab === 'mistakes' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                错题本
               </button>
             </div>
 
@@ -733,7 +733,7 @@ export default function BookViewer() {
                   isDouble={isDouble}
                   selectedAnnotationId={selectedAnnotationId}
                   onSelect={setSelectedAnnotationId}
-                  onNavigate={(p) => { skipClearRef.current = true; setCurrentPage(p); }}
+                  onNavigate={(p) => { setTool('view'); setShowAnnotations(true); skipClearRef.current = true; setCurrentPage(p); }}
                   onDelete={removeAnnotation}
                 />
               )}
