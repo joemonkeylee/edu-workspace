@@ -561,16 +561,18 @@ export default function Home() {
               </div>
             );
           })}
-          {sortString && (
-            <button
-              type="button"
-              onClick={resetSort}
-              className="flex items-center rounded-lg border border-primary/40 bg-primary/5 px-2 py-1.5 text-xs text-primary hover:bg-primary/10"
-              title="重置排序"
-            >
-              <RotateCcw size={13} />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={resetSort}
+            className={`flex items-center rounded-lg border px-2 py-1.5 text-xs transition ${
+              sortString
+                ? 'border-primary/40 bg-primary/5 text-primary hover:bg-primary/10'
+                : 'border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300'
+            }`}
+            title="重置排序"
+          >
+            <RotateCcw size={13} />
+          </button>
           </div>
         </div>
 
