@@ -12,6 +12,7 @@ router.get('/', async (req: Request, res: Response) => {
   const grade = req.query.grade as string;
   const subject = req.query.subject as string;
   const search = req.query.search as string;
+  const sort = req.query.sort as string; // e.g. "subject:asc,grade:desc,title:asc"
   const page = parseInt(req.query.page as string, 10) || 1;
   const pageSize = parseInt(req.query.pageSize as string, 10) || 16;
 
@@ -28,13 +29,25 @@ router.get('/', async (req: Request, res: Response) => {
     ];
   }
 
+  // Build orderBy from sort param; fallback to createdAt desc
+  const orderBy: any[] = [];
+  if (sort) {
+    for (const part of sort.split(',')) {
+      const [field, dir] = part.trim().split(':');
+      if (['subject', 'grade', 'category', 'title'].includes(field) && ['asc', 'desc'].includes(dir)) {
+        orderBy.push({ [field]: dir });
+      }
+    }
+  }
+  if (orderBy.length === 0) orderBy.push({ createdAt: 'desc' });
+
   const skip = (page - 1) * pageSize;
 
   // Paginated books (without tocJson to keep payload small)
   const [books, total] = await Promise.all([
     prisma.book.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       skip,
       take: pageSize,
       select: {

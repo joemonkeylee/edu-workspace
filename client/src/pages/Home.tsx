@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check, RotateCcw, RefreshCw, Search } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical } from 'lucide-react';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
@@ -116,7 +116,53 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState(saved.category);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
+  const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title'; dir: 'asc' | 'desc' | null }[]>([
+    { field: 'subject', dir: null },
+    { field: 'grade', dir: null },
+    { field: 'category', dir: null },
+    { field: 'title', dir: null },
+  ]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [page, setPage] = useState(1);
+
+  // Build sort string from sortFields (only active ones, in order)
+  const sortString = useMemo(() => {
+    const active = sortFields.filter(s => s.dir !== null);
+    if (active.length === 0) return undefined;
+    return active.map(s => `${s.field}:${s.dir}`).join(',');
+  }, [sortFields]);
+
+  const toggleSortDir = (field: 'subject' | 'grade' | 'category' | 'title') => {
+    setSortFields(prev => prev.map(s => {
+      if (s.field === field) {
+        const next = s.dir === null ? 'asc' : s.dir === 'asc' ? 'desc' : null;
+        return { ...s, dir: next };
+      }
+      return s;
+    }));
+  };
+
+  const onDragStart = (idx: number) => setDragIndex(idx);
+  const onDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === idx) return;
+    setSortFields(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(idx, 0, moved);
+      return next;
+    });
+    setDragIndex(idx);
+  };
+  const onDragEnd = () => setDragIndex(null);
+
+  const resetSort = () => setSortFields([
+    { field: 'subject', dir: null },
+    { field: 'grade', dir: null },
+    { field: 'category', dir: null },
+    { field: 'title', dir: null },
+  ]);
   const [pageInput, setPageInput] = useState('1');
 
   // Edit mode state
@@ -154,10 +200,11 @@ export default function Home() {
       grade: selectedGrade || undefined,
       subject: selectedSubject || undefined,
       search: debouncedSearch || undefined,
+      sort: sortString,
       page,
       pageSize: PAGE_SIZE,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch]);
+  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -173,7 +220,7 @@ export default function Home() {
   useEffect(() => {
     setPage(1);
     setPageInput('1');
-  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch]);
+  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -311,6 +358,7 @@ export default function Home() {
         grade: selectedGrade || undefined,
         subject: selectedSubject || undefined,
         search: debouncedSearch || undefined,
+        sort: sortString,
         page: safePage,
         pageSize: PAGE_SIZE,
       });
@@ -373,7 +421,7 @@ export default function Home() {
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
 
-  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory);
+  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory || sortString);
 
   const resetFilters = () => {
     const reset = () => {
@@ -381,6 +429,7 @@ export default function Home() {
       setSelectedGrade('');
       setSelectedCategory('');
       setSearch('');
+      resetSort();
     };
     if (editMode && hasUnsavedChanges) {
       setPromptAction('filter');
@@ -397,6 +446,7 @@ export default function Home() {
       grade: selectedGrade || undefined,
       subject: selectedSubject || undefined,
       search: debouncedSearch || undefined,
+      sort: sortString,
       page: safePage,
       pageSize: PAGE_SIZE,
     });
@@ -492,6 +542,53 @@ export default function Home() {
           >
             {editMode ? <><Check size={16} /> 完成编辑</> : <><Edit3 size={16} /> 启用编辑</>}
           </button>
+        </div>
+
+        {/* Row 2: sort controls (draggable, 3-state toggle) */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400 mr-1">排序</span>
+          {sortFields.map((s, idx) => {
+            const labels: Record<string, string> = { subject: '学科', grade: '学期', category: '分类', title: '关键字' };
+            const hasSort = s.dir !== null;
+            const activeSorts = sortFields.filter(sf => sf.dir !== null);
+            const order = hasSort ? activeSorts.findIndex(sf => sf.field === s.field) + 1 : 0;
+            return (
+              <div
+                key={s.field}
+                draggable
+                onDragStart={() => onDragStart(idx)}
+                onDragOver={(e) => onDragOver(e, idx)}
+                onDragEnd={onDragEnd}
+                className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs cursor-grab transition ${
+                  hasSort
+                    ? 'border-primary/40 bg-primary/5 text-primary'
+                    : 'border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300'
+                } ${dragIndex === idx ? 'opacity-50' : ''}`}
+              >
+                <GripVertical size={12} className="text-gray-300" />
+                <span className={hasSort ? 'font-medium' : ''}>{labels[s.field]}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleSortDir(s.field)}
+                  className="ml-0.5 flex h-5 w-5 items-center justify-center rounded hover:bg-primary/10"
+                  title={hasSort ? `当前：${s.dir === 'asc' ? '升序' : '降序'}，点击切换` : '点击启用排序'}
+                >
+                  {s.dir === null ? (
+                    <Minus size={12} />
+                  ) : s.dir === 'asc' ? (
+                    <ArrowUp size={12} />
+                  ) : (
+                    <ArrowDown size={12} />
+                  )}
+                </button>
+                {order > 0 && (
+                  <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold">
+                    {order}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {loading ? (
