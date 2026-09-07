@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical } from 'lucide-react';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
@@ -523,31 +523,11 @@ export default function Home() {
             {hasActiveFilters ? <RotateCcw size={15} /> : <RefreshCw size={15} />}
           </button>
           <div className="flex-1" />
-          {editMode && (
-            <button
-              onClick={deleteSelected}
-              disabled={selectedIds.size === 0}
-              className="flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Trash2 size={15} /> 删除选中
-            </button>
-          )}
-          <button
-            onClick={editMode ? requestExitEdit : () => setEditMode(true)}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
-              editMode
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {editMode ? <><Check size={16} /> 完成编辑</> : <><Edit3 size={16} /> 启用编辑</>}
-          </button>
-        </div>
 
-        {/* Row 2: sort controls (draggable, 3-state toggle) */}
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-400 mr-1">排序</span>
-          {sortFields.map((s, idx) => {
+          {/* Sort controls (draggable, 3-state toggle) */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-gray-400">排序</span>
+            {sortFields.map((s, idx) => {
             const labels: Record<string, string> = { subject: '学科', grade: '学期', category: '分类', title: '关键字' };
             const hasSort = s.dir !== null;
             const activeSorts = sortFields.filter(sf => sf.dir !== null);
@@ -589,6 +569,7 @@ export default function Home() {
               </div>
             );
           })}
+          </div>
         </div>
 
         {loading ? (
@@ -717,10 +698,31 @@ export default function Home() {
             {editMode && (
               <div className="flex items-center gap-2">
                 <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
-                <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">全部不选</button>
+                <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
                 <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
                 <span className="text-xs text-gray-400">已选 {selectedIds.size}</span>
+                <button
+                  onClick={deleteSelected}
+                  disabled={selectedIds.size === 0}
+                  className="rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  删除选中
+                </button>
+                <button
+                  onClick={requestExitEdit}
+                  className="rounded-md border border-green-300 bg-green-50 px-2.5 py-1 text-xs text-green-600 hover:bg-green-100"
+                >
+                  完成编辑
+                </button>
               </div>
+            )}
+            {!editMode && (
+              <button
+                onClick={() => setEditMode(true)}
+                className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                启用编辑
+              </button>
             )}
             <div className="flex-1" />
             <div className="flex items-center gap-1.5">
