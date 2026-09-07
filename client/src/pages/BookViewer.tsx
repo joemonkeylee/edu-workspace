@@ -68,6 +68,11 @@ export default function BookViewer() {
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
 
+  // Clear annotation selection when page changes
+  useEffect(() => {
+    setSelectedAnnotationId(null);
+  }, [currentPage]);
+
   const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
   const [rotation, setRotation] = useState(0); // degrees, negative = CCW
