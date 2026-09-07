@@ -48,11 +48,11 @@ function ClearableSelect({
   );
   const totalCount = opts.reduce((sum, o) => sum + (o.count || 0), 0);
   return (
-    <div className="relative w-44">
+    <div className="relative w-36">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-1.5 pl-2.5 pr-8 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <option value="">{totalCount > 0 ? `${placeholder} (${totalCount})` : placeholder}</option>
         {opts.map((opt) => (
@@ -61,12 +61,12 @@ function ClearableSelect({
           </option>
         ))}
       </select>
-      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">▾</span>
+      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">▾</span>
       {value && (
         <button
           type="button"
           onClick={() => onChange('')}
-          className="absolute right-7 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
+          className="absolute right-6 top-1/2 -translate-y-1/2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
           title="清除"
         >
           <X size={10} strokeWidth={3} />
@@ -488,8 +488,8 @@ export default function Home() {
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
-          <div className="relative w-48">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+          <div className="relative w-40">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
             <input
               type="text"
               value={search}
@@ -497,7 +497,7 @@ export default function Home() {
               onBlur={() => { if (search !== debouncedSearch) setDebouncedSearch(search); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (search !== debouncedSearch) setDebouncedSearch(search); } }}
               placeholder="关键字..."
-              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-7 pr-3 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {search && (
               <button
@@ -513,14 +513,14 @@ export default function Home() {
           <button
             type="button"
             onClick={hasActiveFilters ? resetFilters : refreshBooks}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition ${
+            className={`flex items-center rounded-lg border px-2 py-1.5 text-xs transition ${
               hasActiveFilters
                 ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10'
                 : 'border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary'
             }`}
             title={hasActiveFilters ? '重置所有筛选条件' : '刷新列表'}
           >
-            {hasActiveFilters ? <RotateCcw size={15} /> : <RefreshCw size={15} />}
+            {hasActiveFilters ? <RotateCcw size={13} /> : <RefreshCw size={13} />}
           </button>
           <div className="flex-1" />
 
@@ -569,6 +569,16 @@ export default function Home() {
               </div>
             );
           })}
+          {sortString && (
+            <button
+              type="button"
+              onClick={resetSort}
+              className="flex items-center rounded-lg border border-primary/40 bg-primary/5 px-2 py-1.5 text-xs text-primary hover:bg-primary/10"
+              title="重置排序"
+            >
+              <RotateCcw size={13} />
+            </button>
+          )}
           </div>
         </div>
 
