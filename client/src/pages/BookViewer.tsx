@@ -66,6 +66,7 @@ export default function BookViewer() {
   const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('mistakes');
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
 
   const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
@@ -555,12 +556,14 @@ export default function BookViewer() {
         {/* Center - page image + annotation side panels */}
         <main ref={mainRef} className="flex-1 overflow-auto">
           <div className="min-h-full flex items-center justify-center p-4">
-            <div className="flex items-center justify-center gap-2">
+            <div className="relative flex items-center justify-center gap-2" id="annotation-container">
               {/* Left annotation panel (double page mode: left page annotations) */}
               {showAnnotations && isDouble && tool === 'view' && leftPageAnnotations.length > 0 && (
                 <AnnotationSidePanel
                   annotations={leftPageAnnotations}
                   colorIndex={annColorIndex}
+                  selectedAnnotationId={selectedAnnotationId}
+                  onSelect={setSelectedAnnotationId}
                   side="left"
                   onNavigate={(p) => setCurrentPage(p)}
                 />
@@ -605,6 +608,8 @@ export default function BookViewer() {
                         annotations={annotations}
                         showAnnotations={showAnnotations}
                         colorIndex={annColorIndex}
+                        selectedAnnotationId={selectedAnnotationId}
+                        onAnnotationClick={setSelectedAnnotationId}
                         onSaveAnnotation={handleSaveAnnotation}
                       />
                       <PageCanvas
@@ -615,6 +620,8 @@ export default function BookViewer() {
                         annotations={annotations}
                         showAnnotations={showAnnotations}
                         colorIndex={annColorIndex}
+                        selectedAnnotationId={selectedAnnotationId}
+                        onAnnotationClick={setSelectedAnnotationId}
                         onSaveAnnotation={handleSaveAnnotation}
                       />
                     </>
@@ -627,6 +634,8 @@ export default function BookViewer() {
                       annotations={annotations}
                       showAnnotations={showAnnotations}
                       colorIndex={annColorIndex}
+                      selectedAnnotationId={selectedAnnotationId}
+                      onAnnotationClick={setSelectedAnnotationId}
                       onSaveAnnotation={handleSaveAnnotation}
                     />
                   )}
@@ -638,10 +647,21 @@ export default function BookViewer() {
                 <AnnotationSidePanel
                   annotations={isDouble ? rightPageAnnotations : leftPageAnnotations}
                   colorIndex={annColorIndex}
+                  selectedAnnotationId={selectedAnnotationId}
+                  onSelect={setSelectedAnnotationId}
                   side="right"
                   onNavigate={(p) => setCurrentPage(p)}
                 />
               )}
+
+              {/* Dashed connector line between selected annotation marker and side panel card */}
+              {selectedAnnotationId !== null && (() => {
+                const selectedAnn = annotations.find(a => a.id === selectedAnnotationId);
+                if (!selectedAnn) return null;
+                const ci = annColorIndex.get(selectedAnn.id) ?? 0;
+                const color = getAnnotationColor(ci);
+                return <DashedConnector key={selectedAnnotationId} colorHex={color.hex} />;
+              })()}
             </div>
           </div>
         </main>
@@ -769,11 +789,15 @@ function AnnotationList({
 function AnnotationSidePanel({
   annotations,
   colorIndex,
+  selectedAnnotationId,
+  onSelect,
   side,
   onNavigate,
 }: {
   annotations: any[];
   colorIndex: Map<number, number>;
+  selectedAnnotationId: number | null;
+  onSelect: (id: number | null) => void;
   side: 'left' | 'right';
   onNavigate: (page: number) => void;
 }) {
@@ -783,11 +807,21 @@ function AnnotationSidePanel({
         {annotations.map((ann) => {
           const ci = colorIndex.get(ann.id) ?? 0;
           const color = getAnnotationColor(ci);
+          const isSelected = selectedAnnotationId === ann.id;
           return (
             <div
               key={ann.id}
-              onClick={() => onNavigate(ann.pageNumber)}
-              className={`rounded-lg border ${color.border} ${color.bg} p-2.5 cursor-pointer hover:shadow-md transition shadow-sm`}
+              data-annotation-id={ann.id}
+              onClick={() => {
+                if (isSelected) { onSelect(null); return; }
+                onSelect(ann.id);
+                if (ann.pageNumber !== undefined) onNavigate(ann.pageNumber);
+              }}
+              className={`rounded-lg border p-2.5 cursor-pointer transition shadow-sm ${
+                isSelected
+                  ? `${color.border} ${color.bg} ring-2 ring-offset-1 shadow-md`
+                  : `${color.border} ${color.bg} hover:shadow-md`
+              }`}
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <span
@@ -808,6 +842,59 @@ function AnnotationSidePanel({
         })}
       </div>
     </div>
+  );
+}
+
+/** Draws a dashed connector line between the selected annotation's canvas marker
+ *  and its corresponding side panel card. Uses an SVG overlay positioned
+ *  absolutely over the annotation container. */
+function DashedConnector({ colorHex }: { colorHex: string }) {
+  const [line, setLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+
+  useEffect(() => {
+    const container = document.getElementById('annotation-container');
+    if (!container) return;
+
+    // Find the selected card (has ring-2 class)
+    const selectedCardEl = Array.from(container.querySelectorAll('[data-annotation-id]'))
+      .find((c) => c.classList.contains('ring-2'));
+    const cardRect = selectedCardEl ? selectedCardEl.getBoundingClientRect() : null;
+
+    // Find the first canvas (the page)
+    const canvas = container.querySelector('canvas') as HTMLCanvasElement | null;
+    const markerRect = canvas ? canvas.getBoundingClientRect() : null;
+
+    if (markerRect && cardRect && container) {
+      const containerRect = container.getBoundingClientRect();
+      const cardOnRight = cardRect.left > markerRect.left;
+      const x1 = cardOnRight ? markerRect.right - containerRect.left : markerRect.left - containerRect.left;
+      const y1 = markerRect.top + markerRect.height / 2 - containerRect.top;
+      const x2 = cardOnRight ? cardRect.left - containerRect.left : cardRect.right - containerRect.left;
+      const y2 = cardRect.top + cardRect.height / 2 - containerRect.top;
+      setLine({ x1, y1, x2, y2 });
+    }
+  }, []);
+
+  if (!line) return null;
+
+  return (
+    <svg
+      className="absolute inset-0 pointer-events-none z-50"
+      style={{ width: '100%', height: '100%' }}
+    >
+      <line
+        x1={line.x1}
+        y1={line.y1}
+        x2={line.x2}
+        y2={line.y2}
+        stroke={colorHex}
+        strokeWidth={2}
+        strokeDasharray="6 4"
+        opacity={0.7}
+      />
+      <circle cx={line.x1} cy={line.y1} r={4} fill={colorHex} opacity={0.7} />
+      <circle cx={line.x2} cy={line.y2} r={4} fill={colorHex} opacity={0.7} />
+    </svg>
   );
 }
 

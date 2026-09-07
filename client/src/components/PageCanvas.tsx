@@ -11,6 +11,8 @@ interface PageCanvasProps {
   annotations: Annotation[];
   showAnnotations: boolean;
   colorIndex: Map<number, number>;
+  selectedAnnotationId: number | null;
+  onAnnotationClick: (id: number | null) => void;
   onSaveAnnotation: (data: { type: string; contentJson: any }) => void;
 }
 
@@ -22,6 +24,8 @@ export default function PageCanvas({
   annotations,
   showAnnotations = true,
   colorIndex,
+  selectedAnnotationId,
+  onAnnotationClick,
   onSaveAnnotation,
 }: PageCanvasProps) {
   const imgRef = useRef<HTMLImageElement>(null);
@@ -51,34 +55,42 @@ export default function PageCanvas({
       const c = ann.contentJson;
       const ci = colorIndex.get(ann.id) ?? 0;
       const color = ANNOTATION_COLORS[ci % ANNOTATION_COLORS.length];
+      const isSelected = selectedAnnotationId === ann.id;
+      const isDimmed = selectedAnnotationId !== null && !isSelected;
+      const alpha = isDimmed ? '30' : isSelected ? 'ff' : 'cc';
       if (ann.type === 'highlight') {
-        // Use the assigned color with transparency
-        const fillColor = color.hex + '40'; // ~25% opacity
-        ctx.fillStyle = fillColor;
+        ctx.fillStyle = color.hex + (isDimmed ? '15' : '40');
         ctx.fillRect(c.x * canvas.width, c.y * canvas.height, c.w * canvas.width, c.h * canvas.height);
-        ctx.strokeStyle = color.hex;
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = color.hex + alpha;
+        ctx.lineWidth = isSelected ? 3 : 1.5;
         ctx.setLineDash([4, 3]);
         ctx.strokeRect(c.x * canvas.width, c.y * canvas.height, c.w * canvas.width, c.h * canvas.height);
         ctx.setLineDash([]);
       } else if (ann.type === 'note') {
-        ctx.fillStyle = color.hex;
+        const radius = isSelected ? 13 : 10;
+        ctx.fillStyle = color.hex + alpha;
         ctx.beginPath();
-        ctx.arc(c.x * canvas.width, c.y * canvas.height, 10, 0, Math.PI * 2);
+        ctx.arc(c.x * canvas.width, c.y * canvas.height, radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
-        // Draw index number
+        if (isSelected) {
+          ctx.strokeStyle = color.hex;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(c.x * canvas.width, c.y * canvas.height, radius + 4, 0, Math.PI * 2);
+          ctx.stroke();
+        }
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(String(ci + 1), c.x * canvas.width, c.y * canvas.height);
       } else if (ann.type === 'crop') {
-        ctx.strokeStyle = color.hex;
+        ctx.strokeStyle = color.hex + alpha;
         ctx.setLineDash([6, 4]);
-        ctx.lineWidth = 2;
+        ctx.lineWidth = isSelected ? 3 : 2;
         ctx.strokeRect(c.x * canvas.width, c.y * canvas.height, c.w * canvas.width, c.h * canvas.height);
         ctx.setLineDash([]);
       }
@@ -91,7 +103,7 @@ export default function PageCanvas({
       ctx.fillStyle = 'rgba(37, 99, 235, 0.1)';
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     }
-  }, [annotations, pageNumber, drawing, rect, showAnnotations, colorIndex]);
+  }, [annotations, pageNumber, drawing, rect, showAnnotations, colorIndex, selectedAnnotationId]);
 
   useEffect(() => {
     render();
@@ -116,7 +128,34 @@ export default function PageCanvas({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (tool === 'view') return;
+    if (tool === 'view') {
+      // Click on annotation marker to select it
+      const pos = getPos(e);
+      for (const ann of annotations) {
+        if (ann.pageNumber !== pageNumber || !showAnnotations) continue;
+        const c = ann.contentJson;
+        if (ann.type === 'note') {
+          const dx = pos.x - c.x * canvasRef.current!.width;
+          const dy = pos.y - c.y * canvasRef.current!.height;
+          if (Math.sqrt(dx * dx + dy * dy) <= 14) {
+            onAnnotationClick(selectedAnnotationId === ann.id ? null : ann.id);
+            return;
+          }
+        } else if (ann.type === 'highlight' || ann.type === 'crop') {
+          const ax = c.x * canvasRef.current!.width;
+          const ay = c.y * canvasRef.current!.height;
+          const aw = c.w * canvasRef.current!.width;
+          const ah = c.h * canvasRef.current!.height;
+          if (pos.x >= ax && pos.x <= ax + aw && pos.y >= ay && pos.y <= ay + ah) {
+            onAnnotationClick(selectedAnnotationId === ann.id ? null : ann.id);
+            return;
+          }
+        }
+      }
+      // Click on empty area — deselect
+      if (selectedAnnotationId !== null) onAnnotationClick(null);
+      return;
+    }
     const pos = getPos(e);
     if (tool === 'note') {
       setNoteInput(pos);
