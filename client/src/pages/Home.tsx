@@ -525,6 +525,7 @@ export default function Home() {
           >
             {hasActiveFilters ? <RotateCcw size={13} /> : <RefreshCw size={13} />}
           </button>
+          <div className="flex-1" />
 
           {/* Sort controls (draggable, 3-state toggle) */}
           <span className="text-xs text-gray-400 mr-0.5">排序</span>
@@ -574,7 +575,6 @@ export default function Home() {
           >
             <RotateCcw size={13} />
           </button>
-          <div className="flex-1" />
         </div>
 
         {loading ? (
