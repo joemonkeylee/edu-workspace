@@ -539,20 +539,17 @@ export default function Home() {
                 onDragStart={() => onDragStart(idx)}
                 onDragOver={(e) => onDragOver(e, idx)}
                 onDragEnd={onDragEnd}
+                onClick={() => toggleSortDir(s.field)}
                 className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs cursor-grab transition ${
                   hasSort
                     ? 'border-primary/40 bg-primary/5 text-primary'
                     : 'border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300'
                 } ${dragIndex === idx ? 'opacity-50' : ''}`}
+                title={hasSort ? `当前：${s.dir === 'asc' ? '升序' : '降序'}，点击切换` : '点击启用排序'}
               >
-                <GripVertical size={12} className="text-gray-300" />
-                <span className={hasSort ? 'font-medium' : ''}>{labels[s.field]}</span>
-                <button
-                  type="button"
-                  onClick={() => toggleSortDir(s.field)}
-                  className="ml-0.5 flex h-5 w-5 items-center justify-center rounded hover:bg-primary/10"
-                  title={hasSort ? `当前：${s.dir === 'asc' ? '升序' : '降序'}，点击切换` : '点击启用排序'}
-                >
+                <GripVertical size={12} className="text-gray-300 pointer-events-none" />
+                <span className={hasSort ? 'font-medium' : '' + ' pointer-events-none'}>{labels[s.field]}</span>
+                <span className="ml-0.5 flex h-5 w-5 items-center justify-center pointer-events-none">
                   {s.dir === null ? (
                     <Minus size={12} />
                   ) : s.dir === 'asc' ? (
@@ -560,9 +557,9 @@ export default function Home() {
                   ) : (
                     <ArrowDown size={12} />
                   )}
-                </button>
+                </span>
                 {order > 0 && (
-                  <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold">
+                  <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold pointer-events-none">
                     {order}
                   </span>
                 )}
