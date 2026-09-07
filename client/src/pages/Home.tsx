@@ -558,11 +558,6 @@ export default function Home() {
                     <ArrowDown size={12} />
                   )}
                 </span>
-                {order > 0 && (
-                  <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-bold pointer-events-none">
-                    {order}
-                  </span>
-                )}
               </div>
             );
           })}
