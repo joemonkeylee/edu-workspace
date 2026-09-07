@@ -88,9 +88,44 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
+  // Throttled SSE sender: coalesce progress events and buffer logs to 100ms flushes
+  let pendingLogs: { message: string }[] = [];
+  let lastProgress: any = null;
+  let flushTimer: NodeJS.Timeout | null = null;
+
+  const flushPending = () => {
+    flushTimer = null;
+    if (pendingLogs.length > 0) {
+      const batch = pendingLogs;
+      pendingLogs = [];
+      for (const log of batch) {
+        res.write(`event: log\n`);
+        res.write(`data: ${JSON.stringify(log)}\n\n`);
+      }
+    }
+    if (lastProgress) {
+      res.write(`event: progress\n`);
+      res.write(`data: ${JSON.stringify(lastProgress)}\n\n`);
+      lastProgress = null;
+    }
+  };
+
   const send = (type: string, data: any) => {
-    res.write(`event: ${type}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (type === 'error' || type === 'done') {
+      if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+      flushPending();
+      res.write(`event: ${type}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      return;
+    }
+    if (type === 'progress') {
+      lastProgress = data;
+    } else {
+      pendingLogs.push(data);
+    }
+    if (!flushTimer) {
+      flushTimer = setTimeout(flushPending, 100);
+    }
   };
 
   const fmtTime = (s: number) => {
@@ -136,19 +171,35 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
     send('log', { message: `扫描完成，找到 ${pdfFiles.length} 个 PDF 文件，目标 DPI=${dpi}，并发数=${concurrencyState.value}` });
 
-    // Phase 1: collect PDF info (parallelized — pdfinfo is quick)
+    // Phase 1: collect PDF info (async — pdfinfo and hash are non-blocking)
     const tasks: PdfTask[] = [];
+    let phase1Done = 0;
+    const phase1Total = pdfFiles.length;
+    const phase1Interval = Math.max(10, Math.floor(phase1Total / 20));
+    const phase1Start = Date.now();
     await runWithDynamicConcurrency(pdfFiles, () => Math.min(maxConcurrency, concurrencyState.value * 2), async (pdfPath: string) => {
       const fileName = path.basename(pdfPath);
       try {
-        const info = getPdfInfo(pdfPath);
+        const info = await getPdfInfo(pdfPath);
         const pdfCategory = explicitCategory || path.basename(path.dirname(pdfPath)) || '未分类';
         const title = path.basename(pdfPath, '.pdf') || info.title;
         const { grade, subject } = parseGradeSubjectFromPath(pdfPath);
-        const fileHash = hashFile(pdfPath);
+        const fileHash = await hashFile(pdfPath);
         tasks.push({ pdfPath, fileName, category: pdfCategory, title, pages: info.pages, fileHash, grade, subject });
       } catch {
         send('log', { message: `跳过（无法读取）: ${fileName}` });
+      }
+      phase1Done++;
+      if (phase1Done % phase1Interval === 0 || phase1Done === phase1Total) {
+        const elapsed = (Date.now() - phase1Start) / 1000;
+        const rate = phase1Done / elapsed;
+        const remaining = (phase1Total - phase1Done) / rate;
+        send('progress', {
+          phase: 1,
+          current: phase1Done,
+          total: phase1Total,
+          message: `分析中: ${phase1Done}/${phase1Total} 剩余 ${fmtTime(remaining)}`,
+        });
       }
     });
 
@@ -249,6 +300,12 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       send('done', { message: `全部完成，所有 ${tasks.length} 个 PDF 均已导入，无需处理`, count: tasks.length, elapsed: 0 });
       return res.end();
     }
+
+    // Reset AUTO_INCREMENT to max(id)+1 so re-imports continue from current max
+    const maxIdResult = await prisma.book.aggregate({ _max: { id: true } });
+    const nextAutoInc = (maxIdResult._max.id ?? 0) + 1;
+    await prisma.$executeRawUnsafe(`ALTER TABLE \`Book\` AUTO_INCREMENT = ${nextAutoInc}`);
+    send('log', { message: `自增 ID 重置为 ${nextAutoInc}` });
 
     const pagesToProcess = toProcess.reduce((s, t) => s + t.pages, 0);
     const secPerPage = 0.3 * (dpi / 150);
@@ -382,6 +439,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   } catch (err: any) {
     send('error', { message: `系统错误: ${err.message}` });
   } finally {
+    if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
     scanConcurrency.delete(taskId);
     res.end();
   }

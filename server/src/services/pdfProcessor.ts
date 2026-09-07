@@ -1,7 +1,10 @@
-import { execSync, spawn } from 'child_process';
+import { execFile, spawn } from 'child_process';
+import { promisify } from 'util';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+
+const execFileAsync = promisify(execFile);
 
 const POPPLER_CANDIDATES = [
   '/opt/homebrew/opt/poppler/bin',
@@ -34,10 +37,10 @@ export interface TocNode {
   children?: TocNode[];
 }
 
-export function getPdfInfo(filePath: string): PdfInfo {
-  const output = execSync(`pdfinfo "${filePath}"`, { encoding: 'utf-8', env: SHELL_ENV });
+export async function getPdfInfo(filePath: string): Promise<PdfInfo> {
+  const { stdout } = await execFileAsync('pdfinfo', [filePath], { encoding: 'utf-8', env: SHELL_ENV, maxBuffer: 1024 * 1024 });
   const info: Record<string, string> = {};
-  for (const line of output.split('\n')) {
+  for (const line of stdout.split('\n')) {
     const idx = line.indexOf(':');
     if (idx > 0) {
       info[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
@@ -260,8 +263,14 @@ export function getBestDpiPath(bookDir: string): { dpi: number; dir: string } | 
   return { dpi: dpis[0], dir: path.join(bookDir, String(dpis[0])) };
 }
 
-export function hashFile(filePath: string): string {
-  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+export async function hashFile(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    stream.on('data', (data) => hash.update(data));
+    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('error', reject);
+  });
 }
 
 export function normalizeSourcePaths(value: unknown): string[] {
