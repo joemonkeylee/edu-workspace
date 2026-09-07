@@ -485,8 +485,9 @@ export default function Home() {
       </header>
 
       <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
-        {/* Row 1: filters + edit toggle */}
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        {/* Row 1: filters + sort + edit toggle */}
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-gray-400 mr-1">筛选</span>
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
@@ -524,12 +525,11 @@ export default function Home() {
           >
             {hasActiveFilters ? <RotateCcw size={13} /> : <RefreshCw size={13} />}
           </button>
-          <div className="flex-1" />
+          <span className="text-gray-300 text-xs mx-1">|</span>
 
           {/* Sort controls (draggable, 3-state toggle) */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-gray-400">排序</span>
-            {sortFields.map((s, idx) => {
+          <span className="text-xs text-gray-400 mr-0.5">排序</span>
+          {sortFields.map((s, idx) => {
             const labels: Record<string, string> = { subject: '学科', grade: '学期', category: '分类', title: '关键字' };
             const hasSort = s.dir !== null;
             const activeSorts = sortFields.filter(sf => sf.dir !== null);
@@ -575,7 +575,17 @@ export default function Home() {
           >
             <RotateCcw size={13} />
           </button>
-          </div>
+          <div className="flex-1" />
+          <button
+            onClick={editMode ? requestExitEdit : () => setEditMode(true)}
+            className={`flex items-center rounded-lg border px-2 py-1.5 text-xs transition ${
+              editMode
+                ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
+                : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            {editMode ? '完成编辑' : '启用编辑'}
+          </button>
         </div>
 
         {loading ? (
@@ -707,33 +717,24 @@ export default function Home() {
         {/* Pager (below the list): select actions on left, pager on right */}
         {total > 0 && (
           <div className="mt-5 flex items-center gap-3">
-            <button
-              onClick={editMode ? requestExitEdit : () => setEditMode(true)}
-              className={`rounded-md border px-2.5 py-1 text-xs ${
-                editMode
-                  ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
-                  : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {editMode ? '完成编辑' : '启用编辑'}
-            </button>
+            {/* Edit actions: centered */}
             {editMode && (
-              <div className="flex items-center gap-2">
-                <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
-                <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
-                <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
+              <div className="flex items-center gap-2 mx-auto">
+                <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
+                <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
+                <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
                 <span className="text-xs text-gray-400">已选 {selectedIds.size}</span>
                 <button
                   onClick={deleteSelected}
                   disabled={selectedIds.size === 0}
-                  className="rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   删除选中
                 </button>
               </div>
             )}
-            <div className="flex-1" />
-            <div className="flex items-center gap-1.5">
+            {/* Pager: right */}
+            <div className="flex items-center gap-1.5 ml-auto">
               <button onClick={() => goPage(1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">第一页</button>
               <button onClick={() => goPage(safePage - 1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronLeft size={14} /></button>
               <input
