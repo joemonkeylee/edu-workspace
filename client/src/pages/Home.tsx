@@ -695,6 +695,16 @@ export default function Home() {
         {/* Pager (below the list): select actions on left, pager on right */}
         {!loading && total > 0 && (
           <div className="mt-5 flex items-center gap-3">
+            <button
+              onClick={editMode ? requestExitEdit : () => setEditMode(true)}
+              className={`rounded-md border px-2.5 py-1 text-xs ${
+                editMode
+                  ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
+                  : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {editMode ? '完成编辑' : '启用编辑'}
+            </button>
             {editMode && (
               <div className="flex items-center gap-2">
                 <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
@@ -708,21 +718,7 @@ export default function Home() {
                 >
                   删除选中
                 </button>
-                <button
-                  onClick={requestExitEdit}
-                  className="rounded-md border border-green-300 bg-green-50 px-2.5 py-1 text-xs text-green-600 hover:bg-green-100"
-                >
-                  完成编辑
-                </button>
               </div>
-            )}
-            {!editMode && (
-              <button
-                onClick={() => setEditMode(true)}
-                className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
-              >
-                启用编辑
-              </button>
             )}
             <div className="flex-1" />
             <div className="flex items-center gap-1.5">
