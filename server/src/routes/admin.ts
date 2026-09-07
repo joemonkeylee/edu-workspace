@@ -88,43 +88,50 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  // Throttled SSE sender: coalesce progress events and buffer logs to 100ms flushes
+  // Throttled SSE sender: progress every 100ms (smooth), logs batched every 250ms
   let pendingLogs: { message: string }[] = [];
   let lastProgress: any = null;
-  let flushTimer: NodeJS.Timeout | null = null;
+  let logTimer: NodeJS.Timeout | null = null;
+  let progressTimer: NodeJS.Timeout | null = null;
 
-  const flushPending = () => {
-    flushTimer = null;
-    if (pendingLogs.length > 0) {
-      const batch = pendingLogs;
-      pendingLogs = [];
-      for (const log of batch) {
-        res.write(`event: log\n`);
-        res.write(`data: ${JSON.stringify(log)}\n\n`);
-      }
-    }
-    if (lastProgress) {
-      res.write(`event: progress\n`);
-      res.write(`data: ${JSON.stringify(lastProgress)}\n\n`);
-      lastProgress = null;
-    }
+  const flushLogs = () => {
+    logTimer = null;
+    if (pendingLogs.length === 0) return;
+    const batch = pendingLogs;
+    pendingLogs = [];
+    // Send all logs in one SSE message as a batch array
+    res.write(`event: logBatch\n`);
+    res.write(`data: ${JSON.stringify({ messages: batch.map(l => l.message) })}\n\n`);
+  };
+
+  const flushProgress = () => {
+    progressTimer = null;
+    if (!lastProgress) return;
+    res.write(`event: progress\n`);
+    res.write(`data: ${JSON.stringify(lastProgress)}\n\n`);
+    lastProgress = null;
   };
 
   const send = (type: string, data: any) => {
     if (type === 'error' || type === 'done') {
-      if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
-      flushPending();
+      if (logTimer) { clearTimeout(logTimer); logTimer = null; }
+      if (progressTimer) { clearTimeout(progressTimer); progressTimer = null; }
+      flushLogs();
+      flushProgress();
       res.write(`event: ${type}\n`);
       res.write(`data: ${JSON.stringify(data)}\n\n`);
       return;
     }
     if (type === 'progress') {
       lastProgress = data;
+      if (!progressTimer) {
+        progressTimer = setTimeout(flushProgress, 100);
+      }
     } else {
       pendingLogs.push(data);
-    }
-    if (!flushTimer) {
-      flushTimer = setTimeout(flushPending, 100);
+      if (!logTimer) {
+        logTimer = setTimeout(flushLogs, 250);
+      }
     }
   };
 
@@ -439,7 +446,8 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   } catch (err: any) {
     send('error', { message: `系统错误: ${err.message}` });
   } finally {
-    if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+    if (logTimer) { clearTimeout(logTimer); logTimer = null; }
+    if (progressTimer) { clearTimeout(progressTimer); progressTimer = null; }
     scanConcurrency.delete(taskId);
     res.end();
   }

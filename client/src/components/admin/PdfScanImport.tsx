@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { getScanCapacity, scanPdfUrl, updateScanConcurrency } from '../../api/client';
 import { useStore } from '../../store/useStore';
 import { Scan, StopCircle, FolderOpen, Clock, Layers } from 'lucide-react';
 
 interface ProgressData {
+  phase?: number;
   current: number;
   total: number;
   overallCurrent?: number;
@@ -53,6 +54,41 @@ export default function PdfScanImport() {
   const logEndRef = useRef<HTMLDivElement>(null);
   const { fetchBooks } = useStore();
 
+  // Batch log updates into a single state change per frame
+  const logBufferRef = useRef<string[]>([]);
+  const logRafRef = useRef<number | null>(null);
+  const flushLogs = useCallback(() => {
+    logRafRef.current = null;
+    if (logBufferRef.current.length === 0) return;
+    const batch = logBufferRef.current;
+    logBufferRef.current = [];
+    setLogs((prev) => [...prev, ...batch]);
+  }, []);
+  const appendLog = useCallback((messages: string[]) => {
+    logBufferRef.current.push(...messages);
+    if (logRafRef.current === null) {
+      logRafRef.current = requestAnimationFrame(flushLogs);
+    }
+  }, [flushLogs]);
+
+  // Throttled scroll-to-bottom — only scroll when user is already at the bottom
+  const scrollRafRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (scrollRafRef.current !== null) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const el = logEndRef.current;
+      if (!el) return;
+      const parent = el.parentElement;
+      if (!parent) return;
+      // Only auto-scroll if user is near the bottom (within 80px)
+      const isNearBottom = parent.scrollHeight - parent.scrollTop - parent.clientHeight < 80;
+      if (isNearBottom) {
+        el.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }
+    });
+  }, [logs]);
+
   useEffect(() => {
     getScanCapacity().then(({ maxConcurrency: max }) => {
       setMaxConcurrency(max);
@@ -66,6 +102,7 @@ export default function PdfScanImport() {
     setScanning(true);
     setLogs([]);
     setProgress(null);
+    logBufferRef.current = [];
 
     const taskId = createTaskId();
     setScanTaskId(taskId);
@@ -73,18 +110,32 @@ export default function PdfScanImport() {
     const es = new EventSource(url);
     esRef.current = es;
 
+    es.addEventListener('logBatch', (e: MessageEvent) => {
+      const data = JSON.parse(e.data);
+      if (Array.isArray(data.messages)) {
+        appendLog(data.messages);
+      }
+    });
     es.addEventListener('log', (e: MessageEvent) => {
       const data = JSON.parse(e.data);
-      setLogs((prev) => [...prev, data.message]);
+      appendLog([data.message]);
     });
     es.addEventListener('progress', (e: MessageEvent) => {
       const data = JSON.parse(e.data);
       setProgress(data);
-      setLogs((prev) => [...prev, data.message]);
+      // Progress message also goes into log
+      if (data.message) {
+        appendLog([data.message]);
+      }
     });
     es.addEventListener('done', (e: MessageEvent) => {
       const data = JSON.parse(e.data);
-      setLogs((prev) => [...prev, `✓ ${data.message}`]);
+      appendLog([`✓ ${data.message}`]);
+      // Flush any pending logs immediately
+      if (logRafRef.current !== null) {
+        cancelAnimationFrame(logRafRef.current);
+        flushLogs();
+      }
       doneRef.current = true;
       setScanning(false);
       setProgress(null);
@@ -98,8 +149,12 @@ export default function PdfScanImport() {
       if (me.data) {
         try {
           const data = JSON.parse(me.data);
-          setLogs((prev) => [...prev, `✗ ${data.message}`]);
+          appendLog([`✗ ${data.message}`]);
         } catch { /* ignore */ }
+      }
+      if (logRafRef.current !== null) {
+        cancelAnimationFrame(logRafRef.current);
+        flushLogs();
       }
       setScanning(false);
       setProgress(null);
@@ -113,10 +168,15 @@ export default function PdfScanImport() {
     setScanning(false);
     setProgress(null);
     setScanTaskId('');
-    setLogs((prev) => [...prev, '⏹ 已手动停止']);
+    appendLog(['⏹ 已手动停止']);
   };
 
-  useEffect(() => () => esRef.current?.close(), []);
+  useEffect(() => () => {
+    esRef.current?.close();
+    if (logRafRef.current !== null) cancelAnimationFrame(logRafRef.current);
+    if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
+  }, []);
+
   useEffect(() => {
     if (!scanning || !scanTaskId) return;
     updateScanConcurrency(scanTaskId, concurrency).catch(() => {});
@@ -125,22 +185,21 @@ export default function PdfScanImport() {
     }, 500);
     return () => window.clearInterval(interval);
   }, [scanning, scanTaskId, concurrency]);
-  useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
+
   useEffect(() => {
     if (!scanning) return;
-
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '扫描正在进行中，离开页面会中断当前导入任务。';
       return event.returnValue;
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [scanning]);
 
   const pagePct = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
   const overallPct = progress?.overallPct ?? 0;
+  const phase1 = progress?.phase === 1;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -228,22 +287,35 @@ export default function PdfScanImport() {
         <div className="bg-white rounded-lg shadow p-4 mb-4 space-y-3">
           <div>
             <div className="flex justify-between text-sm text-gray-600 mb-1.5">
-              <span className="font-medium">总进度</span>
-              <span>{progress.overallCurrent ?? 0} / {progress.overallTotal ?? 0} 页 ({overallPct}%)</span>
+              <span className="font-medium">
+                {phase1 ? '文件分析' : '总进度'}
+              </span>
+              <span>
+                {phase1
+                  ? `${progress.current} / ${progress.total} 个文件`
+                  : `${progress.overallCurrent ?? 0} / ${progress.overallTotal ?? 0} 页 (${overallPct}%)`}
+              </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
-              <div className="bg-primary h-3 rounded-full transition-all" style={{ width: `${overallPct}%` }} />
+              <div
+                className="bg-primary h-3 rounded-full transition-all duration-150"
+                style={{
+                  width: phase1
+                    ? `${(progress.current / progress.total) * 100}%`
+                    : `${overallPct}%`,
+                }}
+              />
             </div>
           </div>
 
-          {progress.total > 0 && (
+          {!phase1 && progress.total > 0 && (
             <div>
               <div className="flex justify-between text-xs text-gray-500 mb-1">
                 <span>当前书籍</span>
                 <span>{progress.current}/{progress.total} ({pagePct}%)</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-400 h-2 rounded-full transition-all" style={{ width: `${pagePct}%` }} />
+                <div className="bg-blue-400 h-2 rounded-full transition-all duration-150" style={{ width: `${pagePct}%` }} />
               </div>
             </div>
           )}
