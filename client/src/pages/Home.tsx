@@ -620,9 +620,9 @@ export default function Home() {
                   )}
 
                   <div
-                    className={`relative overflow-hidden ${editMode ? '' : 'cursor-pointer hover:shadow-md group'}`}
+                    className={`relative overflow-hidden cursor-pointer ${editMode ? '' : 'hover:shadow-md group'}`}
                     style={{ aspectRatio: '3/4' }}
-                    onClick={() => { if (!editMode) window.open(`/book/${book.id}`, '_blank'); }}
+                    onClick={() => { if (editMode) toggleSelect(book.id); else window.open(`/book/${book.id}`, '_blank'); }}
                   >
                     <BookCover book={book} className={`w-full h-full object-cover ${editMode ? '' : 'transition group-hover:scale-[1.02]'}`} />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
