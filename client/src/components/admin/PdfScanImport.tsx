@@ -48,6 +48,7 @@ export default function PdfScanImport() {
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [scanTaskId, setScanTaskId] = useState('');
+  const [autoScroll, setAutoScroll] = useState(true);
 
   const esRef = useRef<EventSource | null>(null);
   const doneRef = useRef(false);
@@ -75,23 +76,16 @@ export default function PdfScanImport() {
     }
   }, [flushLogs]);
 
-  // Throttled scroll-to-bottom — only scroll when user is already at the bottom
+  // Throttled scroll-to-bottom — only when autoScroll is enabled
   const scrollRafRef = useRef<number | null>(null);
   useEffect(() => {
+    if (!autoScroll) return;
     if (scrollRafRef.current !== null) return;
     scrollRafRef.current = requestAnimationFrame(() => {
       scrollRafRef.current = null;
-      const el = logEndRef.current;
-      if (!el) return;
-      const parent = el.parentElement;
-      if (!parent) return;
-      // Only auto-scroll if user is near the bottom (within 80px)
-      const isNearBottom = parent.scrollHeight - parent.scrollTop - parent.clientHeight < 80;
-      if (isNearBottom) {
-        el.scrollIntoView({ behavior: 'auto', block: 'end' });
-      }
+      logEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
     });
-  }, [logs]);
+  }, [logs, autoScroll]);
 
   useEffect(() => {
     getScanCapacity().then(({ maxConcurrency: max }) => {
@@ -335,7 +329,18 @@ export default function PdfScanImport() {
 
       {/* Log console */}
       <div className="bg-gray-900 rounded-lg shadow overflow-hidden">
-        <div className="text-gray-400 text-xs px-4 py-2 border-b border-gray-700 font-mono">实时日志控制台</div>
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
+          <span className="text-gray-400 text-xs font-mono">实时日志控制台</span>
+          <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={autoScroll}
+              onChange={(e) => setAutoScroll(e.target.checked)}
+              className="w-3.5 h-3.5 accent-teal-500 cursor-pointer"
+            />
+            自动滚动
+          </label>
+        </div>
         <div className="font-mono text-sm p-4 h-80 overflow-auto scrollbar-thin">
           {logs.length === 0 && !scanning && <div className="text-gray-500">等待开始扫描...</div>}
           {logs.map((log, i) => (
