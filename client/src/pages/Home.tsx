@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check, RotateCcw } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Edit3, Trash2, Check, RotateCcw, RefreshCw, Search } from 'lucide-react';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
@@ -46,6 +46,7 @@ function ClearableSelect({
   const opts = options.map((o) =>
     typeof o === 'string' ? { name: o, count: undefined } : o
   );
+  const totalCount = opts.reduce((sum, o) => sum + (o.count || 0), 0);
   return (
     <div className="relative w-44">
       <select
@@ -53,7 +54,7 @@ function ClearableSelect({
         onChange={(e) => onChange(e.target.value)}
         className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
       >
-        <option value="">{placeholder}</option>
+        <option value="">{totalCount > 0 ? `${placeholder} (${totalCount})` : placeholder}</option>
         {opts.map((opt) => (
           <option key={opt.name} value={opt.name}>
             {opt.count !== undefined ? `${opt.name} (${opt.count})` : opt.name}
@@ -113,6 +114,7 @@ export default function Home() {
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
   const [selectedGrade, setSelectedGrade] = useState(saved.grade);
   const [selectedCategory, setSelectedCategory] = useState(saved.category);
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
 
@@ -143,10 +145,11 @@ export default function Home() {
       category: selectedCategory || undefined,
       grade: selectedGrade || undefined,
       subject: selectedSubject || undefined,
+      search: search || undefined,
       page,
       pageSize: PAGE_SIZE,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory]);
+  }, [page, selectedSubject, selectedGrade, selectedCategory, search]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -162,7 +165,7 @@ export default function Home() {
   useEffect(() => {
     setPage(1);
     setPageInput('1');
-  }, [selectedSubject, selectedGrade, selectedCategory]);
+  }, [selectedSubject, selectedGrade, selectedCategory, search]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -299,6 +302,7 @@ export default function Home() {
         category: selectedCategory || undefined,
         grade: selectedGrade || undefined,
         subject: selectedSubject || undefined,
+        search: search || undefined,
         page: safePage,
         pageSize: PAGE_SIZE,
       });
@@ -361,11 +365,14 @@ export default function Home() {
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
 
+  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory);
+
   const resetFilters = () => {
     const reset = () => {
       setSelectedSubject('');
       setSelectedGrade('');
       setSelectedCategory('');
+      setSearch('');
     };
     if (editMode && hasUnsavedChanges) {
       setPromptAction('filter');
@@ -374,6 +381,17 @@ export default function Home() {
     } else {
       reset();
     }
+  };
+
+  const refreshBooks = () => {
+    fetchBooks({
+      category: selectedCategory || undefined,
+      grade: selectedGrade || undefined,
+      subject: selectedSubject || undefined,
+      search: search || undefined,
+      page: safePage,
+      pageSize: PAGE_SIZE,
+    });
   };
 
   const handlePromptSaveFilter = async () => {
@@ -412,14 +430,38 @@ export default function Home() {
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
+          <div className="relative w-48">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setSearch((e.target as HTMLInputElement).value); }}
+              placeholder="关键字..."
+              className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
+                title="清除"
+              >
+                <X size={10} strokeWidth={3} />
+              </button>
+            )}
+          </div>
           <button
             type="button"
-            onClick={resetFilters}
-            className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 transition hover:border-primary hover:text-primary"
-            title="重置所有筛选条件"
+            onClick={hasActiveFilters ? resetFilters : refreshBooks}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition ${
+              hasActiveFilters
+                ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10'
+                : 'border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary'
+            }`}
+            title={hasActiveFilters ? '重置所有筛选条件' : '刷新列表'}
           >
-            <RotateCcw size={14} />
-            重置
+            {hasActiveFilters ? <RotateCcw size={15} /> : <RefreshCw size={15} />}
           </button>
           <div className="flex-1" />
           {editMode && (

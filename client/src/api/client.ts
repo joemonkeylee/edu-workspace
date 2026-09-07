@@ -11,7 +11,7 @@ export interface BooksResponse {
   options: { subjects: string[]; grades: string[]; categories: { name: string; count: number }[] };
 }
 
-export async function getBooks(params?: { category?: string; grade?: string; subject?: string; page?: number; pageSize?: number }) {
+export async function getBooks(params?: { category?: string; grade?: string; subject?: string; search?: string; page?: number; pageSize?: number }) {
   const { data } = await api.get('/books', { params });
   return data as BooksResponse;
 }

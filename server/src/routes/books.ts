@@ -11,6 +11,7 @@ router.get('/', async (req: Request, res: Response) => {
   const category = req.query.category as string;
   const grade = req.query.grade as string;
   const subject = req.query.subject as string;
+  const search = req.query.search as string;
   const page = parseInt(req.query.page as string, 10) || 1;
   const pageSize = parseInt(req.query.pageSize as string, 10) || 16;
 
@@ -18,6 +19,14 @@ router.get('/', async (req: Request, res: Response) => {
   if (category && category !== 'all') where.category = category;
   if (grade && grade !== 'all') where.grade = grade;
   if (subject && subject !== 'all') where.subject = subject;
+  if (search) {
+    where.OR = [
+      { title: { contains: search } },
+      { category: { contains: search } },
+      { grade: { contains: search } },
+      { subject: { contains: search } },
+    ];
+  }
 
   const skip = (page - 1) * pageSize;
 
