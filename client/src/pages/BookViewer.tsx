@@ -660,7 +660,15 @@ export default function BookViewer() {
                 if (!selectedAnn) return null;
                 const ci = annColorIndex.get(selectedAnn.id) ?? 0;
                 const color = getAnnotationColor(ci);
-                return <DashedConnector key={selectedAnnotationId} colorHex={color.hex} />;
+                return (
+                  <DashedConnector
+                    key={selectedAnnotationId}
+                    colorHex={color.hex}
+                    annotation={selectedAnn}
+                    isDouble={isDouble}
+                    currentPage={currentPage}
+                  />
+                );
               })()}
             </div>
           </div>
@@ -716,6 +724,22 @@ export default function BookViewer() {
   );
 }
 
+function formatAnnotationTime(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    const time = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    if (sameDay) return `今天 ${time}`;
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return `昨天 ${time}`;
+    return `${d.getMonth() + 1}/${d.getDate()} ${time}`;
+  } catch {
+    return '';
+  }
+}
+
 function AnnotationList({
   annotations,
   colorIndex,
@@ -769,6 +793,9 @@ function AnnotationList({
                 <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-blue-100 text-blue-600' : 'text-gray-400'}`}>
                   第 {ann.pageNumber} 页
                 </span>
+                {ann.createdAt && (
+                  <span className="text-xs text-gray-400">{formatAnnotationTime(ann.createdAt)}</span>
+                )}
                 {ann.tags && <span className="text-xs text-gray-400 truncate">{ann.tags}</span>}
               </div>
             </div>
@@ -831,6 +858,9 @@ function AnnotationSidePanel({
                   {ci + 1}
                 </span>
                 <span className={`text-xs font-medium ${color.text}`}>第 {ann.pageNumber} 页</span>
+                {ann.createdAt && (
+                  <span className="text-[10px] text-gray-400 ml-auto">{formatAnnotationTime(ann.createdAt)}</span>
+                )}
               </div>
               {ann.type === 'note' && (
                 <p className="text-xs text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{ann.contentJson.text}</p>
@@ -848,32 +878,88 @@ function AnnotationSidePanel({
 /** Draws a dashed connector line between the selected annotation's canvas marker
  *  and its corresponding side panel card. Uses an SVG overlay positioned
  *  absolutely over the annotation container. */
-function DashedConnector({ colorHex }: { colorHex: string }) {
+function DashedConnector({
+  colorHex,
+  annotation,
+  isDouble,
+  currentPage,
+}: {
+  colorHex: string;
+  annotation: any;
+  isDouble: boolean;
+  currentPage: number;
+}) {
   const [line, setLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
   useEffect(() => {
     const container = document.getElementById('annotation-container');
     if (!container) return;
 
+    const c = annotation.contentJson;
+
+    // Determine which canvas this annotation belongs to.
+    // In double-page mode, left page = currentPage, right page = currentPage+1
+    // Canvases appear in DOM order: left first, then right
+    const canvases = Array.from(container.querySelectorAll('canvas')) as HTMLCanvasElement[];
+    let canvas: HTMLCanvasElement | null = null;
+    if (canvases.length === 1) {
+      canvas = canvases[0];
+    } else if (canvases.length >= 2) {
+      canvas = annotation.pageNumber === currentPage ? canvases[0] : canvases[1];
+    }
+
+    if (!canvas) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+
+    // Compute the marker position in screen coordinates
+    // contentJson has relative coords (0-1), multiply by canvas dimensions
+    let markerX: number;
+    let markerY: number;
+    if (annotation.type === 'note') {
+      markerX = canvasRect.left + c.x * canvasRect.width;
+      markerY = canvasRect.top + c.y * canvasRect.height;
+    } else if (annotation.type === 'highlight' || annotation.type === 'crop') {
+      // Use center of the rect
+      markerX = canvasRect.left + (c.x + c.w / 2) * canvasRect.width;
+      markerY = canvasRect.top + (c.y + c.h / 2) * canvasRect.height;
+    } else {
+      markerX = canvasRect.left + canvasRect.width / 2;
+      markerY = canvasRect.top + canvasRect.height / 2;
+    }
+
     // Find the selected card (has ring-2 class)
     const selectedCardEl = Array.from(container.querySelectorAll('[data-annotation-id]'))
-      .find((c) => c.classList.contains('ring-2'));
-    const cardRect = selectedCardEl ? selectedCardEl.getBoundingClientRect() : null;
+      .find((el) => el.classList.contains('ring-2'));
+    if (!selectedCardEl) return;
+    const cardRect = selectedCardEl.getBoundingClientRect();
 
-    // Find the first canvas (the page)
-    const canvas = container.querySelector('canvas') as HTMLCanvasElement | null;
-    const markerRect = canvas ? canvas.getBoundingClientRect() : null;
+    const containerRect = container.getBoundingClientRect();
 
-    if (markerRect && cardRect && container) {
-      const containerRect = container.getBoundingClientRect();
-      const cardOnRight = cardRect.left > markerRect.left;
-      const x1 = cardOnRight ? markerRect.right - containerRect.left : markerRect.left - containerRect.left;
-      const y1 = markerRect.top + markerRect.height / 2 - containerRect.top;
-      const x2 = cardOnRight ? cardRect.left - containerRect.left : cardRect.right - containerRect.left;
-      const y2 = cardRect.top + cardRect.height / 2 - containerRect.top;
-      setLine({ x1, y1, x2, y2 });
-    }
-  }, []);
+    // Determine if card is on the right or left of canvas
+    const cardOnRight = cardRect.left > canvasRect.left;
+
+    // Start point: edge of canvas nearest to card, at marker's Y
+    const x1 = cardOnRight
+      ? canvasRect.right - containerRect.left
+      : canvasRect.left - containerRect.left;
+    const y1 = markerY - containerRect.top;
+
+    // End point: edge of card nearest to canvas
+    // Try to align Y with marker Y for a straighter line,
+    // but clamp within the card's vertical bounds
+    const x2 = cardOnRight
+      ? cardRect.left - containerRect.left
+      : cardRect.right - containerRect.left;
+    let y2 = markerY - containerRect.top; // default: same Y as marker for a straight line
+    // Clamp to card bounds
+    const cardTop = cardRect.top - containerRect.top;
+    const cardBottom = cardRect.bottom - containerRect.top;
+    if (y2 < cardTop) y2 = cardTop;
+    if (y2 > cardBottom) y2 = cardBottom;
+
+    setLine({ x1, y1, x2, y2 });
+  }, [annotation, isDouble, currentPage]);
 
   if (!line) return null;
 
