@@ -717,24 +717,26 @@ export default function Home() {
         {/* Pager (below the list): select actions on left, pager on right */}
         {total > 0 && (
           <div className="mt-5 flex items-center gap-3">
-            {/* Edit actions: centered */}
-            {editMode && (
-              <div className="flex items-center gap-2 mx-auto">
-                <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
-                <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
-                <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
-                <span className="text-xs text-gray-400">已选 {selectedIds.size}</span>
-                <button
-                  onClick={deleteSelected}
-                  disabled={selectedIds.size === 0}
-                  className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  删除选中
-                </button>
-              </div>
-            )}
-            {/* Pager: right */}
-            <div className="flex items-center gap-1.5 ml-auto">
+            {/* Col 1: edit actions (left) */}
+            <div className="flex items-center gap-2 w-1/3">
+              {editMode && (
+                <>
+                  <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
+                  <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
+                  <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
+                  <span className="text-xs text-gray-400">已选 {selectedIds.size}</span>
+                  <button
+                    onClick={deleteSelected}
+                    disabled={selectedIds.size === 0}
+                    className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    删除选中
+                  </button>
+                </>
+              )}
+            </div>
+            {/* Col 2: pager (center) */}
+            <div className="flex items-center justify-center gap-1.5 w-1/3">
               <button onClick={() => goPage(1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">第一页</button>
               <button onClick={() => goPage(safePage - 1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronLeft size={14} /></button>
               <input
@@ -750,8 +752,10 @@ export default function Home() {
               <span className="text-xs text-gray-500">/ {totalPages}</span>
               <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
               <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
-              <span className="text-xs text-gray-500 ml-2">共计 {total} 本</span>
-              <span className="mx-1 text-gray-300">|</span>
+              <span className="text-xs text-gray-500">共计 {total} 本</span>
+            </div>
+            {/* Col 3: page size config (right) */}
+            <div className="flex items-center justify-end gap-1.5 w-1/3">
               <label className="text-xs text-gray-500">每行</label>
               <select
                 value={booksPerRow}
