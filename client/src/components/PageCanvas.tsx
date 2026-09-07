@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { Annotation, ToolMode } from '../types';
 import { pageImageUrl } from '../api/client';
+import { ANNOTATION_COLORS } from '../utils/annotationColors';
 
 interface PageCanvasProps {
   storagePath: string;
@@ -9,6 +10,7 @@ interface PageCanvasProps {
   tool: ToolMode;
   annotations: Annotation[];
   showAnnotations: boolean;
+  colorIndex: Map<number, number>;
   onSaveAnnotation: (data: { type: string; contentJson: any }) => void;
 }
 
@@ -19,6 +21,7 @@ export default function PageCanvas({
   tool,
   annotations,
   showAnnotations = true,
+  colorIndex,
   onSaveAnnotation,
 }: PageCanvasProps) {
   const imgRef = useRef<HTMLImageElement>(null);
@@ -46,19 +49,34 @@ export default function PageCanvas({
       if (ann.pageNumber !== pageNumber) continue;
       if (!showAnnotations) continue;
       const c = ann.contentJson;
+      const ci = colorIndex.get(ann.id) ?? 0;
+      const color = ANNOTATION_COLORS[ci % ANNOTATION_COLORS.length];
       if (ann.type === 'highlight') {
-        ctx.fillStyle = c.color || 'rgba(255, 235, 59, 0.3)';
+        // Use the assigned color with transparency
+        const fillColor = color.hex + '40'; // ~25% opacity
+        ctx.fillStyle = fillColor;
         ctx.fillRect(c.x * canvas.width, c.y * canvas.height, c.w * canvas.width, c.h * canvas.height);
+        ctx.strokeStyle = color.hex;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(c.x * canvas.width, c.y * canvas.height, c.w * canvas.width, c.h * canvas.height);
+        ctx.setLineDash([]);
       } else if (ann.type === 'note') {
-        ctx.fillStyle = '#f59e0b';
+        ctx.fillStyle = color.hex;
         ctx.beginPath();
         ctx.arc(c.x * canvas.width, c.y * canvas.height, 10, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
+        // Draw index number
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(ci + 1), c.x * canvas.width, c.y * canvas.height);
       } else if (ann.type === 'crop') {
-        ctx.strokeStyle = '#3b82f6';
+        ctx.strokeStyle = color.hex;
         ctx.setLineDash([6, 4]);
         ctx.lineWidth = 2;
         ctx.strokeRect(c.x * canvas.width, c.y * canvas.height, c.w * canvas.width, c.h * canvas.height);
@@ -73,7 +91,7 @@ export default function PageCanvas({
       ctx.fillStyle = 'rgba(37, 99, 235, 0.1)';
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     }
-  }, [annotations, pageNumber, drawing, rect, showAnnotations]);
+  }, [annotations, pageNumber, drawing, rect, showAnnotations, colorIndex]);
 
   useEffect(() => {
     render();

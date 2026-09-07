@@ -33,6 +33,7 @@ import {
   Download,
   MessageSquareText,
 } from 'lucide-react';
+import { buildAnnotationColorIndex, getAnnotationColor } from '../utils/annotationColors';
 
 type FitMode = 'width' | 'page' | null;
 type PageLayout = 'single' | 'double';
@@ -290,6 +291,9 @@ export default function BookViewer() {
 
   // Pages that have annotations (for orange dot indicator)
   const pagesWithAnnotations = new Set(annotations.map((a) => a.pageNumber));
+
+  // Assign each annotation a color index based on its position within its page
+  const annColorIndex = buildAnnotationColorIndex(annotations);
 
   const tools: { mode: ToolMode; icon: any; label: string }[] = [
     { mode: 'view', icon: MousePointer2, label: '浏览' },
@@ -556,6 +560,7 @@ export default function BookViewer() {
               {showAnnotations && isDouble && tool === 'view' && leftPageAnnotations.length > 0 && (
                 <AnnotationSidePanel
                   annotations={leftPageAnnotations}
+                  colorIndex={annColorIndex}
                   side="left"
                   onNavigate={(p) => setCurrentPage(p)}
                 />
@@ -599,6 +604,7 @@ export default function BookViewer() {
                         tool={tool}
                         annotations={annotations}
                         showAnnotations={showAnnotations}
+                        colorIndex={annColorIndex}
                         onSaveAnnotation={handleSaveAnnotation}
                       />
                       <PageCanvas
@@ -608,6 +614,7 @@ export default function BookViewer() {
                         tool={'view'}
                         annotations={annotations}
                         showAnnotations={showAnnotations}
+                        colorIndex={annColorIndex}
                         onSaveAnnotation={handleSaveAnnotation}
                       />
                     </>
@@ -619,6 +626,7 @@ export default function BookViewer() {
                       tool={tool}
                       annotations={annotations}
                       showAnnotations={showAnnotations}
+                      colorIndex={annColorIndex}
                       onSaveAnnotation={handleSaveAnnotation}
                     />
                   )}
@@ -629,6 +637,7 @@ export default function BookViewer() {
               {showAnnotations && tool === 'view' && (isDouble ? rightPageAnnotations : leftPageAnnotations).length > 0 && (
                 <AnnotationSidePanel
                   annotations={isDouble ? rightPageAnnotations : leftPageAnnotations}
+                  colorIndex={annColorIndex}
                   side="right"
                   onNavigate={(p) => setCurrentPage(p)}
                 />
@@ -672,6 +681,7 @@ export default function BookViewer() {
               ) : (
                 <AnnotationList
                   annotations={annotations}
+                  colorIndex={annColorIndex}
                   currentPage={currentPage}
                   isDouble={isDouble}
                   onNavigate={setCurrentPage}
@@ -688,12 +698,14 @@ export default function BookViewer() {
 
 function AnnotationList({
   annotations,
+  colorIndex,
   currentPage,
   isDouble,
   onNavigate,
   onDelete,
 }: {
   annotations: any[];
+  colorIndex: Map<number, number>;
   currentPage: number;
   isDouble: boolean;
   onNavigate: (page: number) => void;
@@ -706,18 +718,26 @@ function AnnotationList({
     <div className="p-2 space-y-2">
       {annotations.map((ann) => {
         const isCurrent = ann.pageNumber === currentPage || (isDouble && ann.pageNumber === currentPage + 1);
+        const ci = colorIndex.get(ann.id) ?? 0;
+        const color = getAnnotationColor(ci);
         return (
           <div
             key={ann.id}
-            className={`rounded-lg p-3 flex items-start gap-2 group cursor-pointer transition ${
-              isCurrent ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'
+            className={`rounded-lg p-3 flex items-start gap-2 group cursor-pointer transition border-l-4 ${
+              isCurrent ? `${color.bg} ${color.border}` : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
             }`}
             onClick={() => onNavigate(ann.pageNumber)}
           >
-            <div className="flex-shrink-0 mt-0.5">
+            <div className="flex-shrink-0 mt-0.5 flex items-center gap-1">
               {ann.type === 'note' && <StickyNote size={16} className="text-amber-500" />}
               {ann.type === 'highlight' && <Highlighter size={16} className="text-yellow-500" />}
               {ann.type === 'crop' && <Scissors size={16} className="text-blue-500" />}
+              <span
+                className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white ${color.dot}`}
+                title={`批注 ${ci + 1}`}
+              >
+                {ci + 1}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
               {ann.type === 'note' && (
@@ -748,35 +768,44 @@ function AnnotationList({
 /** Side annotation panel rendered beside the page canvas */
 function AnnotationSidePanel({
   annotations,
+  colorIndex,
   side,
   onNavigate,
 }: {
   annotations: any[];
+  colorIndex: Map<number, number>;
   side: 'left' | 'right';
   onNavigate: (page: number) => void;
 }) {
   return (
     <div className={`flex-shrink-0 w-56 max-h-full overflow-auto scrollbar-thin ${side === 'left' ? 'order-first' : 'order-last'}`}>
       <div className="space-y-2">
-        {annotations.map((ann) => (
-          <div
-            key={ann.id}
-            onClick={() => onNavigate(ann.pageNumber)}
-            className="rounded-lg border border-blue-200 bg-blue-50/80 p-2.5 cursor-pointer hover:bg-blue-50 transition shadow-sm"
-          >
-            <div className="flex items-center gap-1.5 mb-1">
-              {ann.type === 'note' && <StickyNote size={13} className="text-amber-500 flex-shrink-0" />}
-              {ann.type === 'highlight' && <Highlighter size={13} className="text-yellow-500 flex-shrink-0" />}
-              {ann.type === 'crop' && <Scissors size={13} className="text-blue-500 flex-shrink-0" />}
-              <span className="text-xs font-medium text-blue-600">第 {ann.pageNumber} 页</span>
+        {annotations.map((ann) => {
+          const ci = colorIndex.get(ann.id) ?? 0;
+          const color = getAnnotationColor(ci);
+          return (
+            <div
+              key={ann.id}
+              onClick={() => onNavigate(ann.pageNumber)}
+              className={`rounded-lg border ${color.border} ${color.bg} p-2.5 cursor-pointer hover:shadow-md transition shadow-sm`}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <span
+                  className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white ${color.dot}`}
+                  title={`批注 ${ci + 1}`}
+                >
+                  {ci + 1}
+                </span>
+                <span className={`text-xs font-medium ${color.text}`}>第 {ann.pageNumber} 页</span>
+              </div>
+              {ann.type === 'note' && (
+                <p className="text-xs text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{ann.contentJson.text}</p>
+              )}
+              {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
+              {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
             </div>
-            {ann.type === 'note' && (
-              <p className="text-xs text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{ann.contentJson.text}</p>
-            )}
-            {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
-            {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
