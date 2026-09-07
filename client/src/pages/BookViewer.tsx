@@ -78,6 +78,11 @@ export default function BookViewer() {
     setSelectedAnnotationId(null);
   }, [currentPage]);
 
+  // Clear annotation selection when annotations are hidden
+  useEffect(() => {
+    if (!showAnnotations) setSelectedAnnotationId(null);
+  }, [showAnnotations]);
+
   const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
   const [rotation, setRotation] = useState(0); // degrees, negative = CCW
@@ -495,7 +500,7 @@ export default function BookViewer() {
         {/* Annotation visibility toggle */}
         <button
           onClick={() => setShowAnnotations(!showAnnotations)}
-          data-tooltip={showAnnotations ? '隐藏批注' : '显示批注'}
+          data-tooltip="批注"
           className={`relative p-1.5 rounded transition ${
             showAnnotations ? 'bg-blue-500/20 text-blue-300' : 'text-gray-400 hover:text-white hover:bg-white/10'
           }`}
