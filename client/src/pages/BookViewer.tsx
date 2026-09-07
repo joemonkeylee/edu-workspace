@@ -67,6 +67,7 @@ export default function BookViewer() {
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
+  const [deleteAnnId, setDeleteAnnId] = useState<number | null>(null);
   const skipClearRef = useRef(false); // skip clearing when navigating via annotation click
 
   // Clear annotation selection when page changes via toolbar/keyboard
@@ -311,10 +312,10 @@ export default function BookViewer() {
   // Assign each annotation a color index based on its position within its page
   const annColorIndex = buildAnnotationColorIndex(annotations);
 
-  const tools: { mode: ToolMode; icon: any; label: string }[] = [
+  const tools: { mode: ToolMode; icon: any; label: string; disabled?: boolean }[] = [
     { mode: 'view', icon: MousePointer2, label: '浏览' },
     { mode: 'note', icon: StickyNote, label: '批注' },
-    { mode: 'highlight', icon: Highlighter, label: '高亮' },
+    { mode: 'highlight', icon: Highlighter, label: '高亮', disabled: true },
     { mode: 'crop', icon: Scissors, label: '裁剪' },
   ];
 
@@ -400,13 +401,17 @@ export default function BookViewer() {
         {/* Right controls */}
         {/* Tool buttons (icon-only) */}
         <div className="flex items-center gap-0.5">
-          {tools.map(({ mode, icon: Icon, label }) => (
+          {tools.map(({ mode, icon: Icon, label, disabled }) => (
             <button
               key={mode}
-              onClick={() => setTool(mode)}
+              onClick={() => !disabled && setTool(mode)}
               data-tooltip={label}
               className={`relative p-1.5 rounded transition ${
-                tool === mode ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'
+                disabled
+                  ? 'text-gray-600 opacity-40 cursor-not-allowed'
+                  : tool === mode
+                    ? 'bg-primary text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
             >
               <Icon size={16} />
@@ -734,13 +739,47 @@ export default function BookViewer() {
                   selectedAnnotationId={selectedAnnotationId}
                   onSelect={setSelectedAnnotationId}
                   onNavigate={(p) => { setTool('view'); setShowAnnotations(true); skipClearRef.current = true; setCurrentPage(p); }}
-                  onDelete={removeAnnotation}
+                  onDelete={setDeleteAnnId}
                 />
               )}
             </div>
           </aside>
         )}
       </div>
+
+      {/* Annotation delete confirmation modal */}
+      {deleteAnnId !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setDeleteAnnId(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl p-5 w-80"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-800 mb-2">确认删除批注</h3>
+            <p className="text-sm text-gray-500 mb-4">删除后无法恢复，确定要删除这条批注吗？</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteAnnId(null)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  removeAnnotation(deleteAnnId);
+                  setDeleteAnnId(null);
+                  setSelectedAnnotationId(null);
+                }}
+                className="px-3 py-1.5 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600"
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
