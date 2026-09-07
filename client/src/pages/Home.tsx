@@ -5,7 +5,7 @@ import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, Re
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
-const PAGE_SIZE = 16; // 2 rows × 8 cols
+const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
 const STORAGE_KEY = 'edu-home-filters';
 const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST');
 const APP_COMMIT = import.meta.env.VITE_APP_COMMIT || '';
@@ -108,7 +108,7 @@ function SavePrompt({
 }
 
 export default function Home() {
-  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading } = useStore();
+  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading, booksPerRow, pageSize: storePageSize, setBooksPerRow } = useStore();
 
   const saved = useMemo(loadSavedFilters, []);
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
@@ -164,6 +164,8 @@ export default function Home() {
     { field: 'title', dir: null },
   ]);
   const [pageInput, setPageInput] = useState('1');
+  const [rowsPerPage, setRowsPerPage] = useState(2);
+  const pageSize = booksPerRow * rowsPerPage;
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false);
@@ -202,9 +204,9 @@ export default function Home() {
       search: debouncedSearch || undefined,
       sort: sortString,
       page,
-      pageSize: PAGE_SIZE,
+      pageSize: pageSize,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString]);
+  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -220,9 +222,9 @@ export default function Home() {
   useEffect(() => {
     setPage(1);
     setPageInput('1');
-  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString]);
+  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
   const pagedBooks = books; // server already paginates
 
@@ -360,7 +362,7 @@ export default function Home() {
         search: debouncedSearch || undefined,
         sort: sortString,
         page: safePage,
-        pageSize: PAGE_SIZE,
+        pageSize: pageSize,
       });
     }
   };
@@ -448,7 +450,7 @@ export default function Home() {
       search: debouncedSearch || undefined,
       sort: sortString,
       page: safePage,
-      pageSize: PAGE_SIZE,
+      pageSize: pageSize,
     });
   };
 
@@ -577,9 +579,9 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="relative grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
-            {Array.from({ length: 16 }).map((_, i) => (
-              <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: '3/4' }} />
+          <div className="relative flex flex-wrap gap-3">
+            {Array.from({ length: pageSize }).map((_, i) => (
+              <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: '3/4', width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
             ))}
             <div className="absolute inset-0 flex items-center justify-center bg-white/50">
               <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
@@ -592,7 +594,7 @@ export default function Home() {
             <Link to="/admin" className="text-primary hover:underline">前往后台导入 PDF</Link>
           </div>
         ) : (
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
+          <div className="flex flex-wrap gap-3">
             {pagedBooks.map((book) => {
               const draft = getDraft(book.id);
               const isDeleted = pendingDeletes.has(book.id);
@@ -603,6 +605,7 @@ export default function Home() {
                   className={`relative bg-white rounded-lg shadow overflow-hidden transition ${
                     isDeleted ? 'opacity-40 ring-2 ring-red-400' : ''
                   } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+                  style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }}
                 >
                   {/* Checkbox (edit mode) */}
                   {editMode && (
@@ -747,6 +750,30 @@ export default function Home() {
               <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
               <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
               <span className="text-xs text-gray-500 ml-2">共计 {total} 本</span>
+              <span className="mx-1 text-gray-300">|</span>
+              <label className="text-xs text-gray-500">每行</label>
+              <select
+                value={booksPerRow}
+                onChange={(e) => setBooksPerRow(parseInt(e.target.value, 10))}
+                className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                title="每行显示几本书"
+              >
+                {Array.from({ length: 8 }, (_, i) => i + 3).map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <label className="text-xs text-gray-500">行数</label>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+                className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                title="每页显示几行"
+              >
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <span className="text-xs text-gray-400">({pageSize}本/页)</span>
             </div>
           </div>
         )}
