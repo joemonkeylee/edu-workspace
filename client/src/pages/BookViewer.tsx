@@ -712,6 +712,8 @@ export default function BookViewer() {
                   colorIndex={annColorIndex}
                   currentPage={currentPage}
                   isDouble={isDouble}
+                  selectedAnnotationId={selectedAnnotationId}
+                  onSelect={setSelectedAnnotationId}
                   onNavigate={setCurrentPage}
                   onDelete={removeAnnotation}
                 />
@@ -745,6 +747,8 @@ function AnnotationList({
   colorIndex,
   currentPage,
   isDouble,
+  selectedAnnotationId,
+  onSelect,
   onNavigate,
   onDelete,
 }: {
@@ -752,6 +756,8 @@ function AnnotationList({
   colorIndex: Map<number, number>;
   currentPage: number;
   isDouble: boolean;
+  selectedAnnotationId: number | null;
+  onSelect: (id: number | null) => void;
   onNavigate: (page: number) => void;
   onDelete: (id: number) => void;
 }) {
@@ -762,15 +768,24 @@ function AnnotationList({
     <div className="p-2 space-y-2">
       {annotations.map((ann) => {
         const isCurrent = ann.pageNumber === currentPage || (isDouble && ann.pageNumber === currentPage + 1);
+        const isSelected = selectedAnnotationId === ann.id;
         const ci = colorIndex.get(ann.id) ?? 0;
         const color = getAnnotationColor(ci);
         return (
           <div
             key={ann.id}
             className={`rounded-lg p-3 flex items-start gap-2 group cursor-pointer transition border-l-4 ${
-              isCurrent ? `${color.bg} ${color.border}` : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+              isSelected
+                ? `${color.bg} ${color.border} ring-2 ring-offset-1`
+                : isCurrent
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
             }`}
-            onClick={() => onNavigate(ann.pageNumber)}
+            onClick={() => {
+              if (isSelected) { onSelect(null); return; }
+              onSelect(ann.id);
+              onNavigate(ann.pageNumber);
+            }}
           >
             <div className="flex-shrink-0 mt-0.5 flex items-center gap-1">
               {ann.type === 'note' && <StickyNote size={16} className="text-amber-500" />}
@@ -939,24 +954,17 @@ function DashedConnector({
     // Determine if card is on the right or left of canvas
     const cardOnRight = cardRect.left > canvasRect.left;
 
-    // Start point: edge of canvas nearest to card, at marker's Y
+    // Start point: the edge of the SELECTED CARD that faces the canvas
+    // (right edge if card is on left, left edge if card is on right)
+    // Y = card's vertical center
     const x1 = cardOnRight
-      ? canvasRect.right - containerRect.left
-      : canvasRect.left - containerRect.left;
-    const y1 = markerY - containerRect.top;
-
-    // End point: edge of card nearest to canvas
-    // Try to align Y with marker Y for a straighter line,
-    // but clamp within the card's vertical bounds
-    const x2 = cardOnRight
       ? cardRect.left - containerRect.left
       : cardRect.right - containerRect.left;
-    let y2 = markerY - containerRect.top; // default: same Y as marker for a straight line
-    // Clamp to card bounds
-    const cardTop = cardRect.top - containerRect.top;
-    const cardBottom = cardRect.bottom - containerRect.top;
-    if (y2 < cardTop) y2 = cardTop;
-    if (y2 > cardBottom) y2 = cardBottom;
+    const y1 = cardRect.top + cardRect.height / 2 - containerRect.top;
+
+    // End point: the MARKER CIRCLE position on the canvas
+    const x2 = markerX - containerRect.left;
+    const y2 = markerY - containerRect.top;
 
     setLine({ x1, y1, x2, y2 });
   }, [annotation, isDouble, currentPage]);
