@@ -67,9 +67,14 @@ export default function BookViewer() {
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
+  const skipClearRef = useRef(false); // skip clearing when navigating via annotation click
 
-  // Clear annotation selection when page changes
+  // Clear annotation selection when page changes via toolbar/keyboard
   useEffect(() => {
+    if (skipClearRef.current) {
+      skipClearRef.current = false;
+      return;
+    }
     setSelectedAnnotationId(null);
   }, [currentPage]);
 
@@ -572,7 +577,7 @@ export default function BookViewer() {
                   side="left"
                   isDouble={isDouble}
                   currentPage={currentPage}
-                  onNavigate={(p) => setCurrentPage(p)}
+                  onNavigate={(p) => { skipClearRef.current = true; setCurrentPage(p); }}
                 />
               )}
 
@@ -659,7 +664,7 @@ export default function BookViewer() {
                   side="right"
                   isDouble={isDouble}
                   currentPage={currentPage}
-                  onNavigate={(p) => setCurrentPage(p)}
+                  onNavigate={(p) => { skipClearRef.current = true; setCurrentPage(p); }}
                 />
               )}
 
@@ -723,7 +728,7 @@ export default function BookViewer() {
                   isDouble={isDouble}
                   selectedAnnotationId={selectedAnnotationId}
                   onSelect={setSelectedAnnotationId}
-                  onNavigate={setCurrentPage}
+                  onNavigate={(p) => { skipClearRef.current = true; setCurrentPage(p); }}
                   onDelete={removeAnnotation}
                 />
               )}
@@ -798,7 +803,9 @@ function AnnotationList({
               const isAlreadyVisible = isDouble
                 ? (ann.pageNumber === currentPage || ann.pageNumber === currentPage + 1)
                 : (ann.pageNumber === currentPage);
-              if (!isAlreadyVisible) onNavigate(ann.pageNumber);
+              if (!isAlreadyVisible) {
+                onNavigate(ann.pageNumber);
+              }
             }}
           >
             <div className="flex-shrink-0 mt-0.5 flex items-center gap-1">
@@ -880,7 +887,9 @@ function AnnotationSidePanel({
                   const isAlreadyVisible = isDouble
                     ? (ann.pageNumber === currentPage || ann.pageNumber === currentPage + 1)
                     : (ann.pageNumber === currentPage);
-                  if (!isAlreadyVisible) onNavigate(ann.pageNumber);
+                  if (!isAlreadyVisible) {
+                    onNavigate(ann.pageNumber);
+                  }
                 }
               }}
               className={`rounded-lg border p-2.5 cursor-pointer transition shadow-sm ${
