@@ -706,55 +706,8 @@ export default function Home() {
         {/* Pager (below the list): select actions on left, pager on right */}
         {total > 0 && (
           <div className="mt-5 flex items-center gap-3">
-            {/* Col 1: edit toggle + edit actions (left) */}
-            <div className="flex items-center gap-2 w-1/3">
-              <button
-                onClick={editMode ? requestExitEdit : () => setEditMode(true)}
-                className={`rounded-md border px-2 py-1 text-xs ${
-                  editMode
-                    ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
-                    : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {editMode ? '完成' : '编辑'}
-              </button>
-              {editMode && (
-                <>
-                  <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
-                  <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
-                  <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
-                  <span className="text-xs text-gray-400">已选 {selectedIds.size}</span>
-                  <button
-                    onClick={deleteSelected}
-                    disabled={selectedIds.size === 0}
-                    className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    删除选中
-                  </button>
-                </>
-              )}
-            </div>
-            {/* Col 2: pager (center) */}
-            <div className="flex items-center justify-center gap-1.5 w-1/3">
-              <button onClick={() => goPage(1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">第一页</button>
-              <button onClick={() => goPage(safePage - 1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronLeft size={14} /></button>
-              <input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={pageInput}
-                onChange={(e) => setPageInput(e.target.value)}
-                onBlur={() => goPage(parseInt(pageInput, 10) || 1)}
-                onKeyDown={(e) => { if (e.key === 'Enter') goPage(parseInt(pageInput, 10) || 1); }}
-                className="w-14 rounded-md border border-gray-300 px-2 py-1 text-center text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <span className="text-xs text-gray-500">/ {totalPages}</span>
-              <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
-              <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
-              <span className="text-xs text-gray-500">共计 {total} 本</span>
-            </div>
-            {/* Col 3: page size config (right) */}
-            <div className="flex items-center justify-end gap-1.5 w-1/3">
+            {/* Col 1: page size config (left) */}
+            <div className="flex items-center justify-start gap-1.5 w-1/3">
               <label className="text-xs text-gray-500">每行</label>
               <select
                 value={booksPerRow}
@@ -778,6 +731,53 @@ export default function Home() {
                 ))}
               </select>
               <span className="text-xs text-gray-400">({pageSize}本/页)</span>
+            </div>
+            {/* Col 2: pager (center) */}
+            <div className="flex items-center justify-center gap-1.5 w-1/3">
+              <button onClick={() => goPage(1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">第一页</button>
+              <button onClick={() => goPage(safePage - 1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronLeft size={14} /></button>
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onBlur={() => goPage(parseInt(pageInput, 10) || 1)}
+                onKeyDown={(e) => { if (e.key === 'Enter') goPage(parseInt(pageInput, 10) || 1); }}
+                className="w-14 rounded-md border border-gray-300 px-2 py-1 text-center text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <span className="text-xs text-gray-500">/ {totalPages}</span>
+              <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
+              <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
+              <span className="text-xs text-gray-500">共计 {total} 本</span>
+            </div>
+            {/* Col 3: edit toggle + edit actions (right) */}
+            <div className="flex items-center justify-end gap-2 w-1/3">
+              {editMode && (
+                <>
+                  <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
+                  <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
+                  <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
+                  <span className="text-xs text-gray-400">已选 {selectedIds.size}</span>
+                  <button
+                    onClick={deleteSelected}
+                    disabled={selectedIds.size === 0}
+                    className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    删除选中
+                  </button>
+                </>
+              )}
+              <button
+                onClick={editMode ? requestExitEdit : () => setEditMode(true)}
+                className={`rounded-md border px-2 py-1 text-xs ${
+                  editMode
+                    ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
+                    : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {editMode ? '完成' : '编辑'}
+              </button>
             </div>
           </div>
         )}
