@@ -59,15 +59,43 @@ router.get('/', async (req: Request, res: Response) => {
     return { ...b, availableDpis: dpis };
   }));
 
-  // Distinct filter options across all books
-  const distinct = await prisma.book.findMany({ select: { subject: true, grade: true, category: true } });
-  const subjects = [...new Set(distinct.map(b => b.subject).filter(Boolean))] as string[];
-  const grades = [...new Set(distinct.map(b => b.grade).filter(Boolean))] as string[];
+  // Distinct filter options, filtered by all active filters except the one being computed
+  // Subjects: filtered by grade + category + search (excluding subject itself)
+  const subjectWhere: any = {};
+  if (grade && grade !== 'all') subjectWhere.grade = grade;
+  if (category && category !== 'all') subjectWhere.category = category;
+  if (search) subjectWhere.OR = [
+    { title: { contains: search } },
+    { category: { contains: search } },
+    { grade: { contains: search } },
+    { subject: { contains: search } },
+  ];
+  const subjectBooks = await prisma.book.findMany({ where: subjectWhere, select: { subject: true } });
+  const subjects = [...new Set(subjectBooks.map(b => b.subject).filter(Boolean))] as string[];
 
-  // Category options: filtered by subject+grade (excluding category itself), with counts
+  // Grades: filtered by subject + category + search (excluding grade itself)
+  const gradeWhere: any = {};
+  if (subject && subject !== 'all') gradeWhere.subject = subject;
+  if (category && category !== 'all') gradeWhere.category = category;
+  if (search) gradeWhere.OR = [
+    { title: { contains: search } },
+    { category: { contains: search } },
+    { grade: { contains: search } },
+    { subject: { contains: search } },
+  ];
+  const gradeBooks = await prisma.book.findMany({ where: gradeWhere, select: { grade: true } });
+  const grades = [...new Set(gradeBooks.map(b => b.grade).filter(Boolean))] as string[];
+
+  // Category options: filtered by subject + grade + search (excluding category itself), with counts
   const categoryWhere: any = {};
   if (subject && subject !== 'all') categoryWhere.subject = subject;
   if (grade && grade !== 'all') categoryWhere.grade = grade;
+  if (search) categoryWhere.OR = [
+    { title: { contains: search } },
+    { category: { contains: search } },
+    { grade: { contains: search } },
+    { subject: { contains: search } },
+  ];
   const categoryBooks = await prisma.book.findMany({
     where: categoryWhere,
     select: { category: true },
