@@ -565,6 +565,8 @@ export default function BookViewer() {
                   selectedAnnotationId={selectedAnnotationId}
                   onSelect={setSelectedAnnotationId}
                   side="left"
+                  isDouble={isDouble}
+                  currentPage={currentPage}
                   onNavigate={(p) => setCurrentPage(p)}
                 />
               )}
@@ -650,6 +652,8 @@ export default function BookViewer() {
                   selectedAnnotationId={selectedAnnotationId}
                   onSelect={setSelectedAnnotationId}
                   side="right"
+                  isDouble={isDouble}
+                  currentPage={currentPage}
                   onNavigate={(p) => setCurrentPage(p)}
                 />
               )}
@@ -784,7 +788,12 @@ function AnnotationList({
             onClick={() => {
               if (isSelected) { onSelect(null); return; }
               onSelect(ann.id);
-              onNavigate(ann.pageNumber);
+              // Only navigate if the annotation's page is NOT already visible
+              // In double-page mode, currentPage and currentPage+1 are both visible
+              const isAlreadyVisible = isDouble
+                ? (ann.pageNumber === currentPage || ann.pageNumber === currentPage + 1)
+                : (ann.pageNumber === currentPage);
+              if (!isAlreadyVisible) onNavigate(ann.pageNumber);
             }}
           >
             <div className="flex-shrink-0 mt-0.5 flex items-center gap-1">
@@ -834,6 +843,8 @@ function AnnotationSidePanel({
   selectedAnnotationId,
   onSelect,
   side,
+  isDouble,
+  currentPage,
   onNavigate,
 }: {
   annotations: any[];
@@ -841,6 +852,8 @@ function AnnotationSidePanel({
   selectedAnnotationId: number | null;
   onSelect: (id: number | null) => void;
   side: 'left' | 'right';
+  isDouble: boolean;
+  currentPage: number;
   onNavigate: (page: number) => void;
 }) {
   return (
@@ -857,7 +870,13 @@ function AnnotationSidePanel({
               onClick={() => {
                 if (isSelected) { onSelect(null); return; }
                 onSelect(ann.id);
-                if (ann.pageNumber !== undefined) onNavigate(ann.pageNumber);
+                if (ann.pageNumber !== undefined) {
+                  // Only navigate if page not already visible
+                  const isAlreadyVisible = isDouble
+                    ? (ann.pageNumber === currentPage || ann.pageNumber === currentPage + 1)
+                    : (ann.pageNumber === currentPage);
+                  if (!isAlreadyVisible) onNavigate(ann.pageNumber);
+                }
               }}
               className={`rounded-lg border p-2.5 cursor-pointer transition shadow-sm ${
                 isSelected
