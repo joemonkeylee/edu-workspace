@@ -575,8 +575,13 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+          <div className="relative grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3">
+            {Array.from({ length: 16 }).map((_, i) => (
+              <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: '3/4' }} />
+            ))}
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+              <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+            </div>
           </div>
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -695,7 +700,7 @@ export default function Home() {
         )}
 
         {/* Pager (below the list): select actions on left, pager on right */}
-        {!loading && total > 0 && (
+        {total > 0 && (
           <div className="mt-5 flex items-center gap-3">
             <button
               onClick={editMode ? requestExitEdit : () => setEditMode(true)}
