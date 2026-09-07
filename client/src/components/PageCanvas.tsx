@@ -8,6 +8,7 @@ interface PageCanvasProps {
   zoom: number;
   tool: ToolMode;
   annotations: Annotation[];
+  showAnnotations: boolean;
   onSaveAnnotation: (data: { type: string; contentJson: any }) => void;
 }
 
@@ -17,6 +18,7 @@ export default function PageCanvas({
   zoom,
   tool,
   annotations,
+  showAnnotations = true,
   onSaveAnnotation,
 }: PageCanvasProps) {
   const imgRef = useRef<HTMLImageElement>(null);
@@ -42,6 +44,7 @@ export default function PageCanvas({
 
     for (const ann of annotations) {
       if (ann.pageNumber !== pageNumber) continue;
+      if (!showAnnotations) continue;
       const c = ann.contentJson;
       if (ann.type === 'highlight') {
         ctx.fillStyle = c.color || 'rgba(255, 235, 59, 0.3)';
@@ -70,7 +73,7 @@ export default function PageCanvas({
       ctx.fillStyle = 'rgba(37, 99, 235, 0.1)';
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     }
-  }, [annotations, pageNumber, drawing, rect]);
+  }, [annotations, pageNumber, drawing, rect, showAnnotations]);
 
   useEffect(() => {
     render();

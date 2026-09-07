@@ -31,6 +31,7 @@ import {
   RotateCcw,
   Layers,
   Download,
+  MessageSquareText,
 } from 'lucide-react';
 
 type FitMode = 'width' | 'page' | null;
@@ -63,6 +64,7 @@ export default function BookViewer() {
   const [rightOpen, setRightOpen] = useState(true);
   const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('mistakes');
   const [mistakeFilter, setMistakeFilter] = useState('');
+  const [showAnnotations, setShowAnnotations] = useState(true);
 
   const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
@@ -282,7 +284,12 @@ export default function BookViewer() {
   const pageAnnotations = annotations.filter(
     (a) => a.pageNumber === currentPage || (isDouble && a.pageNumber === currentPage + 1)
   );
+  const leftPageAnnotations = annotations.filter((a) => a.pageNumber === currentPage);
+  const rightPageAnnotations = isDouble ? annotations.filter((a) => a.pageNumber === currentPage + 1) : [];
   const step = isDouble ? 2 : 1;
+
+  // Pages that have annotations (for orange dot indicator)
+  const pagesWithAnnotations = new Set(annotations.map((a) => a.pageNumber));
 
   const tools: { mode: ToolMode; icon: any; label: string }[] = [
     { mode: 'view', icon: MousePointer2, label: '浏览' },
@@ -346,6 +353,9 @@ export default function BookViewer() {
               <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
             )}
             <span className="text-gray-400">/ {totalPages}</span>
+            {showAnnotations && pagesWithAnnotations.has(currentPage) && (
+              <span className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-orange-400" title="本页有批注" />
+            )}
           </div>
           <button
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + step))}
@@ -467,6 +477,17 @@ export default function BookViewer() {
 
         <div className="w-px h-5 bg-white/10 mx-0.5" />
 
+        {/* Annotation visibility toggle */}
+        <button
+          onClick={() => setShowAnnotations(!showAnnotations)}
+          data-tooltip={showAnnotations ? '隐藏批注' : '显示批注'}
+          className={`relative p-1.5 rounded transition ${
+            showAnnotations ? 'bg-blue-500/20 text-blue-300' : 'text-gray-400 hover:text-white hover:bg-white/10'
+          }`}
+        >
+          <MessageSquareText size={16} />
+        </button>
+
         {/* Page layout toggles */}
         <div className="flex items-center gap-0.5">
           <button
@@ -527,10 +548,20 @@ export default function BookViewer() {
           </aside>
         )}
 
-        {/* Center - page image */}
+        {/* Center - page image + annotation side panels */}
         <main ref={mainRef} className="flex-1 overflow-auto">
           <div className="min-h-full flex items-center justify-center p-4">
-            <div
+            <div className="flex items-center justify-center gap-2">
+              {/* Left annotation panel (double page mode: left page annotations) */}
+              {showAnnotations && isDouble && tool === 'view' && leftPageAnnotations.length > 0 && (
+                <AnnotationSidePanel
+                  annotations={leftPageAnnotations}
+                  side="left"
+                  onNavigate={(p) => setCurrentPage(p)}
+                />
+              )}
+
+              <div
                 className="flex items-center justify-center"
                 style={{
                   width: effectiveRotation === 90 || effectiveRotation === 270
@@ -543,53 +574,66 @@ export default function BookViewer() {
                   minHeight: imgNatural.h > 0 ? undefined : '100%',
                 }}
               >
-              <div
-                className="flex gap-1"
-                style={{
-                  transform: `rotate(${rotation}deg)`,
-                  transition: 'transform 0.2s ease',
-                  transformOrigin: 'center center',
-                }}
-              >
-            {tool === 'crop' ? (
-              <CropTool
-                storagePath={effectiveStoragePath}
-                pageNumber={currentPage}
-                zoom={zoom}
-                onSave={handleCropSave}
-                onCancel={() => setTool('view')}
-              />
-            ) : isDouble ? (
-              <>
-                <PageCanvas
-                  storagePath={effectiveStoragePath}
-                  pageNumber={currentPage}
-                  zoom={zoom}
-                  tool={tool}
-                  annotations={annotations}
-                  onSaveAnnotation={handleSaveAnnotation}
+                <div
+                  className="flex gap-1"
+                  style={{
+                    transform: `rotate(${rotation}deg)`,
+                    transition: 'transform 0.2s ease',
+                    transformOrigin: 'center center',
+                  }}
+                >
+                  {tool === 'crop' ? (
+                    <CropTool
+                      storagePath={effectiveStoragePath}
+                      pageNumber={currentPage}
+                      zoom={zoom}
+                      onSave={handleCropSave}
+                      onCancel={() => setTool('view')}
+                    />
+                  ) : isDouble ? (
+                    <>
+                      <PageCanvas
+                        storagePath={effectiveStoragePath}
+                        pageNumber={currentPage}
+                        zoom={zoom}
+                        tool={tool}
+                        annotations={annotations}
+                        showAnnotations={showAnnotations}
+                        onSaveAnnotation={handleSaveAnnotation}
+                      />
+                      <PageCanvas
+                        storagePath={effectiveStoragePath}
+                        pageNumber={currentPage + 1}
+                        zoom={zoom}
+                        tool={'view'}
+                        annotations={annotations}
+                        showAnnotations={showAnnotations}
+                        onSaveAnnotation={handleSaveAnnotation}
+                      />
+                    </>
+                  ) : (
+                    <PageCanvas
+                      storagePath={effectiveStoragePath}
+                      pageNumber={currentPage}
+                      zoom={zoom}
+                      tool={tool}
+                      annotations={annotations}
+                      showAnnotations={showAnnotations}
+                      onSaveAnnotation={handleSaveAnnotation}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Right annotation panel (single page: all page annotations; double page: right page annotations) */}
+              {showAnnotations && tool === 'view' && (isDouble ? rightPageAnnotations : leftPageAnnotations).length > 0 && (
+                <AnnotationSidePanel
+                  annotations={isDouble ? rightPageAnnotations : leftPageAnnotations}
+                  side="right"
+                  onNavigate={(p) => setCurrentPage(p)}
                 />
-                <PageCanvas
-                  storagePath={effectiveStoragePath}
-                  pageNumber={currentPage + 1}
-                  zoom={zoom}
-                  tool={'view'}
-                  annotations={annotations}
-                  onSaveAnnotation={handleSaveAnnotation}
-                />
-              </>
-            ) : (
-              <PageCanvas
-                storagePath={effectiveStoragePath}
-                pageNumber={currentPage}
-                zoom={zoom}
-                tool={tool}
-                annotations={annotations}
-                onSaveAnnotation={handleSaveAnnotation}
-              />
-            )}
-              </div>{/* inner rotate div */}
-            </div>{/* outer rotation wrapper */}
+              )}
+            </div>
           </div>
         </main>
 
@@ -611,7 +655,7 @@ export default function BookViewer() {
                   rightTab === 'annotations' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                批注 ({pageAnnotations.length})
+                批注 ({annotations.length})
               </button>
             </div>
 
@@ -627,7 +671,10 @@ export default function BookViewer() {
                 />
               ) : (
                 <AnnotationList
-                  annotations={pageAnnotations}
+                  annotations={annotations}
+                  currentPage={currentPage}
+                  isDouble={isDouble}
+                  onNavigate={setCurrentPage}
                   onDelete={removeAnnotation}
                 />
               )}
@@ -639,35 +686,98 @@ export default function BookViewer() {
   );
 }
 
-function AnnotationList({ annotations, onDelete }: { annotations: any[]; onDelete: (id: number) => void }) {
+function AnnotationList({
+  annotations,
+  currentPage,
+  isDouble,
+  onNavigate,
+  onDelete,
+}: {
+  annotations: any[];
+  currentPage: number;
+  isDouble: boolean;
+  onNavigate: (page: number) => void;
+  onDelete: (id: number) => void;
+}) {
   if (annotations.length === 0) {
-    return <div className="p-4 text-center text-gray-400 text-sm">本页暂无批注</div>;
+    return <div className="p-4 text-center text-gray-400 text-sm">暂无批注</div>;
   }
   return (
     <div className="p-2 space-y-2">
-      {annotations.map((ann) => (
-        <div key={ann.id} className="bg-gray-50 rounded-lg p-3 flex items-start gap-2 group">
-          <div className="flex-shrink-0 mt-0.5">
-            {ann.type === 'note' && <StickyNote size={16} className="text-amber-500" />}
-            {ann.type === 'highlight' && <Highlighter size={16} className="text-yellow-500" />}
-            {ann.type === 'crop' && <Scissors size={16} className="text-blue-500" />}
+      {annotations.map((ann) => {
+        const isCurrent = ann.pageNumber === currentPage || (isDouble && ann.pageNumber === currentPage + 1);
+        return (
+          <div
+            key={ann.id}
+            className={`rounded-lg p-3 flex items-start gap-2 group cursor-pointer transition ${
+              isCurrent ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'
+            }`}
+            onClick={() => onNavigate(ann.pageNumber)}
+          >
+            <div className="flex-shrink-0 mt-0.5">
+              {ann.type === 'note' && <StickyNote size={16} className="text-amber-500" />}
+              {ann.type === 'highlight' && <Highlighter size={16} className="text-yellow-500" />}
+              {ann.type === 'crop' && <Scissors size={16} className="text-blue-500" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              {ann.type === 'note' && (
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{ann.contentJson.text}</p>
+              )}
+              {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
+              {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-blue-100 text-blue-600' : 'text-gray-400'}`}>
+                  第 {ann.pageNumber} 页
+                </span>
+                {ann.tags && <span className="text-xs text-gray-400 truncate">{ann.tags}</span>}
+              </div>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }}
+              className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
+            >
+              <Trash2 size={14} />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
+        );
+      })}
+    </div>
+  );
+}
+
+/** Side annotation panel rendered beside the page canvas */
+function AnnotationSidePanel({
+  annotations,
+  side,
+  onNavigate,
+}: {
+  annotations: any[];
+  side: 'left' | 'right';
+  onNavigate: (page: number) => void;
+}) {
+  return (
+    <div className={`flex-shrink-0 w-56 max-h-full overflow-auto scrollbar-thin ${side === 'left' ? 'order-first' : 'order-last'}`}>
+      <div className="space-y-2">
+        {annotations.map((ann) => (
+          <div
+            key={ann.id}
+            onClick={() => onNavigate(ann.pageNumber)}
+            className="rounded-lg border border-blue-200 bg-blue-50/80 p-2.5 cursor-pointer hover:bg-blue-50 transition shadow-sm"
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              {ann.type === 'note' && <StickyNote size={13} className="text-amber-500 flex-shrink-0" />}
+              {ann.type === 'highlight' && <Highlighter size={13} className="text-yellow-500 flex-shrink-0" />}
+              {ann.type === 'crop' && <Scissors size={13} className="text-blue-500 flex-shrink-0" />}
+              <span className="text-xs font-medium text-blue-600">第 {ann.pageNumber} 页</span>
+            </div>
             {ann.type === 'note' && (
-              <p className="text-sm text-gray-700 break-words">{ann.contentJson.text}</p>
+              <p className="text-xs text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{ann.contentJson.text}</p>
             )}
             {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
             {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
-            {ann.tags && <span className="text-xs text-gray-400 block mt-1">{ann.tags}</span>}
           </div>
-          <button
-            onClick={() => onDelete(ann.id)}
-            className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
