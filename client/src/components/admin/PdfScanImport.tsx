@@ -57,12 +57,16 @@ export default function PdfScanImport() {
   // Batch log updates into a single state change per frame
   const logBufferRef = useRef<string[]>([]);
   const logRafRef = useRef<number | null>(null);
+  const MAX_LOGS = 200;
   const flushLogs = useCallback(() => {
     logRafRef.current = null;
     if (logBufferRef.current.length === 0) return;
     const batch = logBufferRef.current;
     logBufferRef.current = [];
-    setLogs((prev) => [...prev, ...batch]);
+    setLogs((prev) => {
+      const combined = [...prev, ...batch];
+      return combined.length > MAX_LOGS ? combined.slice(-MAX_LOGS) : combined;
+    });
   }, []);
   const appendLog = useCallback((messages: string[]) => {
     logBufferRef.current.push(...messages);
@@ -123,10 +127,6 @@ export default function PdfScanImport() {
     es.addEventListener('progress', (e: MessageEvent) => {
       const data = JSON.parse(e.data);
       setProgress(data);
-      // Progress message also goes into log
-      if (data.message) {
-        appendLog([data.message]);
-      }
     });
     es.addEventListener('done', (e: MessageEvent) => {
       const data = JSON.parse(e.data);

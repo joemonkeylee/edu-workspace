@@ -402,23 +402,30 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const dpiDir = path.join(bookDir, String(dpi));
         send('log', { message: `  开始渲染 ${task.pages} 页 (DPI=${dpi})...` });
 
+        let lastSentPct = -1;
+        let lastSentTime = 0;
         const images = await renderPages(task.pdfPath, dpiDir, dpi, task.pages, (current) => {
           const prev = pageProgress[idx] || 0;
           const delta = current - prev;
           pageProgress[idx] = current;
           processedPages += delta;
-          const elapsed = (Date.now() - startTime) / 1000;
           const overallProgress = (processedPages / pagesToProcess) * 100;
+          const pct = Math.round(overallProgress);
+          const now = Date.now();
+          // Thin: only send when pct changes by ≥1% or 2s since last send
+          if (pct === lastSentPct && now - lastSentTime < 2000) return;
+          lastSentPct = pct;
+          lastSentTime = now;
+          const elapsed = (now - startTime) / 1000;
           const remaining = (pagesToProcess - processedPages) * secPerPage / concurrencyState.value;
           send('progress', {
             current,
             total: task.pages,
             overallCurrent: processedPages,
             overallTotal: pagesToProcess,
-            overallPct: Math.round(overallProgress),
+            overallPct: pct,
             elapsed: Math.round(elapsed),
             remaining: Math.round(remaining),
-            message: `  渲染: ${current}/${task.pages} | 总进度: ${processedPages}/${pagesToProcess} (${Math.round(overallProgress)}%) 剩余 ${fmtTime(remaining)}`,
           });
         });
 
