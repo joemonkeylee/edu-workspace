@@ -115,6 +115,7 @@ export default function Home() {
   const [selectedGrade, setSelectedGrade] = useState(saved.grade);
   const [selectedCategory, setSelectedCategory] = useState(saved.category);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState('1');
 
@@ -139,17 +140,23 @@ export default function Home() {
   );
   const categoryOptions = useMemo(() => [...rawCategoryOptions].sort((a, b) => a.name.localeCompare(b.name)), [rawCategoryOptions]);
 
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   // Server-side fetch: whenever page or filters change
   useEffect(() => {
     fetchBooks({
       category: selectedCategory || undefined,
       grade: selectedGrade || undefined,
       subject: selectedSubject || undefined,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       page,
       pageSize: PAGE_SIZE,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory, search]);
+  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -165,7 +172,7 @@ export default function Home() {
   useEffect(() => {
     setPage(1);
     setPageInput('1');
-  }, [selectedSubject, selectedGrade, selectedCategory, search]);
+  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -302,7 +309,7 @@ export default function Home() {
         category: selectedCategory || undefined,
         grade: selectedGrade || undefined,
         subject: selectedSubject || undefined,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         page: safePage,
         pageSize: PAGE_SIZE,
       });
@@ -388,7 +395,7 @@ export default function Home() {
       category: selectedCategory || undefined,
       grade: selectedGrade || undefined,
       subject: selectedSubject || undefined,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       page: safePage,
       pageSize: PAGE_SIZE,
     });
@@ -436,7 +443,6 @@ export default function Home() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') setSearch((e.target as HTMLInputElement).value); }}
               placeholder="关键字..."
               className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
             />
