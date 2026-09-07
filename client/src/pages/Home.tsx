@@ -140,11 +140,12 @@ export default function Home() {
   );
   const categoryOptions = useMemo(() => [...rawCategoryOptions].sort((a, b) => a.name.localeCompare(b.name)), [rawCategoryOptions]);
 
-  // Debounce search input
+  // Debounce search input (only triggers if value actually changed)
   useEffect(() => {
+    if (search === debouncedSearch) return;
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   // Server-side fetch: whenever page or filters change
   useEffect(() => {
@@ -443,6 +444,8 @@ export default function Home() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onBlur={() => { if (search !== debouncedSearch) setDebouncedSearch(search); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (search !== debouncedSearch) setDebouncedSearch(search); } }}
               placeholder="关键字..."
               className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
             />
