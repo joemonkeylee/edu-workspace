@@ -54,7 +54,25 @@ router.get('/', async (req: Request, res: Response) => {
   const distinct = await prisma.book.findMany({ select: { subject: true, grade: true, category: true } });
   const subjects = [...new Set(distinct.map(b => b.subject).filter(Boolean))] as string[];
   const grades = [...new Set(distinct.map(b => b.grade).filter(Boolean))] as string[];
-  const categories = [...new Set(distinct.map(b => b.category).filter(Boolean))] as string[];
+
+  // Category options: filtered by subject+grade (excluding category itself), with counts
+  const categoryWhere: any = {};
+  if (subject && subject !== 'all') categoryWhere.subject = subject;
+  if (grade && grade !== 'all') categoryWhere.grade = grade;
+  const categoryBooks = await prisma.book.findMany({
+    where: categoryWhere,
+    select: { category: true },
+  });
+  const categoryCountMap = new Map<string, number>();
+  for (const b of categoryBooks) {
+    if (b.category) {
+      categoryCountMap.set(b.category, (categoryCountMap.get(b.category) || 0) + 1);
+    }
+  }
+  const categories = [...categoryCountMap.entries()]
+    .filter(([, count]) => count > 0)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   res.json({ books: booksWithDpi, total, page, pageSize, options: { subjects, grades, categories } });
 });

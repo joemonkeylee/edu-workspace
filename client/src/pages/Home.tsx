@@ -41,8 +41,11 @@ function ClearableSelect({
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
-  options: string[];
+  options: string[] | { name: string; count?: number }[];
 }) {
+  const opts = options.map((o) =>
+    typeof o === 'string' ? { name: o, count: undefined } : o
+  );
   return (
     <div className="relative w-44">
       <select
@@ -51,8 +54,10 @@ function ClearableSelect({
         className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-9 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <option value="">{placeholder}</option>
-        {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+        {opts.map((opt) => (
+          <option key={opt.name} value={opt.name}>
+            {opt.count !== undefined ? `${opt.name} (${opt.count})` : opt.name}
+          </option>
         ))}
       </select>
       <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">▾</span>
@@ -130,7 +135,7 @@ export default function Home() {
     [...rawGradeOptions].sort((a, b) => (GRADE_ORDER.indexOf(a) + 1 || 999) - (GRADE_ORDER.indexOf(b) + 1 || 999)),
     [rawGradeOptions]
   );
-  const categoryOptions = useMemo(() => [...rawCategoryOptions].sort(), [rawCategoryOptions]);
+  const categoryOptions = useMemo(() => [...rawCategoryOptions].sort((a, b) => a.name.localeCompare(b.name)), [rawCategoryOptions]);
 
   // Server-side fetch: whenever page or filters change
   useEffect(() => {
@@ -401,7 +406,7 @@ export default function Home() {
         </Link>
       </header>
 
-      <main className="flex-1 overflow-auto p-6">
+      <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
         {/* Row 1: filters + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} />
@@ -532,7 +537,7 @@ export default function Home() {
                             >
                               <option value="" className="text-gray-800">&nbsp;</option>
                               {categoryOptions.map((c) => (
-                                <option key={c} value={c} className="text-gray-800">{c}</option>
+                                <option key={c.name} value={c.name} className="text-gray-800">{c.name}</option>
                               ))}
                             </select>
                           </div>

@@ -7,7 +7,7 @@ interface StoreState {
   total: number;
   subjectOptions: string[];
   gradeOptions: string[];
-  categoryOptions: string[];
+  categoryOptions: { name: string; count: number }[];
   currentBook: Book | null;
   currentPage: number;
   zoom: number;
@@ -33,7 +33,7 @@ export const useStore = create<StoreState>((set, get) => ({
   total: 0,
   subjectOptions: [],
   gradeOptions: [],
-  categoryOptions: [],
+  categoryOptions: [] as { name: string; count: number }[],
   currentBook: null,
   currentPage: 1,
   zoom: 1,

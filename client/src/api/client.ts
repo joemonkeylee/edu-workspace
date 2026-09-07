@@ -8,7 +8,7 @@ export interface BooksResponse {
   total: number;
   page: number;
   pageSize: number;
-  options: { subjects: string[]; grades: string[]; categories: string[] };
+  options: { subjects: string[]; grades: string[]; categories: { name: string; count: number }[] };
 }
 
 export async function getBooks(params?: { category?: string; grade?: string; subject?: string; page?: number; pageSize?: number }) {
