@@ -525,7 +525,6 @@ export default function Home() {
           >
             {hasActiveFilters ? <RotateCcw size={13} /> : <RefreshCw size={13} />}
           </button>
-          <span className="text-gray-300 text-xs mx-1">|</span>
 
           {/* Sort controls (draggable, 3-state toggle) */}
           <span className="text-xs text-gray-400 mr-0.5">排序</span>
@@ -576,16 +575,6 @@ export default function Home() {
             <RotateCcw size={13} />
           </button>
           <div className="flex-1" />
-          <button
-            onClick={editMode ? requestExitEdit : () => setEditMode(true)}
-            className={`flex items-center rounded-lg border px-2 py-1.5 text-xs transition ${
-              editMode
-                ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
-                : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {editMode ? '完成编辑' : '启用编辑'}
-          </button>
         </div>
 
         {loading ? (
@@ -717,8 +706,18 @@ export default function Home() {
         {/* Pager (below the list): select actions on left, pager on right */}
         {total > 0 && (
           <div className="mt-5 flex items-center gap-3">
-            {/* Col 1: edit actions (left) */}
+            {/* Col 1: edit toggle + edit actions (left) */}
             <div className="flex items-center gap-2 w-1/3">
+              <button
+                onClick={editMode ? requestExitEdit : () => setEditMode(true)}
+                className={`rounded-md border px-2 py-1 text-xs ${
+                  editMode
+                    ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
+                    : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {editMode ? '完成' : '编辑'}
+              </button>
               {editMode && (
                 <>
                   <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
