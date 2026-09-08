@@ -238,6 +238,8 @@ const GRADE_MAP: Record<string, string> = {
  */
 export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; subject: string } {
   const parts = pdfPath.split(path.sep);
+  // Full path text for fallback subject search (all parts + filename)
+  const fullPathText = parts.join(' ');
 
   // Regex: captures grade number (Chinese or Arabic), optional 上下, optional 册
   const gradeRegex = /([七八九7-9])年级([上下])?(?:册)?/;
@@ -252,7 +254,8 @@ export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; sub
       const half = m1[2] || '上';
       const gradeNum = GRADE_MAP[num] ? GRADE_MAP[num].replace('上', half) : '';
       const grade = gradeNum || `${num}年级${half}`;
-      const subject = extractSubject(text.replace(gradeRegex, ''));
+      let subject = extractSubject(text.replace(gradeRegex, ''));
+      if (!subject) subject = extractSubject(fullPathText);
       return { grade, subject };
     }
 
@@ -263,7 +266,8 @@ export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; sub
       const num = chuMap[m2[1]] || m2[1];
       const half = m2[2] || '上';
       const grade = `${num}${half}`;
-      const subject = extractSubject(text.replace(chuZhongRegex, ''));
+      let subject = extractSubject(text.replace(chuZhongRegex, ''));
+      if (!subject) subject = extractSubject(fullPathText);
       return { grade, subject };
     }
 
@@ -271,7 +275,8 @@ export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; sub
     const m3 = text.match(gaoZhongRegex);
     if (m3) {
       const grade = `高${m3[1]}${m3[2] || ''}`;
-      const subject = extractSubject(text.replace(gaoZhongRegex, ''));
+      let subject = extractSubject(text.replace(gaoZhongRegex, ''));
+      if (!subject) subject = extractSubject(fullPathText);
       return { grade, subject };
     }
 
@@ -288,6 +293,10 @@ export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; sub
   const fileName = parts[parts.length - 1].replace(/\.pdf$/i, '');
   const result = tryMatch(fileName);
   if (result) return result;
+
+  // 3) Last resort: try to extract subject from full path even without grade
+  const subjectOnly = extractSubject(fullPathText);
+  if (subjectOnly) return { grade: '', subject: subjectOnly };
 
   return { grade: '', subject: '' };
 }
