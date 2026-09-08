@@ -208,43 +208,86 @@ export function isDpiComplete(bookDir: string, dpi: number, expectedPages: numbe
   }
 }
 
-const SUBJECT_KEYWORDS = ['语文', '数学', '英语', '物理', '化学', '生物', '道法', '历史', '地理', '科学'];
+const SUBJECT_KEYWORDS = [
+  '语文', '数学', '英语', '物理', '化学', '生物', '道法', '历史', '地理', '科学',
+  '政治', '美术', '音乐', '体育', '信息技术', '通用技术', '道德与法治',
+];
+
+const GRADE_MAP: Record<string, string> = {
+  '七': '七上', '7': '七上', '初一': '七上', '高一上': '高一上',
+  '八': '八上', '8': '八上', '初二': '八上', '初二上': '八上',
+  '九': '九上', '9': '九上', '初三': '九上', '初三上': '九上',
+  '高一': '高一', '高二': '高二', '高三': '高三',
+};
 
 /**
- * Parse grade (阶段) and subject (学科) from a PDF file path.
+ * Parse grade (学期) and subject (学科) from a PDF file path.
  *
- * Recognised folder naming patterns (walked from deepest folder to shallowest,
- * skipping the filename itself):
- *   七年级上册历史   → grade="七上", subject="历史"
- *   八年级下册地理   → grade="八下", subject="地理"
- *   九年级上册数学   → grade="九上", subject="数学"
+ * Recognised patterns (tried in order, directory parts from deepest to shallowest,
+ * then filename as fallback):
  *
- * If no folder matches but the filename contains the pattern, the filename
- * (without .pdf) is tried as a fallback. Subject is only set when a known
- * subject keyword is found; otherwise it stays empty.
+ * Grade patterns:
+ *   七年级上册 / 7年级上册 / 七年级上 / 7年级上  → "七上"
+ *   七年级下册 / 7年级下册 / 七年级下 / 7年级下  → "七下"
+ *   初一上 / 初一下       → "七上" / "七下"
+ *   初二上 / 初二下       → "八上" / "八下"
+ *   初三上 / 初三下       → "九上" / "九下"
+ *   高一 / 高二 / 高三    → "高一" / "高二" / "高三"
+ *
+ * Subject: extracted from the same folder/filename text if a known keyword is found.
  */
 export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; subject: string } {
   const parts = pdfPath.split(path.sep);
-  const fullRegex = /([七八九])年级([上下])册(.*)/;
+
+  // Regex: captures grade number (Chinese or Arabic), optional 上下, optional 册
+  const gradeRegex = /([七八九7-9])年级([上下])?(?:册)?/;
+  const chuZhongRegex = /初([一二三])([上下])?/;
+  const gaoZhongRegex = /高([一二三])([上下])?/;
+
+  const tryMatch = (text: string): { grade: string; subject: string } | null => {
+    // Middle school: 七/八/九年级 + 上下册
+    const m1 = text.match(gradeRegex);
+    if (m1) {
+      const num = m1[1];
+      const half = m1[2] || '上';
+      const gradeNum = GRADE_MAP[num] ? GRADE_MAP[num].replace('上', half) : '';
+      const grade = gradeNum || `${num}年级${half}`;
+      const subject = extractSubject(text.replace(gradeRegex, ''));
+      return { grade, subject };
+    }
+
+    // 初一/初二/初三 + optional 上下
+    const m2 = text.match(chuZhongRegex);
+    if (m2) {
+      const chuMap: Record<string, string> = { '一': '七', '二': '八', '三': '九' };
+      const num = chuMap[m2[1]] || m2[1];
+      const half = m2[2] || '上';
+      const grade = `${num}${half}`;
+      const subject = extractSubject(text.replace(chuZhongRegex, ''));
+      return { grade, subject };
+    }
+
+    // 高一/高二/高三
+    const m3 = text.match(gaoZhongRegex);
+    if (m3) {
+      const grade = `高${m3[1]}${m3[2] || ''}`;
+      const subject = extractSubject(text.replace(gaoZhongRegex, ''));
+      return { grade, subject };
+    }
+
+    return null;
+  };
 
   // 1) Walk through directory parts (exclude the filename at the end)
   for (let i = parts.length - 2; i >= 0; i--) {
-    const m = parts[i].match(fullRegex);
-    if (m) {
-      const grade = `${m[1]}${m[2]}`;
-      const subject = extractSubject(m[3]);
-      return { grade, subject };
-    }
+    const result = tryMatch(parts[i]);
+    if (result) return result;
   }
 
   // 2) Fallback: try the filename (strip .pdf)
   const fileName = parts[parts.length - 1].replace(/\.pdf$/i, '');
-  const m = fileName.match(fullRegex);
-  if (m) {
-    const grade = `${m[1]}${m[2]}`;
-    const subject = extractSubject(m[3]);
-    return { grade, subject };
-  }
+  const result = tryMatch(fileName);
+  if (result) return result;
 
   return { grade: '', subject: '' };
 }

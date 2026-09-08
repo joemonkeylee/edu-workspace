@@ -58,11 +58,28 @@ export async function deleteMistake(id: number) {
   return data;
 }
 
-export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string) {
+export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string, grade?: string, subject?: string, skipDb?: boolean) {
   const params = new URLSearchParams({ targetPath, category, dpi: String(dpi) });
   if (concurrency) params.set('concurrency', String(concurrency));
   if (taskId) params.set('taskId', taskId);
+  if (grade) params.set('grade', grade);
+  if (subject) params.set('subject', subject);
+  if (skipDb) params.set('skipDb', 'true');
   return `/api/admin/scan-pdf?${params}`;
+}
+
+export interface PreviewFile {
+  fileName: string;
+  fullPath: string;
+  category: string;
+  grade: string;
+  subject: string;
+  title: string;
+}
+
+export async function previewScanPdf(path: string, grade?: string, subject?: string, category?: string) {
+  const { data } = await api.post('/admin/scan-pdf/preview', { path, grade, subject, category });
+  return data as { files: PreviewFile[]; total: number };
 }
 
 export async function getScanCapacity() {

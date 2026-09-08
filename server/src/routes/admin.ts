@@ -69,9 +69,64 @@ interface PdfTask {
   subject: string;
 }
 
+// Pre-scan preview: parse a directory and return parsed metadata without importing
+router.post('/scan-pdf/preview', async (req: Request, res: Response) => {
+  const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
+  if (!targetPath || !fs.existsSync(targetPath)) {
+    return res.status(400).json({ error: '路径不存在' });
+  }
+
+  const stat = fs.statSync(targetPath);
+  let pdfFiles: string[] = [];
+
+  if (stat.isFile() && targetPath.toLowerCase().endsWith('.pdf')) {
+    pdfFiles = [targetPath];
+  } else if (stat.isDirectory()) {
+    const scanDir = (dir: string): string[] => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      const results: string[] = [];
+      for (const entry of entries) {
+        if (entry.name.startsWith('.')) continue;
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          results.push(...scanDir(fullPath));
+        } else if (entry.name.toLowerCase().endsWith('.pdf')) {
+          results.push(fullPath);
+        }
+      }
+      return results;
+    };
+    pdfFiles = scanDir(targetPath);
+  }
+
+  const overrideGrade = typeof req.body?.grade === 'string' ? req.body.grade.trim() : '';
+  const overrideSubject = typeof req.body?.subject === 'string' ? req.body.subject.trim() : '';
+  const overrideCategory = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+
+  const results = pdfFiles.map((pdfPath) => {
+    const fileName = path.basename(pdfPath);
+    const title = path.basename(pdfPath, '.pdf');
+    const parsed = parseGradeSubjectFromPath(pdfPath);
+    const category = overrideCategory || path.basename(path.dirname(pdfPath)) || '未分类';
+    return {
+      fileName,
+      fullPath: pdfPath,
+      category,
+      grade: overrideGrade || parsed.grade,
+      subject: overrideSubject || parsed.subject,
+      title,
+    };
+  });
+
+  res.json({ files: results, total: results.length });
+});
+
 router.get('/scan-pdf', async (req: Request, res: Response) => {
   const targetPath = req.query.targetPath as string;
   const explicitCategory = req.query.category as string;
+  const explicitGrade = req.query.grade as string;
+  const explicitSubject = req.query.subject as string;
+  const skipDb = req.query.skipDb === 'true';
   const dpi = parseInt((req.query.dpi as string) || '300', 10);
   // Concurrency: default to min(4, cores-1), cap at 8 to avoid choking the system
   const taskId = typeof req.query.taskId === 'string' ? req.query.taskId : crypto.randomUUID();
@@ -190,7 +245,9 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const info = await getPdfInfo(pdfPath);
         const pdfCategory = explicitCategory || path.basename(path.dirname(pdfPath)) || '未分类';
         const title = path.basename(pdfPath, '.pdf') || info.title;
-        const { grade, subject } = parseGradeSubjectFromPath(pdfPath);
+        const { grade: parsedGrade, subject: parsedSubject } = parseGradeSubjectFromPath(pdfPath);
+        const grade = explicitGrade || parsedGrade;
+        const subject = explicitSubject || parsedSubject;
         const fileHash = await hashFile(pdfPath);
         tasks.push({ pdfPath, fileName, category: pdfCategory, title, pages: info.pages, fileHash, grade, subject });
       } catch {
@@ -327,77 +384,94 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       send('log', { message: `[${idx + 1}/${toProcess.length}] 正在处理: ${task.fileName}` });
 
       try {
-        const existing = await prisma.book.findFirst({
-          where: { title: task.title, category: task.category },
-        });
-
         let bookId: number;
-        let isNew = false;
+        let bookDir: string;
 
-        if (existing) {
-          bookId = existing.id;
-          const bookDir = getBookRoot(bookId);
-          const dpiDir = path.join(bookDir, String(dpi));
-
-          const mergedSourcePaths = mergeSourcePaths(existing.sourcePaths, task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || []));
-          if (!existing.fileHash || existing.fileHash !== task.fileHash) {
-            await prisma.book.update({
-              where: { id: bookId },
-              data: {
-                fileHash: task.fileHash,
-                sourcePaths: mergedSourcePaths as any,
-              },
-            });
-          }
-
-          if ((!existing.grade || !existing.subject) && (task.grade || task.subject)) {
-            await prisma.book.update({
-              where: { id: bookId },
-              data: {
-                ...(task.grade && !existing.grade ? { grade: task.grade } : {}),
-                ...(task.subject && !existing.subject ? { subject: task.subject } : {}),
-              },
-            });
-            send('log', { message: `  补全阶段/学科: ${task.grade || '-'} / ${task.subject || '-'}` });
-          }
-
-          // Re-render incomplete or missing DPI
-          const existingDpis = getAvailableDpis(bookDir);
-          if (existingDpis.includes(dpi)) {
-            send('log', { message: `  DPI=${dpi} 渲染不完整，重新渲染...` });
-            fs.rmSync(dpiDir, { recursive: true, force: true });
-          } else {
-            send('log', { message: `  新增 DPI=${dpi} 渲染（已有: ${existingDpis.join(', ') || '无'}）` });
-          }
-        } else {
-          send('log', { message: `  提取目录...` });
-          const toc = await extractOutline(task.pdfPath, task.pages);
-          send('log', { message: `  目录提取完成，${toc.length} 个条目` });
-
-          const book = await prisma.book.create({
-            data: {
-              title: task.title,
-              category: task.category,
-              grade: task.grade,
-              subject: task.subject,
-              batchId,
-              totalPages: task.pages,
-              storagePath: '',
-              fileHash: task.fileHash,
-              sourcePaths: [task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || [])] as any,
-              tocJson: toc as any,
-            },
+        if (skipDb) {
+          // skipDb mode: find book by hash, only render images to storage
+          const existingByHash = await prisma.book.findFirst({
+            where: { fileHash: task.fileHash },
+            select: { id: true },
           });
-          bookId = book.id;
-          isNew = true;
-          send('log', { message: `  创建书籍记录: ID=${bookId} (阶段=${task.grade || '-'} 学科=${task.subject || '-'})` });
-        }
+          if (!existingByHash) {
+            send('log', { message: `  ✗ 跳过（数据库中无匹配记录）: ${task.fileName}` });
+            return;
+          }
+          bookId = existingByHash.id;
+          bookDir = getBookRoot(bookId);
+          send('log', { message: `  匹配到 Book ID=${bookId}` });
+        } else {
+          const existing = await prisma.book.findFirst({
+            where: { title: task.title, category: task.category },
+          });
 
-        const bookDir = getBookRoot(bookId);
-        fs.mkdirSync(bookDir, { recursive: true });
-        const hasArchivedPdf = fs.readdirSync(bookDir).some((name) => name.toLowerCase().endsWith('.pdf'));
-        if (!hasArchivedPdf) {
-          fs.copyFileSync(task.pdfPath, path.join(bookDir, path.basename(task.fileName)));
+          let isNew = false;
+
+          if (existing) {
+            bookId = existing.id;
+            bookDir = getBookRoot(bookId);
+            const dpiDir = path.join(bookDir, String(dpi));
+
+            const mergedSourcePaths = mergeSourcePaths(existing.sourcePaths, task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || []));
+            if (!existing.fileHash || existing.fileHash !== task.fileHash) {
+              await prisma.book.update({
+                where: { id: bookId },
+                data: {
+                  fileHash: task.fileHash,
+                  sourcePaths: mergedSourcePaths as any,
+                },
+              });
+            }
+
+            if ((!existing.grade || !existing.subject) && (task.grade || task.subject)) {
+              await prisma.book.update({
+                where: { id: bookId },
+                data: {
+                  ...(task.grade && !existing.grade ? { grade: task.grade } : {}),
+                  ...(task.subject && !existing.subject ? { subject: task.subject } : {}),
+                },
+              });
+              send('log', { message: `  补全阶段/学科: ${task.grade || '-'} / ${task.subject || '-'}` });
+            }
+
+            // Re-render incomplete or missing DPI
+            const existingDpis = getAvailableDpis(bookDir);
+            if (existingDpis.includes(dpi)) {
+              send('log', { message: `  DPI=${dpi} 渲染不完整，重新渲染...` });
+              fs.rmSync(dpiDir, { recursive: true, force: true });
+            } else {
+              send('log', { message: `  新增 DPI=${dpi} 渲染（已有: ${existingDpis.join(', ') || '无'}）` });
+            }
+          } else {
+            send('log', { message: `  提取目录...` });
+            const toc = await extractOutline(task.pdfPath, task.pages);
+            send('log', { message: `  目录提取完成，${toc.length} 个条目` });
+
+            const book = await prisma.book.create({
+              data: {
+                title: task.title,
+                category: task.category,
+                grade: task.grade,
+                subject: task.subject,
+                batchId,
+                totalPages: task.pages,
+                storagePath: '',
+                fileHash: task.fileHash,
+                sourcePaths: [task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || [])] as any,
+                tocJson: toc as any,
+              },
+            });
+            bookId = book.id;
+            isNew = true;
+            bookDir = getBookRoot(bookId);
+            send('log', { message: `  创建书籍记录: ID=${bookId} (阶段=${task.grade || '-'} 学科=${task.subject || '-'})` });
+          }
+
+          fs.mkdirSync(bookDir, { recursive: true });
+          const hasArchivedPdf = fs.readdirSync(bookDir).some((name) => name.toLowerCase().endsWith('.pdf'));
+          if (!hasArchivedPdf) {
+            fs.copyFileSync(task.pdfPath, path.join(bookDir, path.basename(task.fileName)));
+          }
         }
         const dpiDir = path.join(bookDir, String(dpi));
         send('log', { message: `  开始渲染 ${task.pages} 页 (DPI=${dpi})...` });
@@ -430,12 +504,15 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         });
 
         const allDpis = getAvailableDpis(bookDir);
-        const storagePath = `/storage/books/${bookId}/`;
-        const finalSourcePaths = mergeSourcePaths(existing?.sourcePaths, task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || []));
-        await prisma.book.update({
-          where: { id: bookId },
-          data: { storagePath, totalPages: task.pages, batchId, fileHash: task.fileHash, sourcePaths: finalSourcePaths as any },
-        });
+        if (!skipDb) {
+          const storagePath = `/storage/books/${bookId}/`;
+          const existingForUpdate = await prisma.book.findUnique({ where: { id: bookId }, select: { sourcePaths: true } });
+          const finalSourcePaths = mergeSourcePaths(existingForUpdate?.sourcePaths, task.pdfPath, ...(extraPathsByHash.get(task.fileHash) || []));
+          await prisma.book.update({
+            where: { id: bookId },
+            data: { storagePath, totalPages: task.pages, batchId, fileHash: task.fileHash, sourcePaths: finalSourcePaths as any },
+          });
+        }
 
         send('log', { message: `  渲染完成，共 ${images.length} 张图片，可用 DPI: ${allDpis.join(', ')}` });
         send('log', { message: `  ✓ 处理完成: ${task.title} (${task.pages}页)` });
