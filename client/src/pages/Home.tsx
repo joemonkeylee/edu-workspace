@@ -117,11 +117,12 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
-  const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title'; dir: 'asc' | 'desc' | null }[]>([
+  const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[]>([
     { field: 'subject', dir: null },
     { field: 'grade', dir: null },
     { field: 'category', dir: null },
     { field: 'title', dir: null },
+    { field: 'totalPages', dir: null },
   ]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -133,7 +134,7 @@ export default function Home() {
     return active.map(s => `${s.field}:${s.dir}`).join(',');
   }, [sortFields]);
 
-  const toggleSortDir = (field: 'subject' | 'grade' | 'category' | 'title') => {
+  const toggleSortDir = (field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages') => {
     setSortFields(prev => prev.map(s => {
       if (s.field === field) {
         const next = s.dir === null ? 'asc' : s.dir === 'asc' ? 'desc' : null;
@@ -162,6 +163,7 @@ export default function Home() {
     { field: 'grade', dir: null },
     { field: 'category', dir: null },
     { field: 'title', dir: null },
+    { field: 'totalPages', dir: null },
   ]);
   const [pageInput, setPageInput] = useState('1');
   const [rowsPerPage, setRowsPerPage] = useState(2);
@@ -487,7 +489,7 @@ export default function Home() {
       <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-gray-400 mr-1">筛选</span>
+          {/* <span className="text-xs text-gray-400 mr-1">筛选</span> */}
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
@@ -528,9 +530,9 @@ export default function Home() {
           <div className="flex-1" />
 
           {/* Sort controls (draggable, 3-state toggle) */}
-          <span className="text-xs text-gray-400 mr-0.5">排序</span>
+          {/* <span className="text-xs text-gray-400 mr-0.5">排序</span> */}
           {sortFields.map((s, idx) => {
-            const labels: Record<string, string> = { subject: '学科', grade: '学期', category: '分类', title: '关键字' };
+            const labels: Record<string, string> = { subject: '学科', grade: '学期', category: '分类', title: '关键字', totalPages: '页数' };
             const hasSort = s.dir !== null;
             const activeSorts = sortFields.filter(sf => sf.dir !== null);
             const order = hasSort ? activeSorts.findIndex(sf => sf.field === s.field) + 1 : 0;

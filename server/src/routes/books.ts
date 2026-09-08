@@ -34,7 +34,7 @@ router.get('/', async (req: Request, res: Response) => {
   if (sort) {
     for (const part of sort.split(',')) {
       const [field, dir] = part.trim().split(':');
-      if (['subject', 'grade', 'category', 'title'].includes(field) && ['asc', 'desc'].includes(dir)) {
+      if (['subject', 'grade', 'category', 'title', 'totalPages'].includes(field) && ['asc', 'desc'].includes(dir)) {
         orderBy.push({ [field]: dir });
       }
     }
