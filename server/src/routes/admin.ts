@@ -103,9 +103,9 @@ router.post('/scan-pdf/preview', async (req: Request, res: Response) => {
   const overrideSubject = typeof req.body?.subject === 'string' ? req.body.subject.trim() : '';
   const overrideCategory = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
 
-  // Generate a preview batchId so grade-less files can be grouped
-  const now = new Date();
-  const previewBatchId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+  // Generate a preview batchId so grade-less files can be grouped (per-call, includes seconds)
+  const pNow = new Date();
+  const previewBatchId = `${pNow.getFullYear()}${String(pNow.getMonth() + 1).padStart(2, '0')}${String(pNow.getDate()).padStart(2, '0')}${String(pNow.getHours()).padStart(2, '0')}${String(pNow.getMinutes()).padStart(2, '0')}${String(pNow.getSeconds()).padStart(2, '0')}`;
 
   const results = pdfFiles.map((pdfPath) => {
     const fileName = path.basename(pdfPath);
@@ -139,9 +139,9 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   const concurrencyState = { value: initialConcurrency };
   scanConcurrency.set(taskId, concurrencyState);
 
-  // Batch ID: YYYYMMDDHHmm — all books imported in this scan share the same batchId
+  // Batch ID: YYYYMMDDHHmmss — all books imported in this scan share the same batchId
   const now = new Date();
-  const batchId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+  const batchId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
