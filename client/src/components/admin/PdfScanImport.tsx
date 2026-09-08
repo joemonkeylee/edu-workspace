@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { getScanCapacity, scanPdfUrl, updateScanConcurrency, previewScanPdf } from '../../api/client';
 import type { PreviewFile } from '../../api/client';
 import { useStore } from '../../store/useStore';
-import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check } from 'lucide-react';
+import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check, ChevronDown, X } from 'lucide-react';
 
 interface ProgressData {
   phase?: number;
@@ -42,6 +42,26 @@ function createTaskId() {
 const GRADE_PRESETS = ['七上', '七下', '八上', '八下', '九上', '九下', '高一', '高二', '高三'];
 const SUBJECT_PRESETS = ['语文', '数学', '英语', '物理', '化学', '生物', '道法', '历史', '地理', '科学', '政治', '美术', '音乐', '体育', '信息技术'];
 
+const PATH_HISTORY_KEY = 'edu-scan-path-history';
+const MAX_HISTORY = 10;
+
+function loadPathHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(PATH_HISTORY_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.filter((s) => typeof s === 'string');
+    }
+  } catch { /* ignore */ }
+  return [];
+}
+
+function savePathHistory(paths: string[]) {
+  try {
+    localStorage.setItem(PATH_HISTORY_KEY, JSON.stringify(paths.slice(0, MAX_HISTORY)));
+  } catch { /* ignore */ }
+}
+
 export default function PdfScanImport() {
   const [targetPath, setTargetPath] = useState('');
   const [grade, setGrade] = useState('');
@@ -60,6 +80,8 @@ export default function PdfScanImport() {
   const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pathHistory, setPathHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
   const doneRef = useRef(false);
@@ -101,10 +123,32 @@ export default function PdfScanImport() {
       setMaxConcurrency(max);
       setConcurrency((current) => Math.min(current, max));
     }).catch(() => setMaxConcurrency(1));
+    setPathHistory(loadPathHistory());
+  }, []);
+
+  const pushPathToHistory = useCallback((p: string) => {
+    const trimmed = p.trim();
+    if (!trimmed) return;
+    setPathHistory((prev) => {
+      const filtered = prev.filter((s) => s !== trimmed);
+      const updated = [trimmed, ...filtered].slice(0, MAX_HISTORY);
+      savePathHistory(updated);
+      return updated;
+    });
+  }, []);
+
+  const removeFromHistory = useCallback((p: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPathHistory((prev) => {
+      const updated = prev.filter((s) => s !== p);
+      savePathHistory(updated);
+      return updated;
+    });
   }, []);
 
   const handlePreview = async () => {
     if (!targetPath.trim()) return;
+    pushPathToHistory(targetPath);
     setPreviewing(true);
     setPreviewFiles([]);
     try {
@@ -136,6 +180,7 @@ export default function PdfScanImport() {
   const confirmScan = () => {
     setShowConfirm(false);
     if (!targetPath.trim()) return;
+    pushPathToHistory(targetPath);
     doneRef.current = false;
     setScanning(true);
     setLogs([]);
@@ -255,10 +300,43 @@ export default function PdfScanImport() {
             value={targetPath}
             onChange={(e) => setTargetPath(e.target.value)}
             placeholder="/Users/username/Documents/textbooks 或 C:\Users\..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             disabled={scanning}
+            onKeyDown={(e) => { if (e.key === 'Escape') setShowHistory(false); }}
           />
+          {pathHistory.length > 0 && (
+            <button
+              onClick={() => setShowHistory((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              title="历史路径"
+            >
+              <ChevronDown size={16} className={`transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+          {showHistory && pathHistory.length > 0 && (
+            <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+              {pathHistory.map((p) => (
+                <div
+                  key={p}
+                  onClick={() => { setTargetPath(p); setShowHistory(false); }}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 cursor-pointer group"
+                >
+                  <span className="text-sm text-gray-700 truncate flex-1">{p}</span>
+                  <button
+                    onClick={(e) => removeFromHistory(p, e)}
+                    className="ml-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    title="删除"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+        {showHistory && (
+          <div className="fixed inset-0 z-0" onClick={() => setShowHistory(false)} />
+        )}
         <p className="text-xs text-gray-400 mt-1.5">支持递归扫描子目录，自动以一级子目录名作为分类</p>
 
         {/* Override selectors */}
