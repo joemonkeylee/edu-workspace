@@ -103,16 +103,21 @@ router.post('/scan-pdf/preview', async (req: Request, res: Response) => {
   const overrideSubject = typeof req.body?.subject === 'string' ? req.body.subject.trim() : '';
   const overrideCategory = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
 
+  // Generate a preview batchId so grade-less files can be grouped
+  const now = new Date();
+  const previewBatchId = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+
   const results = pdfFiles.map((pdfPath) => {
     const fileName = path.basename(pdfPath);
     const title = path.basename(pdfPath, '.pdf');
     const parsed = parseGradeSubjectFromPath(pdfPath);
     const category = overrideCategory || path.basename(path.dirname(pdfPath)) || '未分类';
+    const grade = overrideGrade || parsed.grade || previewBatchId;
     return {
       fileName,
       fullPath: pdfPath,
       category,
-      grade: overrideGrade || parsed.grade,
+      grade,
       subject: overrideSubject || parsed.subject,
       title,
     };
@@ -246,7 +251,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const pdfCategory = explicitCategory || path.basename(path.dirname(pdfPath)) || '未分类';
         const title = path.basename(pdfPath, '.pdf') || info.title;
         const { grade: parsedGrade, subject: parsedSubject } = parseGradeSubjectFromPath(pdfPath);
-        const grade = explicitGrade || parsedGrade;
+        const grade = explicitGrade || parsedGrade || batchId;
         const subject = explicitSubject || parsedSubject;
         const fileHash = await hashFile(pdfPath);
         tasks.push({ pdfPath, fileName, category: pdfCategory, title, pages: info.pages, fileHash, grade, subject });
