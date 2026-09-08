@@ -491,8 +491,8 @@ export default function PdfScanImport() {
               <tbody>
                 {previewFiles.map((f, i) => (
                   <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-4 py-1.5 text-gray-800 truncate max-w-[200px]">{f.fileName}</td>
-                    <td className="px-4 py-1.5 text-gray-500 truncate max-w-[300px]">{f.fullPath}</td>
+                    <td className="px-4 py-1.5 text-gray-800 truncate max-w-[200px]" title={f.fileName}>{f.fileName}</td>
+                    <td className="px-4 py-1.5 text-gray-500 truncate max-w-[300px]" title={f.fullPath}>{f.fullPath}</td>
                     <td className="px-4 py-1.5">
                       {f.grade ? <span className="text-blue-600">{f.grade}</span> : <span className="text-gray-300">—</span>}
                     </td>
