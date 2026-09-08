@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { getScanCapacity, scanPdfUrl, updateScanConcurrency, previewScanPdf } from '../../api/client';
 import type { PreviewFile } from '../../api/client';
 import { useStore } from '../../store/useStore';
-import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle } from 'lucide-react';
+import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check } from 'lucide-react';
 
 interface ProgressData {
   phase?: number;
@@ -59,6 +59,7 @@ export default function PdfScanImport() {
   const [previewing, setPreviewing] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
   const doneRef = useRef(false);
@@ -114,6 +115,18 @@ export default function PdfScanImport() {
     } finally {
       setPreviewing(false);
     }
+  };
+
+  const handleCopyPreview = () => {
+    if (previewFiles.length === 0) return;
+    const lines = previewFiles.map(f =>
+      `${f.fileName}\t${f.fullPath}\t${f.grade || '-'}\t${f.subject || '-'}\t${f.category}`
+    );
+    const text = ['文件名\t完整路径\t学期\t科目\t分类', ...lines].join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const startScan = () => {
@@ -373,8 +386,18 @@ export default function PdfScanImport() {
       {/* Preview table */}
       {previewFiles.length > 0 && (
         <div className="bg-white rounded-lg shadow mb-4 overflow-hidden">
-          <div className="px-4 py-2 border-b border-gray-200 text-sm font-semibold text-gray-700">
-            预解析结果（{previewFiles.length} 个文件）
+          <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-700">
+              预解析结果（{previewFiles.length} 个文件）
+            </span>
+            <button
+              onClick={handleCopyPreview}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-teal-600 transition px-2 py-1 rounded hover:bg-gray-100"
+              title="复制结果"
+            >
+              {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+              {copied ? '已复制' : '复制结果'}
+            </button>
           </div>
           <div className="max-h-64 overflow-auto">
             <table className="w-full text-sm">
