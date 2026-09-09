@@ -32,6 +32,7 @@ import {
   Layers,
   Download,
   PenLine,
+  MoreVertical,
 } from 'lucide-react';
 import { buildAnnotationColorIndex, getAnnotationColor } from '../utils/annotationColors';
 import AssignmentMode from '../components/AssignmentMode';
@@ -64,6 +65,32 @@ export default function BookViewer() {
     clearCurrent,
   } = useStore();
 
+  // Persisted reading config (per book)
+  const STORAGE_KEY = 'edu-readConfig';
+
+  function loadReadConfig(bookId: number) {
+    try {
+      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      const cfg = all[String(bookId)] || {};
+      return {
+        page: cfg.page || 1,
+        pageLayout: cfg.pageLayout || 'single',
+        fitMode: cfg.fitMode || 'page',
+        rotation: cfg.rotation || 0,
+      };
+    } catch {
+      return { page: 1, pageLayout: 'single' as PageLayout, fitMode: 'page' as FitMode, rotation: 0 };
+    }
+  }
+
+  function saveReadConfig(bookId: number, data: Record<string, any>) {
+    try {
+      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      all[String(bookId)] = { ...all[String(bookId)], ...data };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    } catch { /* ignore */ }
+  }
+
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('annotations');
@@ -76,6 +103,7 @@ export default function BookViewer() {
     grading: true,
   });
   const [layerDropdownOpen, setLayerDropdownOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
   const [deleteAnnId, setDeleteAnnId] = useState<number | null>(null);
   const skipClearRef = useRef(false); // skip clearing when navigating via annotation click
@@ -97,9 +125,10 @@ export default function BookViewer() {
     if (!showAnnotations || !layers.annotations) setSelectedAnnotationId(null);
   }, [showAnnotations, layers.annotations]);
 
-  const [fitMode, setFitMode] = useState<FitMode>('page');
-  const [pageLayout, setPageLayout] = useState<PageLayout>('single');
-  const [rotation, setRotation] = useState(0); // degrees, negative = CCW
+  const [savedConfig, setSavedConfig] = useState(() => bookId ? loadReadConfig(bookId) : null);
+  const [fitMode, setFitMode] = useState<FitMode>(savedConfig?.fitMode || 'page');
+  const [pageLayout, setPageLayout] = useState<PageLayout>(savedConfig?.pageLayout || 'single');
+  const [rotation, setRotation] = useState(savedConfig?.rotation || 0); // degrees, negative = CCW
   const effectiveRotation = ((rotation % 360) + 360) % 360; // normalize to 0-359
   const mainRef = useRef<HTMLDivElement>(null);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
@@ -107,11 +136,34 @@ export default function BookViewer() {
 
   useEffect(() => {
     if (bookId) {
-      fetchBook(bookId);
+      const cfg = loadReadConfig(bookId);
+      setSavedConfig(cfg);
+      setFitMode(cfg.fitMode);
+      setPageLayout(cfg.pageLayout);
+      setRotation(cfg.rotation);
+      fetchBook(bookId).then(() => {
+        if (cfg.page > 1) setCurrentPage(cfg.page);
+      });
       fetchAnnotations(bookId);
     }
     return () => clearCurrent();
   }, [bookId]);
+
+  // Persist config changes
+  useEffect(() => {
+    if (bookId) saveReadConfig(bookId, { pageLayout, fitMode, rotation });
+  }, [bookId, pageLayout, fitMode, rotation]);
+
+  // Persist last page (debounced via ref)
+  const savePageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!bookId || !currentBook) return;
+    if (savePageTimer.current) clearTimeout(savePageTimer.current);
+    savePageTimer.current = setTimeout(() => {
+      saveReadConfig(bookId, { page: currentPage });
+    }, 500);
+    return () => { if (savePageTimer.current) clearTimeout(savePageTimer.current); };
+  }, [bookId, currentPage, currentBook]);
 
   const availableDpis: number[] = currentBook?.availableDpis || [];
   const activeDpi = selectedDpi || availableDpis[0] || 0;
@@ -344,29 +396,30 @@ export default function BookViewer() {
 
   return (
     <div className="h-full flex flex-col bg-[#525659]">
-      {/* Top bar */}
-      <header className="bg-[#323639] text-white px-2 py-1.5 flex items-center gap-1 flex-shrink-0 select-none flex-nowrap">
-        {/* Left: back + title */}
-        <button
-          onClick={() => navigate('/')}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
-          title="返回"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        {/* Left sidebar toggle - shown when sidebar is closed */}
-        {!leftOpen && (
+      {/* Top bar - 3 column grid: left / center / right */}
+      <header className="bg-[#323639] text-white px-2 py-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-shrink-0 select-none">
+        {/* === LEFT: back + sidebar toggle + title === */}
+        <div className="flex items-center gap-1 min-w-0">
           <button
-            onClick={() => setLeftOpen(true)}
+            onClick={() => navigate('/')}
             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
-            title="目录"
+            title="返回"
           >
-            <PanelLeft size={18} />
+            <ArrowLeft size={18} />
           </button>
-        )}
-        <h1 className="text-sm text-gray-200 truncate flex-shrink-0" title={currentBook.title}>{currentBook.title}</h1>
+          {!leftOpen && (
+            <button
+              onClick={() => setLeftOpen(true)}
+              className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
+              title="目录"
+            >
+              <PanelLeft size={18} />
+            </button>
+          )}
+          <h1 className="text-sm text-gray-200 truncate" title={currentBook.title}>{currentBook.title}</h1>
+        </div>
 
-        {/* Center: page navigation (Chrome-style) */}
+        {/* === CENTER: page navigation === */}
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={() => setCurrentPage(1)}
@@ -394,7 +447,7 @@ export default function BookViewer() {
                 const p = Number(e.target.value);
                 if (p >= 1 && p <= totalPages) setCurrentPage(p);
               }}
-              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             {isDouble && currentPage < totalPages && (
               <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
@@ -422,32 +475,29 @@ export default function BookViewer() {
           </button>
         </div>
 
-        <div className="flex-1" />
-
-        {/* Right controls */}
-        {/* Tool buttons (icon-only) */}
-        <div className="flex items-center gap-0.5 flex-shrink-0">
+        {/* === RIGHT: tools / zoom / layers / layout / more === */}
+        <div className="flex items-center justify-end gap-0.5">
+          {/* Group 1: Tool buttons */}
           {toolsBefore.map(({ mode, icon: Icon, label, disabled }) => (
             <button
               key={mode}
               onClick={() => !disabled && setTool(mode)}
               data-tooltip={label}
-              className={`relative p-1.5 rounded transition ${
+              className={`relative p-1.5 rounded transition flex-shrink-0 ${
                 disabled
                   ? 'text-gray-600 opacity-40 cursor-not-allowed'
                   : tool === mode
-                    ? 'bg-primary text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
             >
               <Icon size={16} />
             </button>
           ))}
-          {/* 做题 button - between 浏览 and 批注 */}
           <button
             onClick={() => { setAssignmentMode(true); setRightTab('assignments'); }}
             data-tooltip="做题"
-            className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
           >
             <PenLine size={16} />
           </button>
@@ -456,23 +506,49 @@ export default function BookViewer() {
               key={mode}
               onClick={() => !disabled && setTool(mode)}
               data-tooltip={label}
-              className={`relative p-1.5 rounded transition ${
+              className={`relative p-1.5 rounded transition flex-shrink-0 ${
                 disabled
                   ? 'text-gray-600 opacity-40 cursor-not-allowed'
                   : tool === mode
-                    ? 'bg-primary text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
             >
               <Icon size={16} />
             </button>
           ))}
-        </div>
 
-        <div className="w-px h-5 bg-white/10 mx-0.5" />
+          <div className="w-px h-5 bg-white/10 mx-0.5" />
 
-        {/* Fit mode toggles */}
-        <div className="flex items-center gap-0.5">
+          {/* Group 2: Zoom controls */}
+          <button onClick={zoomOut} data-tooltip="缩小" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0">
+            <ZoomOut size={16} />
+          </button>
+          {editingZoom ? (
+            <input
+              type="text"
+              value={zoomInput}
+              onChange={(e) => setZoomInput(e.target.value)}
+              onBlur={commitZoom}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitZoom();
+                if (e.key === 'Escape') setEditingZoom(false);
+              }}
+              autoFocus
+              className="w-12 text-center text-xs bg-white/10 text-white rounded py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          ) : (
+            <button
+              onClick={startEditZoom}
+              data-tooltip="点击输入缩放比例"
+              className="relative text-xs w-12 text-center text-gray-300 hover:text-white py-0.5 rounded flex-shrink-0"
+            >
+              {Math.round(snapZoom(zoom) * 100)}%
+            </button>
+          )}
+          <button onClick={zoomIn} data-tooltip="放大" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0">
+            <ZoomIn size={16} />
+          </button>
           <button
             onClick={() => setFitMode('page')}
             data-tooltip="适应页面"
@@ -487,114 +563,50 @@ export default function BookViewer() {
           >
             <Maximize2 size={16} />
           </button>
-        </div>
 
-        {/* Rotate button */}
-        <button
-          onClick={() => setRotation((r) => r - 90)}
-          data-tooltip="逆时针旋转 90°"
-          className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
-        >
-          <RotateCcw size={16} />
-        </button>
+          <div className="w-px h-5 bg-white/10 mx-0.5" />
 
-        <div className="w-px h-5 bg-white/10 mx-0.5" />
-
-        {/* Original PDF download */}
-        <a
-          href={currentBook.pdfUrl || undefined}
-          download={currentBook.pdfFileName || undefined}
-          aria-disabled={!currentBook.pdfUrl}
-          data-tooltip={currentBook.pdfFileName || '暂无 PDF'}
-          className={`relative p-1.5 rounded transition ${
-            currentBook.pdfUrl
-              ? 'text-gray-400 hover:text-white hover:bg-white/10'
-              : 'text-gray-600 cursor-not-allowed'
-          }`}
-          onClick={(event) => {
-            if (!currentBook.pdfUrl) event.preventDefault();
-          }}
-        >
-          <Download size={16} />
-        </a>
-
-        {/* Zoom controls */}
-        <div className="flex items-center gap-0.5">
-          <button onClick={zoomOut} data-tooltip="缩小" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition">
-            <ZoomOut size={16} />
-          </button>
-          {editingZoom ? (
-            <input
-              type="text"
-              value={zoomInput}
-              onChange={(e) => setZoomInput(e.target.value)}
-              onBlur={commitZoom}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitZoom();
-                if (e.key === 'Escape') setEditingZoom(false);
-              }}
-              autoFocus
-              className="w-12 text-center text-xs bg-white/10 text-white rounded py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          ) : (
+          {/* Group 3: Layers + layout */}
+          <div className="relative flex-shrink-0">
             <button
-              onClick={startEditZoom}
-              data-tooltip="点击输入缩放比例"
-              className="relative text-xs w-12 text-center text-gray-300 hover:text-white py-0.5 rounded"
+              onClick={() => setLayerDropdownOpen(!layerDropdownOpen)}
+              data-tooltip="图层控制"
+              className={`relative p-1.5 rounded transition flex items-center gap-0.5 ${
+                Object.values(layers).some(v => !v)
+                  ? 'bg-blue-500/20 text-blue-300'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
             >
-              {Math.round(snapZoom(zoom) * 100)}%
+              <Layers size={16} />
             </button>
-          )}
-          <button onClick={zoomIn} data-tooltip="放大" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition">
-            <ZoomIn size={16} />
-          </button>
-        </div>
+            {layerDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-50" onClick={() => setLayerDropdownOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-36">
+                  {[
+                    { key: 'annotations' as const, label: '批注图层' },
+                    { key: 'highlights' as const, label: '高亮图层' },
+                    { key: 'assignments' as const, label: '做题图层' },
+                    { key: 'grading' as const, label: '批改图层' },
+                  ].map(({ key, label }) => (
+                    <label
+                      key={key}
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 cursor-pointer text-sm text-gray-200"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={layers[key]}
+                        onChange={(e) => setLayers({ ...layers, [key]: e.target.checked })}
+                        className="accent-blue-600"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
-        <div className="w-px h-5 bg-white/10 mx-0.5" />
-
-        {/* Layer visibility dropdown (multi-select) */}
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={() => setLayerDropdownOpen(!layerDropdownOpen)}
-            data-tooltip="图层控制"
-            className={`relative p-1.5 rounded transition flex items-center gap-0.5 ${
-              Object.values(layers).some(v => !v)
-                ? 'bg-blue-500/20 text-blue-300'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <Layers size={16} />
-          </button>
-          {layerDropdownOpen && (
-            <>
-              <div className="fixed inset-0 z-50" onClick={() => setLayerDropdownOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-36">
-                {[
-                  { key: 'annotations' as const, label: '批注图层' },
-                  { key: 'highlights' as const, label: '高亮图层' },
-                  { key: 'assignments' as const, label: '做题图层' },
-                  { key: 'grading' as const, label: '批改图层' },
-                ].map(({ key, label }) => (
-                  <label
-                    key={key}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 cursor-pointer text-sm text-gray-200"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={layers[key]}
-                      onChange={(e) => setLayers({ ...layers, [key]: e.target.checked })}
-                      className="accent-blue-600"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Page layout toggles */}
-        <div className="flex items-center gap-0.5">
           <button
             onClick={() => setPageLayout('single')}
             data-tooltip="单页"
@@ -609,32 +621,72 @@ export default function BookViewer() {
           >
             <BookOpen size={16} />
           </button>
+
+          <div className="w-px h-5 bg-white/10 mx-0.5" />
+
+          {/* Group 4: More menu (rotate, download, DPI) */}
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setMoreOpen(!moreOpen)}
+              data-tooltip="更多"
+              className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center"
+            >
+              <MoreVertical size={16} />
+            </button>
+            {moreOpen && (
+              <>
+                <div className="fixed inset-0 z-50" onClick={() => setMoreOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-44">
+                  <button
+                    onClick={() => { setRotation((r: number) => r - 90); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-200 hover:bg-white/5 transition"
+                  >
+                    <RotateCcw size={14} /> 逆时针旋转 90°
+                  </button>
+                  <a
+                    href={currentBook.pdfUrl || undefined}
+                    download={currentBook.pdfFileName || undefined}
+                    aria-disabled={!currentBook.pdfUrl}
+                    onClick={(event) => {
+                      if (!currentBook.pdfUrl) event.preventDefault();
+                      setMoreOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition ${
+                      currentBook.pdfUrl ? 'text-gray-200 hover:bg-white/5' : 'text-gray-600 cursor-not-allowed'
+                    }`}
+                  >
+                    <Download size={14} /> {currentBook.pdfFileName ? '下载原PDF' : '暂无 PDF'}
+                  </a>
+                  {availableDpis.length > 0 && (
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-200">
+                      <span className="text-xs text-gray-400">DPI</span>
+                      <select
+                        value={activeDpi}
+                        onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
+                        className="flex-1 bg-transparent text-gray-200 text-xs rounded px-1 py-0.5 focus:outline-none cursor-pointer [&>option]:text-black"
+                      >
+                        {availableDpis.map(d => (
+                          <option key={d} value={d}>{d} DPI</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right sidebar toggle - shown when sidebar is closed */}
+          {!rightOpen && (
+            <button
+              onClick={() => setRightOpen(true)}
+              data-tooltip="批注 / 错题 / 作业"
+              className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
+            >
+              <PanelRight size={18} />
+            </button>
+          )}
         </div>
-
-        {/* DPI selector */}
-        {availableDpis.length > 0 && (
-          <select
-            value={activeDpi}
-            onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
-            data-tooltip="选择分辨率"
-            className="relative bg-transparent text-gray-300 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition flex-shrink-0 w-auto"
-          >
-            {availableDpis.map(d => (
-              <option key={d} value={d}>{d} DPI</option>
-            ))}
-          </select>
-        )}
-
-        {/* Right sidebar toggle - shown when sidebar is closed */}
-        {!rightOpen && (
-          <button
-            onClick={() => setRightOpen(true)}
-            data-tooltip="批注 / 错题 / 作业"
-            className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
-          >
-            <PanelRight size={18} />
-          </button>
-        )}
       </header>
 
       {/* Main content area */}
