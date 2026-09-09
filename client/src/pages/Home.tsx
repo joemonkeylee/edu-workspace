@@ -22,6 +22,8 @@ interface SavedFilters {
   subject: string;
   grade: string;
   category: string;
+  search: string;
+  sortFields: { field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[];
 }
 
 function loadSavedFilters(): SavedFilters {
@@ -29,7 +31,7 @@ function loadSavedFilters(): SavedFilters {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw) as SavedFilters;
   } catch { /* ignore */ }
-  return { subject: '', grade: '', category: '' };
+  return { subject: '', grade: '', category: '', search: '', sortFields: [] };
 }
 
 function ClearableSelect({
@@ -114,16 +116,20 @@ export default function Home() {
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
   const [selectedGrade, setSelectedGrade] = useState(saved.grade);
   const [selectedCategory, setSelectedCategory] = useState(saved.category);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState(saved.search);
+  const [debouncedSearch, setDebouncedSearch] = useState(saved.search);
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
-  const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[]>([
-    { field: 'subject', dir: null },
-    { field: 'grade', dir: null },
-    { field: 'category', dir: null },
-    { field: 'title', dir: null },
-    { field: 'totalPages', dir: null },
-  ]);
+  const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[]>(
+    saved.sortFields.length > 0
+      ? saved.sortFields
+      : [
+          { field: 'subject', dir: null },
+          { field: 'grade', dir: null },
+          { field: 'category', dir: null },
+          { field: 'title', dir: null },
+          { field: 'totalPages', dir: null },
+        ]
+  );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [page, setPage] = useState(1);
 
@@ -215,8 +221,10 @@ export default function Home() {
       subject: selectedSubject,
       grade: selectedGrade,
       category: selectedCategory,
+      search,
+      sortFields,
     }));
-  }, [selectedSubject, selectedGrade, selectedCategory]);
+  }, [selectedSubject, selectedGrade, selectedCategory, search, sortFields]);
 
   const hasUnsavedChanges = draftEdits.size > 0 || pendingDeletes.size > 0;
 
