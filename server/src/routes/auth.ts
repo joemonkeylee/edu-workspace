@@ -25,6 +25,12 @@ import {
 
 const router = Router();
 
+// ── Status (no token required) ───────────────────────────────────
+
+router.get('/status', (_req: Request, res: Response) => {
+  res.json({ authEnabled: isAuthEnabled() });
+});
+
 // ── Captcha ──────────────────────────────────────────────────────
 
 router.get('/captcha', (req: Request, res: Response) => {

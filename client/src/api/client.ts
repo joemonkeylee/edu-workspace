@@ -111,6 +111,11 @@ export async function logout() {
   clearTokens();
 }
 
+export async function getAuthStatus() {
+  const { data } = await api.get('/auth/status');
+  return data as { authEnabled: boolean };
+}
+
 export async function getMe() {
   const { data } = await api.get('/auth/me');
   return data as { userId: number; phone: string; isAdmin: boolean };

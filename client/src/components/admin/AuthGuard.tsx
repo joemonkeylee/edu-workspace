@@ -9,19 +9,22 @@ export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
   const location = useLocation();
   const { user, authEnabled, loading } = useAuthStore();
 
-  if (!authEnabled || !loading && !user) {
-    // Auth disabled — open access
-    if (!authEnabled) return <Outlet />;
-  }
-
-  if (loading) {
+  // Still checking auth status
+  if (loading || authEnabled === null) {
     return <div className="flex items-center justify-center h-screen text-gray-400">Loading...</div>;
   }
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Auth disabled — open access
+  if (!authEnabled) {
+    return <Outlet />;
   }
 
+  // Auth enabled but not logged in
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  // Role check
   if (allowedRoles && user) {
     const role = user.isAdmin ? 'admin' : 'user';
     if (!allowedRoles.includes(role)) {

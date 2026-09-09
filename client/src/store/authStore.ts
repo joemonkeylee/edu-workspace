@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { initAuth, setAuthExpiredHandler, clearTokens, getMe, logout as apiLogout, type LoginUser } from '../api/client';
+import { initAuth, setAuthExpiredHandler, clearTokens, getAuthStatus, getMe, logout as apiLogout, type LoginUser } from '../api/client';
 
 interface AuthState {
   user: LoginUser | null;
@@ -25,22 +25,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setAuthExpiredHandler(() => get().setAuthExpired());
     set({ loading: true });
     try {
-      const me = await getMe();
-      set({
-        user: {
-          id: me.userId,
-          phone: me.phone,
-          email: null,
-          isAdmin: me.isAdmin,
-          nickName: '',
-          avatar: '',
-          status: 'normal',
-          maxDevices: 3,
-        },
-        authEnabled: true,
-        loading: false,
-      });
+      const { authEnabled } = await getAuthStatus();
+      if (!authEnabled) {
+        set({ user: null, authEnabled: false, loading: false });
+        return;
+      }
+      // Auth is enabled — check if we have a valid token
+      try {
+        const me = await getMe();
+        set({
+          user: {
+            id: me.userId,
+            phone: me.phone,
+            email: null,
+            isAdmin: me.isAdmin,
+            nickName: '',
+            avatar: '',
+            status: 'normal',
+            maxDevices: 3,
+          },
+          authEnabled: true,
+          loading: false,
+        });
+      } catch {
+        // Token missing or invalid — auth is on but not logged in
+        set({ user: null, authEnabled: true, loading: false });
+      }
     } catch {
+      // Status endpoint failed — assume auth disabled
       set({ user: null, authEnabled: false, loading: false });
     }
   },
