@@ -60,7 +60,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
         <p className="text-gray-400 text-sm mb-3">暂无作业</p>
         <button
           onClick={handleCreate}
-          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-[#006064] text-white hover:bg-[#00838f]"
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
         >
           <Plus size={14} /> 新建作业
         </button>
@@ -73,7 +73,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
       <div className="px-3 py-2">
         <button
           onClick={handleCreate}
-          className="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-[#006064] text-white hover:bg-[#00838f]"
+          className="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
         >
           <Plus size={14} /> 新建作业
         </button>

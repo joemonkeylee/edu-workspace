@@ -364,7 +364,7 @@ export default function BookViewer() {
             <PanelLeft size={18} />
           </button>
         )}
-        <h1 className="text-sm text-gray-200 truncate max-w-[120px] flex-shrink-0" title={currentBook.title}>{currentBook.title}</h1>
+        <h1 className="text-sm text-gray-200 truncate flex-shrink-0" title={currentBook.title}>{currentBook.title}</h1>
 
         {/* Center: page navigation (Chrome-style) */}
         <div className="flex items-center gap-1 flex-shrink-0">
