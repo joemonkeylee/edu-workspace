@@ -18,10 +18,13 @@
     "build:server": "npm run build --workspace=server",
     "build:client": "VITE_APP_ENV=${VITE_APP_ENV:-TEST} VITE_APP_COMMIT=${VITE_APP_COMMIT:-$(git rev-parse --short HEAD)} npm run build --workspace=client && printf '%s' \"${VITE_APP_COMMIT:-$(git rev-parse --short HEAD)}\" > client/dist/build-commit.txt",
     "build:client:prod": "VITE_APP_ENV=PROD VITE_APP_COMMIT=${VITE_APP_COMMIT:-$(git rev-parse --short HEAD)} npm run build --workspace=client && printf '%s' \"${VITE_APP_COMMIT:-$(git rev-parse --short HEAD)}\" > client/dist/build-commit.txt",
-    "start:server": "npm run start --workspace=server"
+    "start:server": "npm run start --workspace=server",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.0"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

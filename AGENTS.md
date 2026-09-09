@@ -7,20 +7,17 @@
 After **every** feature/fix iteration, the agent must:
 
 1. Complete the code changes
-2. **Full build check** — run BOTH commands every time:
-   - `cd server && npm run build` (compiles + generates Prisma client if needed)
-   - `cd client && npm run build`
-   - Both must pass with zero errors. Fix all errors before proceeding.
-3. **Auto-commit by default** — always run `git commit` after builds pass. The ONLY exception is when the user's message explicitly says "don't commit" / "不提交" / "先别提交" / "别提交". If the user says nothing about committing, you MUST commit.
-4. Reply to the user with an **English commit message** (formatted as a code block or plain text) summarizing the changes
+2. **Auto-commit by default** — always run `git commit` after changes. The husky pre-commit hook will automatically run `npm run build` (server + client) and block the commit if there are build errors. The ONLY exception is when the user's message explicitly says "don't commit" / "不提交" / "先别提交" / "别提交". If the user says nothing about committing, you MUST commit.
+3. Reply to the user with an **English commit message** (formatted as a code block or plain text) summarizing the changes
 
-### Build checklist (MUST do every time)
+### Pre-commit hook (husky)
 
-- [ ] `cd server && npm run build` — zero errors
-- [ ] `cd client && npm run build` — zero errors
-- [ ] If Prisma schema was modified: run `cd server && npx prisma db push` first, then build
-- [ ] If new npm packages were used: verify they are in package.json (not just node_modules)
-- [ ] Both builds pass → then commit
+- `.husky/pre-commit` runs `npm run build` before every commit
+- This compiles both server (tsc) and client (vite build)
+- If build fails, the commit is blocked — fix errors and retry
+- If Prisma schema was modified: run `cd server && npx prisma db push` before committing
+- If new npm packages were used: ensure they are installed and in package.json
+- To bypass in emergencies only: `git commit --no-verify` (NOT recommended)
 
 ### When to actually commit
 
