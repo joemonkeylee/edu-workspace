@@ -5,7 +5,9 @@
     "git commit": true,
     "npx tsc": true,
     "npm run prisma:generate": true,
-    "npm run prisma:push": true
+    "npm run prisma:push": true,
+    "printf": true,
+    "git push": true
   },
   "files.watcherExclude": {
     "**/.git/objects/**": true,
