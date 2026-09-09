@@ -796,6 +796,10 @@ export default function Home() {
                 </div>
               );
             })}
+            {/* Placeholder cards to fill remaining grid slots */}
+            {Array.from({ length: Math.max(0, pageSize - pagedBooks.length) }).map((_, i) => (
+              <div key={`ph-${i}`} style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: '3/4' }} />
+            ))}
           </div>
         ) : (
           /* List view */
@@ -933,6 +937,12 @@ export default function Home() {
                     </tr>
                   );
                 })}
+                {/* Placeholder rows to fill remaining table height */}
+                {Array.from({ length: Math.max(0, listPageSize - pagedBooks.length) }).map((_, i) => (
+                  <tr key={`ph-${i}`} className="border-t border-gray-100" style={{ height: '56px' }}>
+                    <td colSpan={editMode ? 8 : 6}></td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
