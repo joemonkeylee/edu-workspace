@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminGetUsers, adminCreateUser, adminUpdateUser, adminResetPassword, adminDeleteUser, adminGetUserDevices, adminKickDevice, adminGetAuthSettings, adminUpdateAuthSettings } from '../../api/client';
+import { adminGetUsers, adminCreateUser, adminUpdateUser, adminResetPassword, adminDeleteUser, adminGetUserDevices, adminKickDevice } from '../../api/client';
 
 interface UserRow {
   id: number;
@@ -32,8 +32,6 @@ export default function UsersTable() {
   const [showCreate, setShowCreate] = useState(false);
   const [showDevices, setShowDevices] = useState<number | null>(null);
   const [devices, setDevices] = useState<DeviceRow[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
-  const [authSettings, setAuthSettings] = useState<Record<string, string>>({});
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -55,14 +53,6 @@ export default function UsersTable() {
     } catch { /* ignore */ }
   }, []);
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await adminGetAuthSettings();
-      setAuthSettings(res);
-      setShowSettings(true);
-    } catch { /* ignore */ }
-  }, []);
-
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -79,7 +69,6 @@ export default function UsersTable() {
           <button onClick={fetchUsers} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">搜索</button>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchSettings} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">认证设置</button>
           <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90">添加用户</button>
         </div>
       </div>
@@ -148,13 +137,6 @@ export default function UsersTable() {
           devices={devices}
           onClose={() => setShowDevices(null)}
           onKick={(tokenId) => adminKickDevice(showDevices, tokenId).then(() => fetchDevices(showDevices))}
-        />
-      )}
-      {showSettings && (
-        <SettingsModal
-          settings={authSettings}
-          onClose={() => setShowSettings(false)}
-          onSave={(s) => adminUpdateAuthSettings(s).then((res) => setAuthSettings(res))}
         />
       )}
     </div>
@@ -305,52 +287,6 @@ function DevicesModal({ userId, devices, onClose, onKick }: { userId: number; de
             </div>
           ))}
           {devices.length === 0 && <p className="text-center text-gray-400 py-4">暂无在线设备</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SettingsModal({ settings, onClose, onSave }: { settings: Record<string, string>; onClose: () => void; onSave: (s: Record<string, string>) => Promise<void> }) {
-  const [form, setForm] = useState(settings);
-  const [saving, setSaving] = useState(false);
-
-  const fields = [
-    { key: 'auth.access_token_expiry', label: 'Access Token 过期', hint: '0=永不过期, 或 1h/30m/7d' },
-    { key: 'auth.refresh_token_expiry', label: 'Refresh Token 过期', hint: '如 7d/30d' },
-    { key: 'auth.token_rotation', label: 'Token 轮换', hint: 'true/false' },
-    { key: 'auth.login_max_attempts', label: '最大登录失败次数', hint: '如 5' },
-    { key: 'auth.lock_duration', label: '锁定时长', hint: '如 5m/10m' },
-  ];
-
-  return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold mb-4">认证设置</h3>
-        <div className="space-y-3">
-          {fields.map((f) => (
-            <div key={f.key}>
-              <label className="text-sm text-gray-500">{f.label}</label>
-              <input
-                type="text"
-                value={form[f.key] ?? ''}
-                onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                className="w-full px-3 py-2 border rounded text-sm"
-                placeholder={f.hint}
-              />
-              <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>
-            </div>
-          ))}
-          <button
-            onClick={async () => {
-              setSaving(true);
-              await onSave(form);
-              setSaving(false);
-              onClose();
-            }}
-            disabled={saving}
-            className="w-full py-2 bg-primary text-white rounded text-sm disabled:opacity-50"
-          >{saving ? '保存中...' : '保存'}</button>
         </div>
       </div>
     </div>
