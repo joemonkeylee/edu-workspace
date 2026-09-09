@@ -3,6 +3,166 @@ import type { Book } from '../types';
 
 const api = axios.create({ baseURL: '/api' });
 
+// ── Token management ──────────────────────────────────────────────
+
+let accessToken: string | null = null;
+let refreshToken: string | null = null;
+let onAuthExpired: (() => void) | null = null;
+
+const REFRESH_KEY = 'edu_refresh_token';
+
+export function initAuth() {
+  refreshToken = localStorage.getItem(REFRESH_KEY);
+}
+
+export function setTokens(access: string, refresh?: string) {
+  accessToken = access;
+  if (refresh) {
+    refreshToken = refresh;
+    localStorage.setItem(REFRESH_KEY, refresh);
+  }
+}
+
+export function setAuthExpiredHandler(handler: () => void) {
+  onAuthExpired = handler;
+}
+
+export function clearTokens() {
+  accessToken = null;
+  refreshToken = null;
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+// Attach access token to all requests
+api.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+
+// Auto-refresh on 401
+let refreshing = false;
+let pendingQueue: Array<() => void> = [];
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status === 401 && !original._retry && refreshToken) {
+      if (refreshing) {
+        return new Promise((resolve, reject) => {
+          pendingQueue.push(() => {
+            if (accessToken) original.headers.Authorization = `Bearer ${accessToken}`;
+            api(original).then(resolve).catch(reject);
+          });
+        });
+      }
+      original._retry = true;
+      refreshing = true;
+      try {
+        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
+        setTokens(data.accessToken, data.refreshToken);
+        pendingQueue.forEach((fn) => fn());
+        pendingQueue = [];
+        original.headers.Authorization = `Bearer ${data.accessToken}`;
+        return api(original);
+      } catch {
+        clearTokens();
+        pendingQueue = [];
+        onAuthExpired?.();
+        return Promise.reject(error);
+      } finally {
+        refreshing = false;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ── Auth API ──────────────────────────────────────────────────────
+
+export interface LoginUser {
+  id: number;
+  phone: string;
+  email: string | null;
+  isAdmin: boolean;
+  nickName: string;
+  avatar: string;
+  status: string;
+  maxDevices: number;
+}
+
+export async function getCaptcha() {
+  const { data } = await api.get('/auth/captcha');
+  return data as { key: string; svg: string };
+}
+
+export async function login(phone: string, password: string, captchaKey: string, captchaText: string) {
+  const { data } = await api.post('/auth/login', { phone, password, captchaKey, captchaText });
+  setTokens(data.accessToken, data.refreshToken);
+  return data as { accessToken: string; refreshToken: string; user: LoginUser };
+}
+
+export async function logout() {
+  if (refreshToken) {
+    try { await api.post('/auth/logout', { refreshToken }); } catch { /* ignore */ }
+  }
+  clearTokens();
+}
+
+export async function getMe() {
+  const { data } = await api.get('/auth/me');
+  return data as { userId: number; phone: string; isAdmin: boolean };
+}
+
+// ── Admin user API ────────────────────────────────────────────────
+
+export async function adminGetUsers(params?: Record<string, any>) {
+  const { data } = await api.get('/admin/users', { params });
+  return data as { users: any[]; total: number; page: number; pageSize: number };
+}
+
+export async function adminCreateUser(body: { phone: string; password: string; email?: string; isAdmin?: boolean; nickName?: string; maxDevices?: number }) {
+  const { data } = await api.post('/admin/users', body);
+  return data;
+}
+
+export async function adminUpdateUser(id: number, body: Record<string, any>) {
+  const { data } = await api.put(`/admin/users/${id}`, body);
+  return data;
+}
+
+export async function adminResetPassword(id: number, password: string) {
+  const { data } = await api.put(`/admin/users/${id}/password`, { password });
+  return data;
+}
+
+export async function adminDeleteUser(id: number) {
+  const { data } = await api.delete(`/admin/users/${id}`);
+  return data;
+}
+
+export async function adminGetUserDevices(id: number) {
+  const { data } = await api.get(`/admin/users/${id}/devices`);
+  return data as { devices: any[] };
+}
+
+export async function adminKickDevice(id: number, tokenId: number) {
+  const { data } = await api.delete(`/admin/users/${id}/devices/${tokenId}`);
+  return data;
+}
+
+export async function adminGetAuthSettings() {
+  const { data } = await api.get('/admin/users/settings/auth');
+  return data as Record<string, string>;
+}
+
+export async function adminUpdateAuthSettings(body: Record<string, string>) {
+  const { data } = await api.put('/admin/users/settings/auth', body);
+  return data;
+}
+
 export interface BooksResponse {
   books: Book[];
   total: number;

@@ -13,18 +13,23 @@
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
     "pdfjs-dist": "^4.10.38",
+    "svg-captcha": "^1.4.0",
     "uuid": "^11.0.5"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.5",
     "@types/uuid": "^10.0.0",

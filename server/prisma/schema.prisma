@@ -13,6 +13,34 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 }
 
+model User {
+  id         Int      @id @default(autoincrement())
+  phone      String   @unique @db.VarChar(20)
+  email      String?  @unique @db.VarChar(128)
+  password   String   @db.VarChar(255)
+  isAdmin    Boolean  @default(false)
+  nickName   String   @default("") @db.VarChar(64)
+  avatar     String   @default("") @db.VarChar(512)
+  status     String   @default("normal") @db.VarChar(20) // normal | disabled
+  maxDevices Int      @default(3)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique @db.VarChar(255)
+  deviceInfo String   @default("") @db.VarChar(255)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
 model Book {
   id          Int      @id @default(autoincrement())
   title       String

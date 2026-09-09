@@ -1,18 +1,27 @@
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle, FolderCog } from 'lucide-react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle, FolderCog, Users, LogOut } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 
 const MENU_ITEMS = [
   { path: '/admin/scan', label: 'PDF 扫描导入', icon: Scan },
   { path: '/admin/books', label: '书籍资产管理', icon: BookOpen },
   { path: '/admin/annotations', label: '批注数据管理', icon: Highlighter },
   { path: '/admin/mistakes', label: '错题本管理', icon: AlertCircle },
+  { path: '/admin/users', label: '用户管理', icon: Users },
   { path: '/admin/storage', label: '资源目录设置', icon: FolderCog },
 ];
 
 export default function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout, authEnabled } = useAuthStore();
   const activeItem = MENU_ITEMS.find((item) => location.pathname.startsWith(item.path));
   const title = activeItem?.label ?? '后台管理';
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <div className="h-full flex flex-col bg-surface">
@@ -21,6 +30,14 @@ export default function AdminLayout() {
           <ArrowLeft size={20} />
         </Link>
         <h1 className="text-lg font-bold">后台 · {title}</h1>
+        {authEnabled && user && (
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-sm text-gray-300">{user.nickName || user.phone}{user.isAdmin ? ' (管理员)' : ''}</span>
+            <button onClick={handleLogout} className="flex items-center gap-1 text-sm text-gray-300 hover:text-white transition" title="退出登录">
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="flex-1 flex overflow-hidden">

@@ -1,6 +1,10 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import BookViewer from './pages/BookViewer';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import AdminLayout from './components/admin/AdminLayout';
 import AuthGuard from './components/admin/AuthGuard';
 import PdfScanImport from './components/admin/PdfScanImport';
@@ -8,11 +12,21 @@ import BooksTable from './components/admin/BooksTable';
 import AnnotationsTable from './components/admin/AnnotationsTable';
 import MistakesTable from './components/admin/MistakesTable';
 import StorageSettings from './components/admin/StorageSettings';
+import UsersTable from './components/admin/UsersTable';
+import { useAuthStore } from './store/authStore';
 
 export default function App() {
+  const init = useAuthStore((s) => s.init);
+
+  useEffect(() => { init(); }, [init]);
+
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
         <Route path="/" element={<Home />} />
         <Route path="/book/:id" element={<BookViewer />} />
 
@@ -24,6 +38,7 @@ export default function App() {
             <Route path="books" element={<BooksTable />} />
             <Route path="annotations" element={<AnnotationsTable />} />
             <Route path="mistakes" element={<MistakesTable />} />
+            <Route path="users" element={<UsersTable />} />
             <Route path="storage" element={<StorageSettings />} />
           </Route>
         </Route>
