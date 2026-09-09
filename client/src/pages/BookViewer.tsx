@@ -29,7 +29,6 @@ import {
   CheckCircle2,
   Circle,
   RotateCcw,
-  Layers,
   Download,
   MessageSquareText,
   PenLine,
@@ -326,18 +325,22 @@ export default function BookViewer() {
     { mode: 'crop', icon: Scissors, label: '裁剪' },
   ];
 
+  const toolsBefore: { mode: ToolMode; icon: any; label: string; disabled?: boolean }[] = [
+    { mode: 'view', icon: MousePointer2, label: '浏览' },
+  ];
+
+  const toolsAfter: { mode: ToolMode; icon: any; label: string; disabled?: boolean }[] = [
+    { mode: 'note', icon: StickyNote, label: '批注' },
+    { mode: 'highlight', icon: Highlighter, label: '高亮', disabled: true },
+    { mode: 'crop', icon: Scissors, label: '裁剪' },
+  ];
+
   return (
     <div className="h-full flex flex-col bg-[#525659]">
       {/* Top bar */}
       <header className="bg-[#323639] text-white px-2 py-1.5 flex items-center gap-0.5 flex-shrink-0 select-none relative">
         {/* Left: sidebar toggle + back + title */}
-        <button
-          onClick={() => setLeftOpen(!leftOpen)}
-          className={`p-1.5 rounded transition ${leftOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-          title="目录"
-        >
-          <PanelLeft size={18} />
-        </button>
+        {/* Left: back + title */}
         <button
           onClick={() => navigate('/')}
           className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
@@ -345,6 +348,16 @@ export default function BookViewer() {
         >
           <ArrowLeft size={18} />
         </button>
+        {/* Left sidebar toggle - shown when sidebar is closed */}
+        {!leftOpen && (
+          <button
+            onClick={() => setLeftOpen(true)}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            title="目录"
+          >
+            <PanelLeft size={18} />
+          </button>
+        )}
         <h1 className="text-sm text-gray-200 truncate max-w-xs" title={currentBook.title}>{currentBook.title}</h1>
 
         {/* Center: page navigation (Chrome-style) */}
@@ -408,6 +421,22 @@ export default function BookViewer() {
         {/* Right controls */}
         {/* Tool buttons (icon-only) */}
         <div className="flex items-center gap-0.5">
+          {toolsBefore.map(({ mode, icon: Icon, label, disabled }) => (
+            <button
+              key={mode}
+              onClick={() => !disabled && setTool(mode)}
+              data-tooltip={label}
+              className={`relative p-1.5 rounded transition ${
+                disabled
+                  ? 'text-gray-600 opacity-40 cursor-not-allowed'
+                  : tool === mode
+                    ? 'bg-primary text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Icon size={16} />
+            </button>
+          ))}
           {/* 做题 button - between 浏览 and 批注 */}
           <button
             onClick={() => { setAssignmentMode(true); setRightTab('assignments'); }}
@@ -416,7 +445,7 @@ export default function BookViewer() {
           >
             <PenLine size={16} />
           </button>
-          {tools.map(({ mode, icon: Icon, label, disabled }) => (
+          {toolsAfter.map(({ mode, icon: Icon, label, disabled }) => (
             <button
               key={mode}
               onClick={() => !disabled && setTool(mode)}
@@ -548,29 +577,28 @@ export default function BookViewer() {
 
         {/* DPI selector */}
         {availableDpis.length > 0 && (
-          <div className="flex items-center gap-1">
-            <Layers size={14} className="text-gray-500" />
-            <select
-              value={activeDpi}
-              onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
-              data-tooltip="选择分辨率"
-              className="relative bg-transparent text-gray-300 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition"
-            >
-              {availableDpis.map(d => (
-                <option key={d} value={d}>{d} DPI</option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={activeDpi}
+            onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
+            data-tooltip="选择分辨率"
+            className="relative bg-transparent text-gray-300 text-xs rounded px-0.5 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition w-14"
+          >
+            {availableDpis.map(d => (
+              <option key={d} value={d}>{d} DPI</option>
+            ))}
+          </select>
         )}
 
-        {/* Right sidebar toggle */}
-        <button
-          onClick={() => setRightOpen(!rightOpen)}
-          data-tooltip="批注 / 错题"
-          className={`relative p-1.5 rounded transition ${rightOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-        >
-          <PanelRight size={18} />
-        </button>
+        {/* Right sidebar toggle - shown when sidebar is closed */}
+        {!rightOpen && (
+          <button
+            onClick={() => setRightOpen(true)}
+            data-tooltip="批注 / 错题 / 作业"
+            className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+          >
+            <PanelRight size={18} />
+          </button>
+        )}
       </header>
 
       {/* Main content area */}
@@ -578,6 +606,16 @@ export default function BookViewer() {
         {/* Left sidebar - TOC */}
         {leftOpen && (
           <aside className="w-60 bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20">
+            {/* Left sidebar header with toggle on right */}
+            <div className="flex items-center justify-end px-1.5 py-1.5 border-b border-black/20">
+              <button
+                onClick={() => setLeftOpen(false)}
+                className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+                title="收起目录"
+              >
+                <PanelLeft size={16} />
+              </button>
+            </div>
             <TocTree
               toc={currentBook.tocJson || []}
               currentPage={currentPage}
@@ -716,7 +754,15 @@ export default function BookViewer() {
         {/* Right sidebar - annotations & mistakes */}
         {rightOpen && (
           <aside className="w-72 bg-white flex flex-col flex-shrink-0 border-l border-gray-200">
-            <div className="flex border-b border-gray-200">
+            <div className="flex items-center border-b border-gray-200">
+              {/* Right sidebar toggle on left */}
+              <button
+                onClick={() => setRightOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition flex-shrink-0"
+                title="收起"
+              >
+                <PanelRight size={16} />
+              </button>
               <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${

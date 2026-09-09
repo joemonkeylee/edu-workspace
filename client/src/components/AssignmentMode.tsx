@@ -5,7 +5,7 @@ import {
   Download, FileText,
 } from 'lucide-react';
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
-import { pageImageUrl, getStrokes, saveStrokes, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
+import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
 
 export interface AssignmentModeProps {
   bookId: number;
@@ -92,7 +92,7 @@ export default function AssignmentMode({
     }
   }, [assignment, isGraded, dirty, strokes, layer]);
 
-  // Save before page change
+  // Save before page change; if saved strokes are empty, delete the assignment
   const handlePageChange = useCallback(async (newPage: number) => {
     if (assignment && dirty && !isGraded) {
       setSaving(true);
@@ -100,6 +100,16 @@ export default function AssignmentMode({
         await saveStrokes(assignment.id, currentPage, layer, strokes);
         setSavedStrokes(strokes);
         setDirty(false);
+        // If no strokes on this page after save, and assignment has no strokes anywhere, delete it
+        if (strokes.length === 0) {
+          // Check total strokes across all pages
+          const { strokes: allStrokes } = await getStrokes(assignment.id);
+          if (allStrokes.length === 0) {
+            await deleteAssignment(assignment.id);
+            onExit();
+            return;
+          }
+        }
       } catch (err) {
         console.error('Save before page change failed:', err);
       } finally {
@@ -108,7 +118,38 @@ export default function AssignmentMode({
     }
     lastSavedPageRef.current = newPage;
     setCurrentPage(newPage);
-  }, [assignment, dirty, isGraded, strokes, currentPage, layer, setCurrentPage]);
+  }, [assignment, dirty, isGraded, strokes, currentPage, layer, setCurrentPage, onExit]);
+
+  // On exit: save current page, then clean up all empty assignments for this book
+  const handleExit = useCallback(async () => {
+    if (assignment && dirty && !isGraded) {
+      setSaving(true);
+      try {
+        await saveStrokes(assignment.id, lastSavedPageRef.current, layer, strokes);
+        setSavedStrokes(strokes);
+        setDirty(false);
+      } catch (err) {
+        console.error('Save on exit failed:', err);
+      } finally {
+        setSaving(false);
+      }
+    }
+    // Clean up empty assignments for this book
+    try {
+      const { assignments } = await getAssignments(bookId);
+      for (const a of assignments) {
+        if (a.status === 'graded') continue;
+        const { strokes: allStrokes } = await getStrokes(a.id);
+        if (allStrokes.length === 0) {
+          await deleteAssignment(a.id);
+        }
+      }
+    } catch (err) {
+      console.error('Cleanup empty assignments failed:', err);
+    }
+    onAssignmentUpdate();
+    onExit();
+  }, [assignment, dirty, isGraded, strokes, layer, bookId, onExit, onAssignmentUpdate]);
 
   const handleStrokesChange = useCallback((newStrokes: Stroke[]) => {
     setStrokes(newStrokes);
@@ -159,7 +200,7 @@ export default function AssignmentMode({
       {/* Minimal top bar */}
       <div className="bg-[#323639] text-white px-3 py-1.5 flex items-center gap-2 flex-shrink-0">
         <button
-          onClick={async () => { await saveCurrentPage(); onExit(); }}
+          onClick={handleExit}
           className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
           title="退出做题模式"
         >

@@ -9,11 +9,15 @@ export interface AssignmentListProps {
   onRefresh?: number;
 }
 
+function genTimestampTitle(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
 export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh }: AssignmentListProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [title, setTitle] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -27,9 +31,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
   }, [bookId, onRefresh]);
 
   const handleCreate = async () => {
-    const { assignment } = await createAssignment(bookId, title || undefined);
-    setTitle('');
-    setShowCreate(false);
+    const { assignment } = await createAssignment(bookId, genTimestampTitle());
     load();
     onSelect(assignment);
   };
@@ -52,42 +54,12 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     return <div className="p-4 text-center text-gray-400 text-sm">加载中...</div>;
   }
 
-  if (showCreate) {
-    return (
-      <div className="p-3 space-y-2">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="作业标题（可选）"
-          className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-[#006064] focus:ring-1 focus:ring-[#006064]"
-          autoFocus
-          onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setShowCreate(false); }}
-        />
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowCreate(false)}
-            className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
-          >
-            取消
-          </button>
-          <button
-            onClick={handleCreate}
-            className="flex-1 px-3 py-1.5 text-sm rounded-lg bg-[#006064] text-white hover:bg-[#00838f]"
-          >
-            创建
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (assignments.length === 0) {
     return (
       <div className="p-4 text-center">
         <p className="text-gray-400 text-sm mb-3">暂无作业</p>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={handleCreate}
           className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-[#006064] text-white hover:bg-[#00838f]"
         >
           <Plus size={14} /> 新建作业
@@ -100,7 +72,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     <div className="flex flex-col">
       <div className="px-3 py-2">
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={handleCreate}
           className="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-[#006064] text-white hover:bg-[#00838f]"
         >
           <Plus size={14} /> 新建作业
