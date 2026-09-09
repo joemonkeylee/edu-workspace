@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { TocNode } from '../types';
-import { ChevronRight, ChevronDown, FileText, LayoutGrid, List } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, LayoutGrid, List, PanelLeft } from 'lucide-react';
 
 interface TocTreeProps {
   toc: TocNode[];
@@ -8,9 +8,10 @@ interface TocTreeProps {
   totalPages: number;
   storagePath: string;
   onPageSelect: (page: number) => void;
+  onClose?: () => void;
 }
 
-export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect }: TocTreeProps) {
+export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect, onClose }: TocTreeProps) {
   const [view, setView] = useState<'toc' | 'thumbs'>('thumbs');
   const visibleToc = filterVisibleToc(toc);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -41,12 +42,12 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
 
   return (
     <div className="h-full flex flex-col">
-      {/* View tabs */}
-      <div className="flex border-b border-black/20 flex-shrink-0">
+      {/* View tabs + close button on one line */}
+      <div className="flex items-center border-b border-black/20 flex-shrink-0">
         <button
           onClick={() => setView('thumbs')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-            view === 'thumbs' ? 'text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
+            view === 'thumbs' ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'
           }`}
         >
           <LayoutGrid size={14} />
@@ -55,12 +56,21 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
         <button
           onClick={() => setView('toc')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-            view === 'toc' ? 'text-white border-b-2 border-primary' : 'text-gray-500 hover:text-gray-300'
+            view === 'toc' ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'
           }`}
         >
           <List size={14} />
           目录
         </button>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
+            title="收起目录"
+          >
+            <PanelLeft size={16} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto scrollbar-thin" ref={scrollRef}>

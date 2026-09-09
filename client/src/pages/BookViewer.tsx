@@ -642,22 +642,13 @@ export default function BookViewer() {
         {/* Left sidebar - TOC */}
         {leftOpen && (
           <aside className="w-60 bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20">
-            {/* Left sidebar header with toggle on right */}
-            <div className="flex items-center justify-end px-1.5 py-1.5 border-b border-black/20">
-              <button
-                onClick={() => setLeftOpen(false)}
-                className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
-                title="收起目录"
-              >
-                <PanelLeft size={16} />
-              </button>
-            </div>
             <TocTree
               toc={currentBook.tocJson || []}
               currentPage={currentPage}
               totalPages={totalPages}
               storagePath={currentBook.storagePath || ''}
               onPageSelect={setCurrentPage}
+              onClose={() => setLeftOpen(false)}
             />
           </aside>
         )}
