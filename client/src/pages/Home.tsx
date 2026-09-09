@@ -638,16 +638,16 @@ export default function Home() {
           ) : (
             <div className="relative">
               <div className="overflow-hidden rounded-lg border border-gray-200">
-                <table className="w-full text-sm">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-500">
                     <tr>
                       {editMode && <th className="w-8 px-2 py-2 text-left font-medium"></th>}
-                      <th className="w-10 px-2 py-2 text-left font-medium">封面</th>
+                      <th className="w-12 px-2 py-2 text-left font-medium">封面</th>
                       <th className="px-2 py-2 text-left font-medium">书名</th>
-                      <th className="w-16 px-2 py-2 text-left font-medium">学科</th>
-                      <th className="w-16 px-2 py-2 text-left font-medium">学期</th>
-                      <th className="w-20 px-2 py-2 text-left font-medium">分类</th>
-                      <th className="w-12 px-2 py-2 text-right font-medium">页数</th>
+                      <th className="w-20 px-2 py-2 text-left font-medium">学科</th>
+                      <th className="w-20 px-2 py-2 text-left font-medium">学期</th>
+                      <th className="w-24 px-2 py-2 text-left font-medium">分类</th>
+                      <th className="w-16 px-2 py-2 text-right font-medium">页数</th>
                       {editMode && <th className="w-8 px-2 py-2"></th>}
                     </tr>
                   </thead>
@@ -790,16 +790,16 @@ export default function Home() {
         ) : (
           /* List view */
           <div className="overflow-hidden rounded-lg border border-gray-200">
-            <table className="w-full text-sm">
+            <table className="w-full table-fixed text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500">
                 <tr>
                   {editMode && <th className="w-8 px-2 py-2 text-left font-medium"></th>}
-                  <th className="w-10 px-2 py-2 text-left font-medium">封面</th>
+                  <th className="w-12 px-2 py-2 text-left font-medium">封面</th>
                   <th className="px-2 py-2 text-left font-medium">书名</th>
-                  <th className="w-16 px-2 py-2 text-left font-medium">学科</th>
-                  <th className="w-16 px-2 py-2 text-left font-medium">学期</th>
-                  <th className="w-20 px-2 py-2 text-left font-medium">分类</th>
-                  <th className="w-12 px-2 py-2 text-right font-medium">页数</th>
+                  <th className="w-20 px-2 py-2 text-left font-medium">学科</th>
+                  <th className="w-20 px-2 py-2 text-left font-medium">学期</th>
+                  <th className="w-24 px-2 py-2 text-left font-medium">分类</th>
+                  <th className="w-16 px-2 py-2 text-right font-medium">页数</th>
                   {editMode && <th className="w-8 px-2 py-2"></th>}
                 </tr>
               </thead>
@@ -832,7 +832,7 @@ export default function Home() {
                           <BookCover book={book} className="h-full w-full object-cover" />
                         </div>
                       </td>
-                      <td className="px-2 py-2 max-w-xs">
+                      <td className="px-2 py-2 truncate">
                         {editMode ? (
                           <input
                             value={draft.title}
@@ -842,7 +842,7 @@ export default function Home() {
                             placeholder="书名"
                           />
                         ) : (
-                          <span className="text-xs text-gray-700 line-clamp-1" title={book.title}>{book.title}</span>
+                          <span className="block text-xs text-gray-700 truncate" title={book.title}>{book.title}</span>
                         )}
                       </td>
                       <td className="px-2 py-2">
