@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Pen, Highlighter, Eraser, Undo2, Redo2,
   ChevronLeft, ChevronRight, X, Save, CheckCircle2,
-  Download, FileText,
+  Download, FileText, RotateCcw, Minimize2, Maximize2,
 } from 'lucide-react';
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
@@ -13,8 +13,6 @@ export interface AssignmentModeProps {
   storagePath: string;
   currentPage: number;
   setCurrentPage: (p: number) => void;
-  zoom: number;
-  rotation: number;
   assignment: Assignment | null;
   onExit: () => void;
   onAssignmentUpdate: () => void;
@@ -32,7 +30,7 @@ const HIGHLIGHT_COLOR = 'rgba(250, 204, 21, 0.5)';
 
 export default function AssignmentMode({
   bookId, totalPages, storagePath, currentPage, setCurrentPage,
-  zoom, rotation, assignment, onExit, onAssignmentUpdate,
+  assignment, onExit, onAssignmentUpdate,
 }: AssignmentModeProps) {
   const [tool, setTool] = useState<DrawTool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
@@ -42,12 +40,20 @@ export default function AssignmentMode({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
+  const [localRotation, setLocalRotation] = useState(0);
+  const [localZoom, setLocalZoom] = useState(0);
+  const [fitMode, setFitMode] = useState<'page' | 'width'>('page');
   const canvasRef = useRef<DrawingCanvasHandle>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const lastSavedPageRef = useRef(currentPage);
+  const autoRotatedRef = useRef(false);
 
   const isGraded = assignment?.status === 'graded';
   const readOnly = isGraded;
   const layer = 'student';
+
+  const effectiveRotation = ((localRotation % 360) + 360) % 360;
+  const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
 
   // Load strokes when page or assignment changes
   useEffect(() => {
@@ -76,17 +82,53 @@ export default function AssignmentMode({
     img.src = pageImageUrl(storagePath, currentPage);
   }, [storagePath, currentPage]);
 
-  // Auto-save on page change
-  const saveCurrentPage = useCallback(async () => {
-    if (!assignment || isGraded) return;
-    if (!dirty) return;
+  // Auto-rotate on first image load: align page long edge with screen long edge
+  useEffect(() => {
+    if (autoRotatedRef.current || imgNatural.w === 0) return;
+    autoRotatedRef.current = true;
+    const isScreenLandscape = window.innerWidth > window.innerHeight;
+    const isPageLandscape = imgNatural.w > imgNatural.h;
+    if (isScreenLandscape !== isPageLandscape) {
+      setLocalRotation(-90);
+    }
+  }, [imgNatural]);
+
+  // Calculate zoom to fit container — same pattern as BookViewer
+  const calcLocalZoom = useCallback(() => {
+    if (!containerRef.current || imgNatural.w === 0 || imgNatural.h === 0) return;
+    const cw = containerRef.current.clientWidth - 32;
+    const ch = containerRef.current.clientHeight - 32;
+    if (cw <= 0 || ch <= 0) return;
+    const isRot = effectiveRotation === 90 || effectiveRotation === 270;
+    const natW = isRot ? imgNatural.h : imgNatural.w;
+    const natH = isRot ? imgNatural.w : imgNatural.h;
+    const widthZoom = cw / natW;
+    const heightZoom = ch / natH;
+    setLocalZoom(fitMode === 'width' ? widthZoom : Math.min(widthZoom, heightZoom));
+  }, [imgNatural, effectiveRotation, fitMode]);
+
+  useEffect(() => { calcLocalZoom(); }, [calcLocalZoom]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(() => calcLocalZoom());
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [calcLocalZoom]);
+
+  // Save current page, returns success
+  const saveCurrentPage = useCallback(async (): Promise<boolean> => {
+    if (!assignment || isGraded) return true;
+    if (!dirty) return true;
     setSaving(true);
     try {
       await saveStrokes(assignment.id, lastSavedPageRef.current, layer, strokes);
       setSavedStrokes(strokes);
       setDirty(false);
+      return true;
     } catch (err) {
       console.error('Auto-save failed:', err);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -100,9 +142,7 @@ export default function AssignmentMode({
         await saveStrokes(assignment.id, currentPage, layer, strokes);
         setSavedStrokes(strokes);
         setDirty(false);
-        // If no strokes on this page after save, and assignment has no strokes anywhere, delete it
         if (strokes.length === 0) {
-          // Check total strokes across all pages
           const { strokes: allStrokes } = await getStrokes(assignment.id);
           if (allStrokes.length === 0) {
             await deleteAssignment(assignment.id);
@@ -120,8 +160,9 @@ export default function AssignmentMode({
     setCurrentPage(newPage);
   }, [assignment, dirty, isGraded, strokes, currentPage, layer, setCurrentPage, onExit]);
 
-  // On exit: save current page, then clean up all empty assignments for this book
+  // On exit: save current page, then clean up empty assignments (only if save succeeded)
   const handleExit = useCallback(async () => {
+    let saveOk = true;
     if (assignment && dirty && !isGraded) {
       setSaving(true);
       try {
@@ -130,22 +171,25 @@ export default function AssignmentMode({
         setDirty(false);
       } catch (err) {
         console.error('Save on exit failed:', err);
+        saveOk = false;
       } finally {
         setSaving(false);
       }
     }
-    // Clean up empty assignments for this book
-    try {
-      const { assignments } = await getAssignments(bookId);
-      for (const a of assignments) {
-        if (a.status === 'graded') continue;
-        const { strokes: allStrokes } = await getStrokes(a.id);
-        if (allStrokes.length === 0) {
-          await deleteAssignment(a.id);
+    // Only clean up empty assignments if save succeeded
+    if (saveOk) {
+      try {
+        const { assignments } = await getAssignments(bookId);
+        for (const a of assignments) {
+          if (a.status === 'graded') continue;
+          const { strokes: allStrokes } = await getStrokes(a.id);
+          if (allStrokes.length === 0) {
+            await deleteAssignment(a.id);
+          }
         }
+      } catch (err) {
+        console.error('Cleanup empty assignments failed:', err);
       }
-    } catch (err) {
-      console.error('Cleanup empty assignments failed:', err);
     }
     onAssignmentUpdate();
     onExit();
@@ -159,7 +203,8 @@ export default function AssignmentMode({
 
   const handleMarkGraded = async () => {
     if (!assignment) return;
-    await saveCurrentPage();
+    const ok = await saveCurrentPage();
+    if (!ok) return;
     await updateAssignment(assignment.id, { status: 'graded' });
     onAssignmentUpdate();
   };
@@ -168,7 +213,6 @@ export default function AssignmentMode({
     if (!canvasRef.current) return;
     const canvas = canvasRef.current.exportCanvas();
     if (!canvas) return;
-    // Create composite: page image + strokes
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -178,7 +222,6 @@ export default function AssignmentMode({
       const ctx = exportCanvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(img, 0, 0);
-      // Draw strokes at full resolution
       for (const stroke of strokes) {
         drawStrokeFull(ctx, stroke, img.naturalWidth, img.naturalHeight);
       }
@@ -190,10 +233,8 @@ export default function AssignmentMode({
     img.src = pageImageUrl(storagePath, currentPage);
   };
 
-  const canvasWidth = imgNatural.w * zoom;
-  const canvasHeight = imgNatural.h * zoom;
-  const effectiveRotation = ((rotation % 360) + 360) % 360;
-  const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
+  const canvasWidth = imgNatural.w * localZoom;
+  const canvasHeight = imgNatural.h * localZoom;
 
   return (
     <div className="absolute inset-0 z-40 bg-[#525659] flex flex-col">
@@ -210,6 +251,29 @@ export default function AssignmentMode({
           {assignment?.title || '作业'} {isGraded && <span className="text-green-400 ml-1">(已批改)</span>}
         </span>
         <div className="flex-1" />
+        {/* Rotation */}
+        <button
+          onClick={() => setLocalRotation((r: number) => r - 90)}
+          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+          title="逆时针旋转 90°"
+        >
+          <RotateCcw size={16} />
+        </button>
+        <button
+          onClick={() => setFitMode('page')}
+          className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+          title="适应页面"
+        >
+          <Minimize2 size={16} />
+        </button>
+        <button
+          onClick={() => setFitMode('width')}
+          className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+          title="适应宽度"
+        >
+          <Maximize2 size={16} />
+        </button>
+        <div className="w-px h-5 bg-white/10 mx-1" />
         {/* Page navigation */}
         <button
           onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
@@ -249,47 +313,51 @@ export default function AssignmentMode({
         )}
       </div>
 
-      {/* Drawing area */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-4">
-        {imgNatural.w > 0 && (
-          <div
-            style={{
-              width: isRotated ? `${canvasHeight}px` : `${canvasWidth}px`,
-              height: isRotated ? `${canvasWidth}px` : `${canvasHeight}px`,
-            }}
-          >
+      {/* Drawing area — same pattern as BookViewer: single overflow-auto container + min-h-full wrapper */}
+      <div ref={containerRef} className="flex-1 overflow-auto">
+        <div className="min-h-full flex items-center justify-center p-4">
+          {imgNatural.w > 0 && (
             <div
               style={{
-                width: `${canvasWidth}px`,
-                height: `${canvasHeight}px`,
-                transform: `rotate(${rotation}deg)`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.2s ease',
-                position: 'relative',
+                width: isRotated ? `${canvasHeight}px` : `${canvasWidth}px`,
+                height: isRotated ? `${canvasWidth}px` : `${canvasHeight}px`,
+                minWidth: imgNatural.w > 0 ? undefined : '100%',
+                minHeight: imgNatural.h > 0 ? undefined : '100%',
               }}
             >
-              <img
-                src={pageImageUrl(storagePath, currentPage)}
-                alt={`Page ${currentPage}`}
-                className="block"
-                style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }}
-                draggable={false}
-              />
-              <DrawingCanvas
-                ref={canvasRef}
-                width={canvasWidth}
-                height={canvasHeight}
-                strokes={strokes}
-                layer={layer}
-                readOnly={readOnly}
-                tool={tool}
-                color={color}
-                penWidth={penWidth}
-                onStrokesChange={handleStrokesChange}
-              />
+              <div
+                style={{
+                  width: `${canvasWidth}px`,
+                  height: `${canvasHeight}px`,
+                  transform: `rotate(${localRotation}deg)`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.2s ease',
+                  position: 'relative',
+                }}
+              >
+                <img
+                  src={pageImageUrl(storagePath, currentPage)}
+                  alt={`Page ${currentPage}`}
+                  className="block"
+                  style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }}
+                  draggable={false}
+                />
+                <DrawingCanvas
+                  ref={canvasRef}
+                  width={canvasWidth}
+                  height={canvasHeight}
+                  strokes={strokes}
+                  layer={layer}
+                  readOnly={readOnly}
+                  tool={tool}
+                  color={color}
+                  penWidth={penWidth}
+                  onStrokesChange={handleStrokesChange}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Floating toolbar */}

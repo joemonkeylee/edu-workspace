@@ -308,6 +308,45 @@ export default function BookViewer() {
     return () => window.removeEventListener('keydown', handler);
   }, [currentPage, currentBook, setCurrentPage, effectiveLayout]);
 
+  // Touch gesture: swipe left/right to turn pages on iPad/mobile
+  const touchState = useRef<{ x: number; y: number; t: number } | null>(null);
+  useEffect(() => {
+    if (!currentBook) return;
+    const el = mainRef.current;
+    if (!el) return;
+    const SWIPE_THRESHOLD = 50;
+    const SWIPE_TIME_LIMIT = 500;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      touchState.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!touchState.current) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchState.current.x;
+      const dy = t.clientY - touchState.current.y;
+      const dt = Date.now() - touchState.current.t;
+      touchState.current = null;
+      if (dt > SWIPE_TIME_LIMIT) return;
+      if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+      // Horizontal swipe dominant
+      if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      const step = effectiveLayout === 'double' ? 2 : 1;
+      if (dx < 0 && currentPage < currentBook.totalPages) {
+        setCurrentPage(Math.min(currentBook.totalPages, currentPage + step));
+      } else if (dx > 0 && currentPage > 1) {
+        setCurrentPage(Math.max(1, currentPage - step));
+      }
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [currentPage, currentBook, setCurrentPage, effectiveLayout]);
+
   const handleSaveAnnotation = useCallback(
     async (data: { type: string; contentJson: any }) => {
       if (!currentBook) return;
@@ -339,6 +378,22 @@ export default function BookViewer() {
     },
     [currentBook, currentPage, fetchAnnotations, setTool]
   );
+
+  const handleEnterAssignmentMode = useCallback(async () => {
+    if (!currentBook) return;
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    try {
+      const { assignment } = await api.createAssignment(bookId, title);
+      setCurrentAssignment(assignment);
+      setAssignmentMode(true);
+      setRightTab('assignments');
+      setAssignmentRefresh(v => v + 1);
+    } catch (err) {
+      console.error('Failed to create assignment:', err);
+    }
+  }, [currentBook, bookId]);
 
   const handleMistakeToggle = async (id: number, current: number) => {
     await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
@@ -495,7 +550,7 @@ export default function BookViewer() {
             </button>
           ))}
           <button
-            onClick={() => { setAssignmentMode(true); setRightTab('assignments'); }}
+            onClick={handleEnterAssignmentMode}
             data-tooltip="做题"
             className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
           >
@@ -944,10 +999,8 @@ export default function BookViewer() {
           storagePath={effectiveStoragePath}
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
-          zoom={zoom}
-          rotation={rotation}
           assignment={currentAssignment}
-          onExit={() => setAssignmentMode(false)}
+          onExit={() => { setAssignmentMode(false); setCurrentAssignment(null); }}
           onAssignmentUpdate={() => setAssignmentRefresh(v => v + 1)}
         />
       )}
