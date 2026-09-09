@@ -120,7 +120,7 @@ export default function Home() {
   const [debouncedSearch, setDebouncedSearch] = useState(saved.search);
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
   const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[]>(
-    saved.sortFields.length > 0
+    saved.sortFields && saved.sortFields.length > 0
       ? saved.sortFields
       : [
           { field: 'subject', dir: null },
