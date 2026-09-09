@@ -29,8 +29,8 @@ import {
   CheckCircle2,
   Circle,
   RotateCcw,
+  Layers,
   Download,
-  MessageSquareText,
   PenLine,
 } from 'lucide-react';
 import { buildAnnotationColorIndex, getAnnotationColor } from '../utils/annotationColors';
@@ -69,6 +69,13 @@ export default function BookViewer() {
   const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('annotations');
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
+  const [layers, setLayers] = useState({
+    annotations: true,
+    highlights: true,
+    assignments: true,
+    grading: true,
+  });
+  const [layerDropdownOpen, setLayerDropdownOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
   const [deleteAnnId, setDeleteAnnId] = useState<number | null>(null);
   const skipClearRef = useRef(false); // skip clearing when navigating via annotation click
@@ -87,8 +94,8 @@ export default function BookViewer() {
 
   // Clear annotation selection when annotations are hidden
   useEffect(() => {
-    if (!showAnnotations) setSelectedAnnotationId(null);
-  }, [showAnnotations]);
+    if (!showAnnotations || !layers.annotations) setSelectedAnnotationId(null);
+  }, [showAnnotations, layers.annotations]);
 
   const [fitMode, setFitMode] = useState<FitMode>('page');
   const [pageLayout, setPageLayout] = useState<PageLayout>('single');
@@ -338,12 +345,11 @@ export default function BookViewer() {
   return (
     <div className="h-full flex flex-col bg-[#525659]">
       {/* Top bar */}
-      <header className="bg-[#323639] text-white px-2 py-1.5 flex items-center gap-0.5 flex-shrink-0 select-none relative">
-        {/* Left: sidebar toggle + back + title */}
+      <header className="bg-[#323639] text-white px-2 py-1.5 flex items-center gap-1 flex-shrink-0 select-none flex-nowrap">
         {/* Left: back + title */}
         <button
           onClick={() => navigate('/')}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
           title="返回"
         >
           <ArrowLeft size={18} />
@@ -352,16 +358,16 @@ export default function BookViewer() {
         {!leftOpen && (
           <button
             onClick={() => setLeftOpen(true)}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
             title="目录"
           >
             <PanelLeft size={18} />
           </button>
         )}
-        <h1 className="text-sm text-gray-200 truncate max-w-xs" title={currentBook.title}>{currentBook.title}</h1>
+        <h1 className="text-sm text-gray-200 truncate max-w-[120px] flex-shrink-0" title={currentBook.title}>{currentBook.title}</h1>
 
         {/* Center: page navigation (Chrome-style) */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage <= 1}
@@ -394,7 +400,7 @@ export default function BookViewer() {
               <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
             )}
             <span className="text-gray-400">/ {totalPages}</span>
-            {showAnnotations && pagesWithAnnotations.has(currentPage) && (
+            {showAnnotations && layers.annotations && pagesWithAnnotations.has(currentPage) && (
               <span className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-orange-400" title="本页有批注" />
             )}
           </div>
@@ -420,7 +426,7 @@ export default function BookViewer() {
 
         {/* Right controls */}
         {/* Tool buttons (icon-only) */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           {toolsBefore.map(({ mode, icon: Icon, label, disabled }) => (
             <button
               key={mode}
@@ -470,14 +476,14 @@ export default function BookViewer() {
           <button
             onClick={() => setFitMode('page')}
             data-tooltip="适应页面"
-            className={`relative p-1.5 rounded transition ${fitMode === 'page' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${fitMode === 'page' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Minimize2 size={16} />
           </button>
           <button
             onClick={() => setFitMode('width')}
             data-tooltip="适应宽度"
-            className={`relative p-1.5 rounded transition ${fitMode === 'width' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${fitMode === 'width' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Maximize2 size={16} />
           </button>
@@ -546,30 +552,60 @@ export default function BookViewer() {
 
         <div className="w-px h-5 bg-white/10 mx-0.5" />
 
-        {/* Annotation visibility toggle */}
-        <button
-          onClick={() => setShowAnnotations(!showAnnotations)}
-          data-tooltip="批注"
-          className={`relative p-1.5 rounded transition ${
-            showAnnotations ? 'bg-blue-500/20 text-blue-300' : 'text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          <MessageSquareText size={16} />
-        </button>
+        {/* Layer visibility dropdown (multi-select) */}
+        <div className="relative flex-shrink-0">
+          <button
+            onClick={() => setLayerDropdownOpen(!layerDropdownOpen)}
+            data-tooltip="图层控制"
+            className={`relative p-1.5 rounded transition flex items-center gap-0.5 ${
+              Object.values(layers).some(v => !v)
+                ? 'bg-blue-500/20 text-blue-300'
+                : 'text-gray-400 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <Layers size={16} />
+          </button>
+          {layerDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-50" onClick={() => setLayerDropdownOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-36">
+                {[
+                  { key: 'annotations' as const, label: '批注图层' },
+                  { key: 'highlights' as const, label: '高亮图层' },
+                  { key: 'assignments' as const, label: '做题图层' },
+                  { key: 'grading' as const, label: '批改图层' },
+                ].map(({ key, label }) => (
+                  <label
+                    key={key}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 cursor-pointer text-sm text-gray-200"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={layers[key]}
+                      onChange={(e) => setLayers({ ...layers, [key]: e.target.checked })}
+                      className="accent-blue-600"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Page layout toggles */}
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setPageLayout('single')}
             data-tooltip="单页"
-            className={`relative p-1.5 rounded transition ${pageLayout === 'single' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${pageLayout === 'single' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <Book size={16} />
           </button>
           <button
             onClick={() => setPageLayout('double')}
             data-tooltip="双页"
-            className={`relative p-1.5 rounded transition ${pageLayout === 'double' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${pageLayout === 'double' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
           >
             <BookOpen size={16} />
           </button>
@@ -581,7 +617,7 @@ export default function BookViewer() {
             value={activeDpi}
             onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
             data-tooltip="选择分辨率"
-            className="relative bg-transparent text-gray-300 text-xs rounded px-0.5 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition w-14"
+            className="relative bg-transparent text-gray-300 text-xs rounded px-1 py-1 focus:outline-none cursor-pointer [&>option]:text-black hover:text-white transition flex-shrink-0 w-auto"
           >
             {availableDpis.map(d => (
               <option key={d} value={d}>{d} DPI</option>
@@ -631,7 +667,7 @@ export default function BookViewer() {
           <div className="min-h-full flex items-center justify-center p-4">
             <div className="relative flex items-center justify-center gap-2" id="annotation-container">
               {/* Left annotation panel (double page mode: left page annotations) */}
-              {showAnnotations && isDouble && tool === 'view' && leftPageAnnotations.length > 0 && (
+              {showAnnotations && layers.annotations && isDouble && tool === 'view' && leftPageAnnotations.length > 0 && (
                 <AnnotationSidePanel
                   annotations={leftPageAnnotations}
                   colorIndex={annColorIndex}
@@ -681,7 +717,7 @@ export default function BookViewer() {
                         zoom={zoom}
                         tool={tool}
                         annotations={annotations}
-                        showAnnotations={showAnnotations}
+                        showAnnotations={showAnnotations && layers.annotations}
                         colorIndex={annColorIndex}
                         selectedAnnotationId={selectedAnnotationId}
                         onAnnotationClick={setSelectedAnnotationId}
@@ -693,7 +729,7 @@ export default function BookViewer() {
                         zoom={zoom}
                         tool={'view'}
                         annotations={annotations}
-                        showAnnotations={showAnnotations}
+                        showAnnotations={showAnnotations && layers.annotations}
                         colorIndex={annColorIndex}
                         selectedAnnotationId={selectedAnnotationId}
                         onAnnotationClick={setSelectedAnnotationId}
@@ -707,7 +743,7 @@ export default function BookViewer() {
                       zoom={zoom}
                       tool={tool}
                       annotations={annotations}
-                      showAnnotations={showAnnotations}
+                      showAnnotations={showAnnotations && layers.annotations}
                       colorIndex={annColorIndex}
                       selectedAnnotationId={selectedAnnotationId}
                       onAnnotationClick={setSelectedAnnotationId}
@@ -766,7 +802,7 @@ export default function BookViewer() {
               <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'annotations' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'annotations' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 批注 ({annotations.length})
@@ -774,7 +810,7 @@ export default function BookViewer() {
               <button
                 onClick={loadMistakes}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'mistakes' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'mistakes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 错题本
@@ -782,7 +818,7 @@ export default function BookViewer() {
               <button
                 onClick={() => setRightTab('assignments')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'assignments' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'assignments' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 作业
