@@ -3,13 +3,34 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK_DIR="/tmp/edu-workspace-auto-deploy.lock"
+PID_FILE="$LOCK_DIR/pid"
 LOG_FILE="/tmp/edu-workspace-auto-deploy.log"
 
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+# Try to acquire the lock. If a stale lock exists (owner process gone), reclaim it.
+acquire_lock() {
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo $$ > "$PID_FILE"
+    return 0
+  fi
+  local owner_pid
+  owner_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  if [[ -n "$owner_pid" ]] && kill -0 "$owner_pid" 2>/dev/null; then
+    return 1
+  fi
+  # Stale lock — the owner process no longer exists; reclaim it.
+  rm -rf "$LOCK_DIR" 2>/dev/null || true
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo $$ > "$PID_FILE"
+    return 0
+  fi
+  return 1
+}
+
+if ! acquire_lock; then
   print -r -- "[deploy] Another deployment is already running; skipped."
   exit 0
 fi
-trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+trap 'if [[ "$(cat "$PID_FILE" 2>/dev/null)" == "$$" ]]; then rm -rf "$LOCK_DIR"; fi' EXIT
 
 log() {
   print -r -- "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
