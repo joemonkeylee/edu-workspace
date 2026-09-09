@@ -60,6 +60,42 @@ model Book {
   @@index([fileHash])
   annotations Annotation[]
   mistakes    Mistake[]
+  assignments Assignment[]
+}
+
+model Assignment {
+  id        Int      @id @default(autoincrement())
+  bookId    Int
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId    Int
+  title     String   @default("") @db.VarChar(255)
+  subject   String   @default("") @db.VarChar(64)
+  status    String   @default("draft") @db.VarChar(20) // draft | graded
+  gradedBy  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gradedAt  DateTime?
+
+  strokes AssignmentStroke[]
+
+  @@index([bookId])
+  @@index([userId])
+}
+
+model AssignmentStroke {
+  id           Int      @id @default(autoincrement())
+  assignmentId Int
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  pageNumber   Int
+  layer        String   @default("student") @db.VarChar(10) // student | teacher
+  tool         String   @default("pen") @db.VarChar(20) // pen | highlighter
+  color        String   @default("#000000") @db.VarChar(20)
+  width        Float    @default(2)
+  points       Json     // [{x, y, p}] normalized 0-1
+  createdAt    DateTime @default(now())
+
+  @@index([assignmentId])
+  @@index([assignmentId, pageNumber])
 }
 
 model Annotation {

@@ -14,6 +14,7 @@ import authRouter from './routes/auth.js';
 import booksRouter from './routes/books.js';
 import annotationsRouter from './routes/annotations.js';
 import mistakesRouter from './routes/mistakes.js';
+import assignmentsRouter from './routes/assignments.js';
 import { getStorageRoot, initializeStorageRoot } from './services/storage.js';
 import { isAuthEnabled } from './services/auth.js';
 
@@ -39,6 +40,7 @@ app.use('/api/admin/users', adminUsersRouter);
 app.use('/api/books', booksRouter);
 app.use('/api/annotations', annotationsRouter);
 app.use('/api/mistakes', mistakesRouter);
+app.use('/api/assignments', assignmentsRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

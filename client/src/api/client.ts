@@ -356,6 +356,76 @@ export async function adminDeleteMistake(id: number) {
   return data;
 }
 
+// ── Assignment API ────────────────────────────────────────────────
+
+export interface Assignment {
+  id: number;
+  bookId: number;
+  userId: number;
+  title: string;
+  subject: string;
+  status: string;
+  gradedBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+  gradedAt: string | null;
+  _count?: { strokes: number };
+}
+
+export interface AssignmentStroke {
+  id: number;
+  assignmentId: number;
+  pageNumber: number;
+  layer: string;
+  tool: string;
+  color: string;
+  width: number;
+  points: { x: number; y: number; p?: number }[];
+  createdAt: string;
+}
+
+export async function getAssignments(bookId: number) {
+  const { data } = await api.get('/assignments', { params: { bookId } });
+  return data as { assignments: Assignment[] };
+}
+
+export async function getAssignment(id: number) {
+  const { data } = await api.get(`/assignments/${id}`);
+  return data as { assignment: Assignment & { book: any } };
+}
+
+export async function createAssignment(bookId: number, title?: string, subject?: string) {
+  const { data } = await api.post('/assignments', { bookId, title, subject });
+  return data as { assignment: Assignment };
+}
+
+export async function updateAssignment(id: number, body: { title?: string; subject?: string; status?: string }) {
+  const { data } = await api.put(`/assignments/${id}`, body);
+  return data as { assignment: Assignment };
+}
+
+export async function deleteAssignment(id: number) {
+  const { data } = await api.delete(`/assignments/${id}`);
+  return data;
+}
+
+export async function getStrokes(assignmentId: number, pageNumber?: number) {
+  const params: Record<string, any> = {};
+  if (pageNumber) params.pageNumber = pageNumber;
+  const { data } = await api.get(`/assignments/${assignmentId}/strokes`, { params });
+  return data as { strokes: AssignmentStroke[] };
+}
+
+export async function saveStrokes(assignmentId: number, pageNumber: number, layer: string, strokes: any[]) {
+  const { data } = await api.post(`/assignments/${assignmentId}/strokes`, { pageNumber, layer, strokes });
+  return data;
+}
+
+export async function deleteStroke(assignmentId: number, strokeId: number) {
+  const { data } = await api.delete(`/assignments/${assignmentId}/strokes/${strokeId}`);
+  return data;
+}
+
 export function pageImageUrl(storagePath: string, pageNumber: number) {
   const padded = String(pageNumber).padStart(4, '0');
   return `${storagePath}page-${padded}.png`;

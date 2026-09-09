@@ -7,9 +7,20 @@
 After **every** feature/fix iteration, the agent must:
 
 1. Complete the code changes
-2. Verify the build (run `npx tsc --noEmit` in the relevant package)
-3. **Auto-commit by default** — always run `git commit` after tsc passes. The ONLY exception is when the user's message explicitly says "don't commit" / "不提交" / "先别提交" / "别提交". If the user says nothing about committing, you MUST commit.
+2. **Full build check** — run BOTH commands every time:
+   - `cd server && npm run build` (compiles + generates Prisma client if needed)
+   - `cd client && npm run build`
+   - Both must pass with zero errors. Fix all errors before proceeding.
+3. **Auto-commit by default** — always run `git commit` after builds pass. The ONLY exception is when the user's message explicitly says "don't commit" / "不提交" / "先别提交" / "别提交". If the user says nothing about committing, you MUST commit.
 4. Reply to the user with an **English commit message** (formatted as a code block or plain text) summarizing the changes
+
+### Build checklist (MUST do every time)
+
+- [ ] `cd server && npm run build` — zero errors
+- [ ] `cd client && npm run build` — zero errors
+- [ ] If Prisma schema was modified: run `cd server && npx prisma db push` first, then build
+- [ ] If new npm packages were used: verify they are in package.json (not just node_modules)
+- [ ] Both builds pass → then commit
 
 ### When to actually commit
 

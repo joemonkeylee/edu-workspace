@@ -32,8 +32,12 @@ import {
   Layers,
   Download,
   MessageSquareText,
+  PenLine,
 } from 'lucide-react';
 import { buildAnnotationColorIndex, getAnnotationColor } from '../utils/annotationColors';
+import AssignmentMode from '../components/AssignmentMode';
+import AssignmentList from '../components/AssignmentList';
+import type { Assignment } from '../api/client';
 
 type FitMode = 'width' | 'page' | null;
 type PageLayout = 'single' | 'double';
@@ -63,12 +67,15 @@ export default function BookViewer() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes'>('annotations');
+  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('annotations');
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
   const [deleteAnnId, setDeleteAnnId] = useState<number | null>(null);
   const skipClearRef = useRef(false); // skip clearing when navigating via annotation click
+  const [assignmentMode, setAssignmentMode] = useState(false);
+  const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(null);
+  const [assignmentRefresh, setAssignmentRefresh] = useState(0);
 
   // Clear annotation selection when page changes via toolbar/keyboard
   useEffect(() => {
@@ -401,6 +408,14 @@ export default function BookViewer() {
         {/* Right controls */}
         {/* Tool buttons (icon-only) */}
         <div className="flex items-center gap-0.5">
+          {/* 做题 button - between 浏览 and 批注 */}
+          <button
+            onClick={() => { setAssignmentMode(true); setRightTab('assignments'); }}
+            data-tooltip="做题"
+            className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+          >
+            <PenLine size={16} />
+          </button>
           {tools.map(({ mode, icon: Icon, label, disabled }) => (
             <button
               key={mode}
@@ -705,7 +720,7 @@ export default function BookViewer() {
               <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'annotations' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'annotations' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 批注 ({annotations.length})
@@ -713,10 +728,18 @@ export default function BookViewer() {
               <button
                 onClick={loadMistakes}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'mistakes' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'mistakes' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 错题本
+              </button>
+              <button
+                onClick={() => setRightTab('assignments')}
+                className={`flex-1 py-2.5 text-sm font-medium transition ${
+                  rightTab === 'assignments' ? 'text-[#006064] border-b-2 border-[#006064]' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                作业
               </button>
             </div>
 
@@ -729,6 +752,13 @@ export default function BookViewer() {
                   onToggle={handleMistakeToggle}
                   onDelete={handleMistakeDelete}
                   onRefresh={() => fetchMistakes(mistakeFilter ? { subject: mistakeFilter } : undefined)}
+                />
+              ) : rightTab === 'assignments' ? (
+                <AssignmentList
+                  bookId={bookId}
+                  onSelect={(a) => { setCurrentAssignment(a); setAssignmentMode(true); }}
+                  selectedId={currentAssignment?.id ?? null}
+                  onRefresh={assignmentRefresh}
                 />
               ) : (
                 <AnnotationList
@@ -779,6 +809,22 @@ export default function BookViewer() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Assignment mode overlay */}
+      {assignmentMode && currentAssignment && (
+        <AssignmentMode
+          bookId={bookId}
+          totalPages={totalPages}
+          storagePath={effectiveStoragePath}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          zoom={zoom}
+          rotation={rotation}
+          assignment={currentAssignment}
+          onExit={() => setAssignmentMode(false)}
+          onAssignmentUpdate={() => setAssignmentRefresh(v => v + 1)}
+        />
       )}
     </div>
   );
