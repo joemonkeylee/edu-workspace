@@ -43,10 +43,21 @@ export default function AssignmentMode({
   const [localRotation, setLocalRotation] = useState(0);
   const [localZoom, setLocalZoom] = useState(0);
   const [fitMode, setFitMode] = useState<'page' | 'width'>('page');
+  const [gestureScale, setGestureScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastSavedPageRef = useRef(currentPage);
   const autoRotatedRef = useRef(false);
+  const gestureScaleRef = useRef(1);
+  const panOffsetRef = useRef({ x: 0, y: 0 });
+  const touchPointsRef = useRef(new Map<number, { x: number; y: number }>());
+  const gestureRef = useRef<{
+    startScale: number;
+    startPan: { x: number; y: number };
+    startDistance: number;
+    startMidpoint: { x: number; y: number };
+  } | null>(null);
 
   const isGraded = assignment?.status === 'graded';
   const readOnly = isGraded;
@@ -54,6 +65,92 @@ export default function AssignmentMode({
 
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
   const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
+
+  const updateViewport = useCallback((scale: number, pan: { x: number; y: number }) => {
+    const nextScale = Math.max(0.5, Math.min(4, scale));
+    gestureScaleRef.current = nextScale;
+    panOffsetRef.current = pan;
+    setGestureScale(nextScale);
+    setPanOffset(pan);
+  }, []);
+
+  const resetViewport = useCallback(() => {
+    touchPointsRef.current.clear();
+    gestureRef.current = null;
+    updateViewport(1, { x: 0, y: 0 });
+  }, [updateViewport]);
+
+  useEffect(() => {
+    resetViewport();
+  }, [currentPage, effectiveRotation, fitMode, resetViewport]);
+
+  const handleTouchStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch') return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const points = [...touchPointsRef.current.values()];
+    if (points.length === 1) {
+      gestureRef.current = {
+        startScale: gestureScaleRef.current,
+        startPan: panOffsetRef.current,
+        startDistance: 0,
+        startMidpoint: points[0],
+      };
+    } else if (points.length === 2) {
+      const [first, second] = points;
+      gestureRef.current = {
+        startScale: gestureScaleRef.current,
+        startPan: panOffsetRef.current,
+        startDistance: Math.hypot(second.x - first.x, second.y - first.y),
+        startMidpoint: {
+          x: (first.x + second.x) / 2,
+          y: (first.y + second.y) / 2,
+        },
+      };
+    }
+  };
+
+  const handleTouchMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch' || !gestureRef.current) return;
+    e.preventDefault();
+    touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const points = [...touchPointsRef.current.values()];
+    const gesture = gestureRef.current;
+    if (points.length === 1) {
+      updateViewport(gesture.startScale, {
+        x: gesture.startPan.x + points[0].x - gesture.startMidpoint.x,
+        y: gesture.startPan.y + points[0].y - gesture.startMidpoint.y,
+      });
+    } else if (points.length >= 2 && gesture.startDistance > 0) {
+      const [first, second] = points;
+      const midpoint = {
+        x: (first.x + second.x) / 2,
+        y: (first.y + second.y) / 2,
+      };
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      updateViewport(gesture.startScale * distance / gesture.startDistance, {
+        x: gesture.startPan.x + midpoint.x - gesture.startMidpoint.x,
+        y: gesture.startPan.y + midpoint.y - gesture.startMidpoint.y,
+      });
+    }
+  };
+
+  const handleTouchEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch') return;
+    touchPointsRef.current.delete(e.pointerId);
+    if (touchPointsRef.current.size === 0) {
+      gestureRef.current = null;
+      return;
+    }
+    const remaining = [...touchPointsRef.current.values()][0];
+    gestureRef.current = {
+      startScale: gestureScaleRef.current,
+      startPan: panOffsetRef.current,
+      startDistance: 0,
+      startMidpoint: remaining,
+    };
+  };
 
   // Load strokes when page or assignment changes
   useEffect(() => {
@@ -314,7 +411,14 @@ export default function AssignmentMode({
       </div>
 
       {/* Drawing area — same pattern as BookViewer: single overflow-auto container + min-h-full wrapper */}
-      <div ref={containerRef} className="flex-1 overflow-auto">
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-auto touch-none"
+        onPointerDown={handleTouchStart}
+        onPointerMove={handleTouchMove}
+        onPointerUp={handleTouchEnd}
+        onPointerCancel={handleTouchEnd}
+      >
         <div className="min-h-full flex items-center justify-center p-4">
           {imgNatural.w > 0 && (
             <div
@@ -330,9 +434,8 @@ export default function AssignmentMode({
                 style={{
                   width: `${canvasWidth}px`,
                   height: `${canvasHeight}px`,
-                  transform: `rotate(${localRotation}deg)`,
+                  transform: `translate(${panOffset.x}px, ${panOffset.y}px) rotate(${localRotation}deg) scale(${gestureScale})`,
                   transformOrigin: 'center center',
-                  transition: 'transform 0.2s ease',
                   position: 'relative',
                 }}
               >
