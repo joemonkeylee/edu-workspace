@@ -41,12 +41,6 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
     const [, forceRender] = useState(0);
     const isPencilActiveRef = useRef(false);
 
-    // Sync external strokes changes
-    useEffect(() => {
-      strokesRef.current = strokes;
-      redraw();
-    }, [strokes]);
-
     const redraw = useCallback(() => {
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
@@ -66,8 +60,9 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
       canvas.width = width;
       canvas.height = height;
       ctxRef.current = canvas.getContext('2d');
+      strokesRef.current = strokes;
       redraw();
-    }, [width, height, redraw]);
+    }, [width, height, strokes, redraw]);
 
     const pushUndo = () => {
       undoStackRef.current.push([...strokesRef.current]);
