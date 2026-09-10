@@ -805,7 +805,9 @@ export default function Home() {
             })}
             {/* Placeholder cards to fill remaining grid slots */}
             {Array.from({ length: Math.max(0, pageSize - pagedBooks.length) }).map((_, i) => (
-              <div key={`ph-${i}`} style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: '3/4' }} />
+              <div key={`ph-${i}`} className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center" style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: '3/4' }}>
+                <BookOpen size={24} className="text-gray-200" />
+              </div>
             ))}
           </div>
         ) : (
@@ -946,8 +948,8 @@ export default function Home() {
                 })}
                 {/* Placeholder rows to fill remaining table height */}
                 {Array.from({ length: Math.max(0, listPageSize - pagedBooks.length) }).map((_, i) => (
-                  <tr key={`ph-${i}`} className="border-t border-gray-100" style={{ height: '56px' }}>
-                    <td colSpan={editMode ? 8 : 6}></td>
+                  <tr key={`ph-${i}`} className="border-t border-dashed border-gray-200 bg-gray-50/30" style={{ height: '56px' }}>
+                    <td colSpan={editMode ? 8 : 6} className="text-center text-xs text-gray-300">— 空位 —</td>
                   </tr>
                 ))}
               </tbody>
