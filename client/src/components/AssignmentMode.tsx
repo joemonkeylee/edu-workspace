@@ -70,13 +70,17 @@ export default function AssignmentMode({
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
   const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
   const chineseRotation = effectiveRotation === 90
-    ? -90
+    ? 90
     : effectiveRotation === 180
       ? 0
       : effectiveRotation === 270
-        ? 90
+        ? -90
         : 0;
-  const toolbarRotationClass = effectiveRotation === 0 ? '' : 'rotate-180';
+  const toolbarRotationClass = effectiveRotation === 180 ? 'rotate-180' : '';
+  const rotatedDir = effectiveRotation === 90 ? 'flex-col' : 'flex-col-reverse';
+  const iconRotationAll = isRotated
+    ? effectiveRotation === 90 ? '[&_button]:rotate-90' : '[&_button]:-rotate-90'
+    : '';
   const layoutDirectionClass = effectiveRotation === 90
     ? 'flex-row-reverse'
     : effectiveRotation === 180
@@ -425,7 +429,7 @@ export default function AssignmentMode({
       onDragStart={(e) => e.preventDefault()}
     >
       {/* Minimal top bar */}
-      <div className={`bg-[#323639] text-white flex items-center flex-shrink-0 ${toolbarRotationClass} ${isRotated ? `h-full w-12 ${effectiveRotation === 90 ? 'flex-col-reverse' : 'flex-col'} gap-2 px-1 py-3` : 'gap-2 px-3 py-1.5'}`}>
+      <div className={`bg-[#323639] text-white flex items-center flex-shrink-0 ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} gap-2 px-1 py-3` : 'gap-2 px-3 py-1.5'}`}>
         <button
           onClick={handleExit}
           className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
@@ -439,7 +443,7 @@ export default function AssignmentMode({
         </span>
         <div className={isRotated ? 'flex-1' : 'flex-1'} />
         {/* Rotation */}
-        <div className={isRotated ? 'flex flex-col items-center gap-1' : 'contents'}>
+        <div className={isRotated ? `flex ${rotatedDir} items-center gap-1` : 'contents'}>
           <button
             onClick={() => setLocalRotation((r: number) => r - 90)}
             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
@@ -464,7 +468,7 @@ export default function AssignmentMode({
         </div>
         <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
         {/* Page navigation */}
-        <div className={isRotated ? 'flex flex-col items-center gap-1' : 'contents'}>
+        <div className={isRotated ? `flex ${rotatedDir} items-center gap-1` : 'contents'}>
           <button
             onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
@@ -568,9 +572,9 @@ export default function AssignmentMode({
 
       {/* Floating toolbar */}
       {!readOnly && (
-        <div className={`relative z-50 flex flex-shrink-0 items-center justify-center gap-1 bg-[#323639] ${toolbarRotationClass} ${isRotated ? 'h-full w-12 flex-col px-2 py-3' : 'h-12 px-3 py-2'}`}>
+        <div className={`relative z-50 flex flex-shrink-0 items-center justify-center gap-1 bg-[#323639] ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3` : 'h-12 px-3 py-2'}`}>
           {/* Tool buttons */}
-          <div className={`flex items-center gap-0.5 ${isRotated ? 'flex-col' : ''}`}>
+          <div className={`flex items-center gap-0.5 ${isRotated ? rotatedDir : ''}`}>
             <button
               onClick={() => setTool('pen')}
               className={`p-2 rounded transition ${tool === 'pen' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
@@ -598,7 +602,7 @@ export default function AssignmentMode({
 
           {/* Color picker (pen mode only) */}
           {tool === 'pen' && (
-            <div className={`flex items-center gap-1 ${isRotated ? 'flex-col' : ''}`}>
+            <div className={`flex items-center gap-1 ${isRotated ? rotatedDir : ''}`}>
               {COLORS.map((c) => (
                 <button
                   key={c.name}
@@ -645,7 +649,7 @@ export default function AssignmentMode({
 
       {/* Read-only banner */}
       {readOnly && (
-        <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${isRotated ? 'h-full w-12 flex-col px-2 py-3 [writing-mode:vertical-rl]' : 'px-3 py-2'}`}>
+        <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3 [writing-mode:vertical-rl]` : 'px-3 py-2'}`}>
           <FileText size={16} />
           {renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation)}
         </div>
