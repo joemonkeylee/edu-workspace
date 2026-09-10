@@ -163,6 +163,11 @@ export default function Home() {
   const toggleSortDir = (field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages') => {
     setSortFields(prev => prev.map(s => {
       if (s.field === field) {
+        // totalPages defaults to desc on first click (higher page count first)
+        if (field === 'totalPages') {
+          const next = s.dir === null ? 'desc' : s.dir === 'desc' ? 'asc' : null;
+          return { ...s, dir: next };
+        }
         const next = s.dir === null ? 'asc' : s.dir === 'asc' ? 'desc' : null;
         return { ...s, dir: next };
       }
