@@ -1033,7 +1033,7 @@ export default function Home() {
               <span className="text-xs text-gray-500">/ {totalPages}</span>
               <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
               <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
-              <span className="text-xs text-gray-500">共计 {total} 本</span>
+              {/* <span className="text-xs text-gray-500">共计 {total} 本</span> */}
             </div>
             {/* Col 3: edit toggle + edit actions (right) */}
             <div className="flex items-center justify-end gap-2 w-1/3">
