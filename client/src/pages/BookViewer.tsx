@@ -93,7 +93,7 @@ export default function BookViewer() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('annotations');
+  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('assignments');
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [layers, setLayers] = useState({
@@ -735,7 +735,7 @@ export default function BookViewer() {
           {!rightOpen && (
             <button
               onClick={() => setRightOpen(true)}
-              data-tooltip="批注 / 错题 / 作业"
+              data-tooltip="作业 / 错题 / 批注"
               className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
             >
               <PanelRight size={18} />
@@ -898,12 +898,12 @@ export default function BookViewer() {
                 <PanelRight size={16} />
               </button>
               <button
-                onClick={() => setRightTab('annotations')}
+                onClick={() => setRightTab('assignments')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'annotations' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'assignments' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                批注 ({annotations.length})
+                作业
               </button>
               <button
                 onClick={loadMistakes}
@@ -914,12 +914,12 @@ export default function BookViewer() {
                 错题本
               </button>
               <button
-                onClick={() => setRightTab('assignments')}
+                onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'assignments' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'annotations' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                作业
+                批注 ({annotations.length})
               </button>
             </div>
 
