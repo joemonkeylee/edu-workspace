@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FileText, Trash2, Clock, Layers, CheckCircle } from 'lucide-react';
-import { getAssignments, deleteAssignment, type Assignment } from '../api/client';
+import { FileText, Trash2, Clock, Layers, CheckCircle, Send } from 'lucide-react';
+import { getAssignments, deleteAssignment, updateAssignment, type Assignment } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
 
 export interface AssignmentListProps {
@@ -33,6 +33,15 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
     if (!window.confirm(`确认删除作业「${title}」吗？此操作不可撤销。`)) return;
     await deleteAssignment(a.id);
+    load();
+  };
+
+  const handleSubmit = async (e: React.MouseEvent, a: Assignment) => {
+    e.stopPropagation();
+    if (a.status === 'graded') return;
+    const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
+    if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
+    await updateAssignment(a.id, { status: 'graded' });
     load();
   };
 
@@ -90,12 +99,22 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
               </div>
             </div>
             {!graded ? (
-              <span
-                onClick={(e) => handleDelete(e, a)}
-                className="flex-shrink-0 p-1 rounded transition text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
-              >
-                <Trash2 size={14} />
-              </span>
+              <div className="flex-shrink-0 flex items-center gap-0.5">
+                <span
+                  onClick={(e) => handleSubmit(e, a)}
+                  title="提交作业"
+                  className="p-1 rounded transition text-gray-300 hover:text-[#006064] hover:bg-[#006064]/10 cursor-pointer"
+                >
+                  <Send size={14} />
+                </span>
+                <span
+                  onClick={(e) => handleDelete(e, a)}
+                  title="删除作业"
+                  className="p-1 rounded transition text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                </span>
+              </div>
             ) : (
               <span className="flex-shrink-0 p-1 text-gray-200">
                 <Trash2 size={14} />
