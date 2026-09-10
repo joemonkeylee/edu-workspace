@@ -66,7 +66,8 @@ export default function AssignmentMode({
   } | null>(null);
 
   const isGraded = assignment?.status === 'graded';
-  const readOnly = isGraded;
+  const isSubmitted = assignment?.status === 'submitted';
+  const readOnly = isGraded || (isSubmitted && !canGrade);
   const layer = 'student';
 
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
@@ -389,17 +390,17 @@ export default function AssignmentMode({
   };
 
   const handleSubmit = async () => {
-    if (!assignment || isGraded) return;
+    if (!assignment || assignment.status !== 'draft') return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
     if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
     const ok = await saveCurrentPage();
     if (!ok) return;
-    await updateAssignment(assignment.id, { status: 'graded' });
+    await updateAssignment(assignment.id, { status: 'submitted' });
     onAssignmentUpdate();
   };
 
   const handleDeleteAssignment = async () => {
-    if (!assignment || isGraded) return;
+    if (!assignment || assignment.status !== 'draft') return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
     if (!window.confirm(`确认删除作业「${title}」吗？\n此操作不可撤销，所有页面的笔迹都将被删除。`)) return;
     await deleteAssignment(assignment.id);
@@ -465,6 +466,7 @@ export default function AssignmentMode({
           <span className="text-xs text-gray-400 truncate">
             {renderTextByCharacter(formatAssignmentTitle(assignment?.title) || '作业', chineseRotation)}
             {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
+            {isSubmitted && !canGrade && <> {renderTextByCharacter('(已提交)', chineseRotation, 'text-blue-400 ml-1')}</>}
           </span>
         </span>
         {/* Page assignment switcher — show assignments on this page, newest first */}
@@ -549,7 +551,7 @@ export default function AssignmentMode({
         >
           <Download size={16} />
         </button>
-        {!isGraded && assignment && (
+        {assignment?.status === 'draft' && (
           <>
             <button
               onClick={handleSubmit}
@@ -738,7 +740,9 @@ export default function AssignmentMode({
       {readOnly && (
         <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3 [writing-mode:vertical-rl] ${textFlipClass}` : 'px-3 py-2'}`}>
           <FileText size={16} />
-          {renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation)}
+          {isGraded
+            ? renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation)
+            : renderTextByCharacter('此作业已提交，笔迹只读', chineseRotation)}
         </div>
       )}
     </div>

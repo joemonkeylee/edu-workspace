@@ -70,7 +70,7 @@ model Assignment {
   userId    Int
   title     String   @default("") @db.VarChar(255)
   subject   String   @default("") @db.VarChar(64)
-  status    String   @default("draft") @db.VarChar(20) // draft | graded
+  status    String   @default("draft") @db.VarChar(20) // draft | submitted | graded
   gradedBy  Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

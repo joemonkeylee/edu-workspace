@@ -17,7 +17,7 @@ export default function AssignmentsTable() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('submitted');
   const [filterBook, setFilterBook] = useState('all');
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -78,15 +78,26 @@ export default function AssignmentsTable() {
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="all">全部状态</option>
-          <option value="draft">待批改</option>
-          <option value="graded">已批改</option>
-        </select>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+          {[
+            { value: 'all', label: '全部' },
+            { value: 'draft', label: '草稿' },
+            { value: 'submitted', label: '已提交' },
+            { value: 'graded', label: '已批改' },
+          ].map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => { setFilterStatus(tab.value); setPage(1); }}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                filterStatus === tab.value
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         <select
           value={filterBook}
           onChange={(e) => { setFilterBook(e.target.value); setPage(1); }}
@@ -145,8 +156,12 @@ export default function AssignmentsTable() {
                   <td className="px-4 py-3 text-gray-600">{item.subject || '-'}</td>
                   <td className="px-4 py-3 text-gray-600">{item._count?.strokes ?? 0}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${item.status === 'graded' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {item.status === 'graded' ? '已批改' : '待批改'}
+                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                      item.status === 'graded' ? 'bg-green-100 text-green-700'
+                        : item.status === 'submitted' ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {item.status === 'graded' ? '已批改' : item.status === 'submitted' ? '已提交' : '草稿'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(item.createdAt)}</td>

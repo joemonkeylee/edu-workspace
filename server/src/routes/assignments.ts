@@ -75,7 +75,7 @@ router.put('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   const data: any = {};
   if (typeof req.body?.title === 'string') data.title = req.body.title;
   if (typeof req.body?.subject === 'string') data.subject = req.body.subject;
-  if (typeof req.body?.status === 'string' && ['draft', 'graded'].includes(req.body.status)) {
+  if (typeof req.body?.status === 'string' && ['draft', 'submitted', 'graded'].includes(req.body.status)) {
     data.status = req.body.status;
     if (req.body.status === 'graded') {
       data.gradedAt = new Date();
