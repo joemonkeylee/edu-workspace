@@ -403,7 +403,8 @@ export default function AssignmentMode({
         drawStrokeFull(ctx, stroke, img.naturalWidth, img.naturalHeight);
       }
       const link = document.createElement('a');
-      link.download = `assignment-${assignment?.id}-page-${currentPage}.jpg`;
+      const titlePart = formatAssignmentTitle(assignment?.title) || `assignment-${assignment?.id}`;
+      link.download = `${bookTitle} ${titlePart} page-${currentPage}.jpg`;
       link.href = exportCanvas.toDataURL('image/jpeg', 0.9);
       link.click();
     };
