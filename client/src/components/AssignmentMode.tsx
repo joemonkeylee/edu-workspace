@@ -69,6 +69,13 @@ export default function AssignmentMode({
 
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
   const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
+  const chineseRotation = effectiveRotation === 90
+    ? -90
+    : effectiveRotation === 180
+      ? 0
+      : effectiveRotation === 270
+        ? 90
+        : 0;
   const toolbarRotationClass = effectiveRotation === 0 ? '' : 'rotate-180';
   const layoutDirectionClass = effectiveRotation === 90
     ? 'flex-row-reverse'
@@ -418,7 +425,7 @@ export default function AssignmentMode({
       onDragStart={(e) => e.preventDefault()}
     >
       {/* Minimal top bar */}
-      <div className={`bg-[#323639] text-white flex items-center flex-shrink-0 ${toolbarRotationClass} ${isRotated ? 'h-full w-12 flex-col gap-2 px-1 py-3' : 'gap-2 px-3 py-1.5'}`}>
+      <div className={`bg-[#323639] text-white flex items-center flex-shrink-0 ${toolbarRotationClass} ${isRotated ? `h-full w-12 ${effectiveRotation === 90 ? 'flex-col-reverse' : 'flex-col'} gap-2 px-1 py-3` : 'gap-2 px-3 py-1.5'}`}>
         <button
           onClick={handleExit}
           className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
@@ -427,7 +434,8 @@ export default function AssignmentMode({
           <X size={18} />
         </button>
         <span className={`text-sm text-gray-200 ${isRotated ? '[writing-mode:vertical-rl] flex-1 overflow-hidden text-ellipsis' : ''}`}>
-          {bookTitle} · {formatAssignmentTitle(assignment?.title) || '作业'} {isGraded && <span className="text-green-400 ml-1">(已批改)</span>}
+          {renderTextByCharacter(`${bookTitle} · ${formatAssignmentTitle(assignment?.title) || '作业'}`, chineseRotation)}
+          {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
         </span>
         <div className={isRotated ? 'flex-1' : 'flex-1'} />
         {/* Rotation */}
@@ -474,9 +482,9 @@ export default function AssignmentMode({
           </button>
         </div>
         <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
-        {saving && <span className={`text-xs text-yellow-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`}>保存中...</span>}
-        {dirty && !saving && <span className={`text-xs text-orange-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`}>未保存</span>}
-        {!dirty && !saving && <span className={`text-xs text-green-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`}>已保存</span>}
+        {saving && renderTextByCharacter('保存中...', chineseRotation, `text-xs text-yellow-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`)}
+        {dirty && !saving && renderTextByCharacter('未保存', chineseRotation, `text-xs text-orange-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`)}
+        {!dirty && !saving && renderTextByCharacter('已保存', chineseRotation, `text-xs text-green-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`)}
         <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
         <button
           onClick={handleExport}
@@ -639,10 +647,29 @@ export default function AssignmentMode({
       {readOnly && (
         <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${isRotated ? 'h-full w-12 flex-col px-2 py-3 [writing-mode:vertical-rl]' : 'px-3 py-2'}`}>
           <FileText size={16} />
-          此作业已批改，笔迹只读
+          {renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation)}
         </div>
       )}
     </div>
+  );
+}
+
+function renderTextByCharacter(text: string, rotation: number, className = '') {
+  return (
+    <span className={className}>
+      {[...text].map((character, index) => {
+        const isChineseCharacter = /[\u3400-\u9fff]/.test(character);
+        return (
+          <span
+            key={`${character}-${index}`}
+            className="inline-block"
+            style={isChineseCharacter ? { transform: `rotate(${rotation}deg)` } : undefined}
+          >
+            {character}
+          </span>
+        );
+      })}
+    </span>
   );
 }
 
