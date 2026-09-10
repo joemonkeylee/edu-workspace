@@ -487,7 +487,7 @@ export default function AssignmentMode({
       {/* Drawing area — same pattern as BookViewer: single overflow-auto container + min-h-full wrapper */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto touch-none select-none"
+        className="min-h-0 flex-1 overflow-auto touch-none select-none"
         style={{
           userSelect: 'none',
           WebkitUserSelect: 'none',
@@ -548,7 +548,7 @@ export default function AssignmentMode({
 
       {/* Floating toolbar */}
       {!readOnly && (
-        <div className="flex-shrink-0 bg-[#323639] px-3 py-2 flex items-center justify-center gap-1">
+        <div className="relative z-50 flex h-12 flex-shrink-0 items-center justify-center gap-1 bg-[#323639] px-3 py-2">
           {/* Tool buttons */}
           <div className="flex items-center gap-0.5">
             <button
