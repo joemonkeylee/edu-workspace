@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import * as api from '../api/client';
 import { pageImageUrl } from '../api/client';
@@ -38,14 +38,20 @@ import { buildAnnotationColorIndex, getAnnotationColor } from '../utils/annotati
 import AssignmentMode from '../components/AssignmentMode';
 import AssignmentList from '../components/AssignmentList';
 import type { Assignment } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 
 type FitMode = 'width' | 'page' | null;
 type PageLayout = 'single' | 'double';
 
 export default function BookViewer() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const bookId = Number(id);
   const navigate = useNavigate();
+  const assignmentId = Number(searchParams.get('assignmentId'));
+  const gradingEntry = searchParams.get('grading') === '1';
+  const { user, authEnabled } = useAuthStore();
+  const canGrade = gradingEntry && (!authEnabled || Boolean(user?.isAdmin));
 
   const {
     currentBook,
@@ -148,6 +154,21 @@ export default function BookViewer() {
     }
     return () => clearCurrent();
   }, [bookId]);
+
+  useEffect(() => {
+    if (!currentBook || !Number.isInteger(assignmentId) || assignmentId <= 0) return;
+    let cancelled = false;
+    api.getAssignment(assignmentId).then(({ assignment }) => {
+      if (!cancelled && assignment.bookId === bookId) {
+        setCurrentAssignment(assignment);
+        setAssignmentMode(true);
+        setRightOpen(false);
+      }
+    }).catch(() => {
+      if (!cancelled) navigate(`/book/${bookId}` , { replace: true });
+    });
+    return () => { cancelled = true; };
+  }, [currentBook, assignmentId, bookId, navigate]);
 
   // Persist config changes
   useEffect(() => {
@@ -996,6 +1017,7 @@ export default function BookViewer() {
         <AssignmentMode
           bookId={bookId}
           bookTitle={currentBook.title}
+          canGrade={canGrade}
           totalPages={totalPages}
           storagePath={effectiveStoragePath}
           currentPage={currentPage}

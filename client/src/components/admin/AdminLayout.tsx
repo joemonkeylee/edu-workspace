@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle, FolderCog, Users, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle, ClipboardList, FolderCog, Users, LogOut, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -22,6 +22,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { path: '/admin/books', label: '书籍资产管理', icon: BookOpen },
       { path: '/admin/annotations', label: '批注数据管理', icon: Highlighter },
       { path: '/admin/mistakes', label: '错题本管理', icon: AlertCircle },
+      { path: '/admin/assignments', label: '作业管理', icon: ClipboardList },
     ],
   },
   {

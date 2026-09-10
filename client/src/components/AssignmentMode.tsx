@@ -11,6 +11,7 @@ import { formatAssignmentTitle } from '../utils/assignment';
 export interface AssignmentModeProps {
   bookId: number;
   bookTitle: string;
+  canGrade?: boolean;
   totalPages: number;
   storagePath: string;
   currentPage: number;
@@ -31,7 +32,7 @@ const COLORS = [
 const HIGHLIGHT_COLOR = 'rgba(250, 204, 21, 0.5)';
 
 export default function AssignmentMode({
-  bookId, bookTitle, totalPages, storagePath, currentPage, setCurrentPage,
+  bookId, bookTitle, canGrade = false, totalPages, storagePath, currentPage, setCurrentPage,
   assignment, onExit, onAssignmentUpdate,
 }: AssignmentModeProps) {
   const [tool, setTool] = useState<DrawTool>('pen');
@@ -403,7 +404,7 @@ export default function AssignmentMode({
         >
           <Download size={16} />
         </button>
-        {!isGraded && assignment && (
+        {canGrade && !isGraded && assignment && (
           <button
             onClick={handleMarkGraded}
             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"

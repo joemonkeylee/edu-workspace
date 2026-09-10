@@ -14,6 +14,7 @@ import MistakesTable from './components/admin/MistakesTable';
 import StorageSettings from './components/admin/StorageSettings';
 import UsersTable from './components/admin/UsersTable';
 import AuthSettings from './components/admin/AuthSettings';
+import AssignmentsTable from './components/admin/AssignmentsTable';
 import { useAuthStore } from './store/authStore';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="books" element={<BooksTable />} />
             <Route path="annotations" element={<AnnotationsTable />} />
             <Route path="mistakes" element={<MistakesTable />} />
+            <Route path="assignments" element={<AssignmentsTable />} />
             <Route path="users" element={<UsersTable />} />
             <Route path="auth-settings" element={<AuthSettings />} />
             <Route path="storage" element={<StorageSettings />} />

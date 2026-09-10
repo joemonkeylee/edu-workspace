@@ -356,6 +356,21 @@ export async function adminDeleteMistake(id: number) {
   return data;
 }
 
+export async function adminGetAssignments(params?: Record<string, any>) {
+  const { data } = await api.get('/admin/assignments', { params });
+  return data as { data: any[]; total: number; page: number; pageSize: number; books: { id: number; title: string }[] };
+}
+
+export async function adminDeleteAssignment(id: number) {
+  const { data } = await api.delete(`/admin/assignments/${id}`);
+  return data;
+}
+
+export async function adminDeleteAssignmentsBatch(ids: number[]) {
+  const { data } = await api.post('/admin/assignments/batch-delete', { ids });
+  return data as { success: boolean; count: number };
+}
+
 // ── Assignment API ────────────────────────────────────────────────
 
 export interface Assignment {
