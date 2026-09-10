@@ -116,6 +116,8 @@ export default function BookViewer() {
   const [assignmentMode, setAssignmentMode] = useState(false);
   const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(null);
   const [assignmentRefresh, setAssignmentRefresh] = useState(0);
+  const [assignmentCount, setAssignmentCount] = useState(0);
+  const [mistakeCount, setMistakeCount] = useState(0);
 
   // Clear annotation selection when page changes via toolbar/keyboard
   useEffect(() => {
@@ -151,6 +153,7 @@ export default function BookViewer() {
         if (cfg.page > 1) setCurrentPage(cfg.page);
       });
       fetchAnnotations(bookId);
+      api.getMistakes({ bookId }).then((items) => setMistakeCount(items.length));
     }
     return () => clearCurrent();
   }, [bookId]);
@@ -418,22 +421,23 @@ export default function BookViewer() {
 
   const handleMistakeToggle = async (id: number, current: number) => {
     await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
-    fetchMistakes(mistakeFilter ? { subject: mistakeFilter } : undefined);
+    fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
   };
 
   const handleMistakeDelete = async (id: number) => {
     await api.deleteMistake(id);
-    fetchMistakes(mistakeFilter ? { subject: mistakeFilter } : undefined);
+    setMistakeCount((count) => Math.max(0, count - 1));
+    fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
   };
 
   const loadMistakes = () => {
     setRightTab('mistakes');
-    fetchMistakes(mistakeFilter ? { subject: mistakeFilter } : undefined);
+    fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
   };
 
   if (loading || !currentBook) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-400">
+      <div className="flex items-center justify-center h-full text-gray-400">
         <div className="animate-pulse">加载中...</div>
       </div>
     );
@@ -475,7 +479,7 @@ export default function BookViewer() {
       {/* Top bar - 3 column grid: left / center / right */}
       <header className="bg-[#323639] text-white px-2 py-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-shrink-0 select-none">
         {/* === LEFT: back + sidebar toggle + title === */}
-        <div className="flex items-center gap-1 min-w-0">
+        <div className="flex items-center min-w-0 gap-1">
           <button
             onClick={() => navigate('/')}
             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
@@ -496,7 +500,7 @@ export default function BookViewer() {
         </div>
 
         {/* === CENTER: page navigation === */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center flex-shrink-0 gap-1">
           <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage <= 1}
@@ -715,7 +719,7 @@ export default function BookViewer() {
                 <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-44">
                   <button
                     onClick={() => { setRotation((r: number) => r - 90); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-200 hover:bg-white/5 transition"
+                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-gray-200 transition hover:bg-white/5"
                   >
                     <RotateCcw size={14} /> 逆时针旋转 90°
                   </button>
@@ -766,7 +770,7 @@ export default function BookViewer() {
       </header>
 
       {/* Main content area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar - TOC */}
         {leftOpen && (
           <aside className="w-60 bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20">
@@ -783,7 +787,7 @@ export default function BookViewer() {
 
         {/* Center - page image + annotation side panels */}
         <main ref={mainRef} className="flex-1 overflow-auto">
-          <div className="min-h-full flex items-center justify-center p-4">
+          <div className="flex items-center justify-center min-h-full p-4">
             <div className="relative flex items-center justify-center gap-2" id="annotation-container">
               {/* Left annotation panel (double page mode: left page annotations) */}
               {showAnnotations && layers.annotations && isDouble && tool === 'view' && leftPageAnnotations.length > 0 && (
@@ -908,12 +912,12 @@ export default function BookViewer() {
 
         {/* Right sidebar - annotations & mistakes */}
         {rightOpen && (
-          <aside className="w-72 bg-white flex flex-col flex-shrink-0 border-l border-gray-200">
+          <aside className="flex flex-col flex-shrink-0 bg-white border-l border-gray-200 w-72">
             <div className="flex items-center border-b border-gray-200">
               {/* Right sidebar toggle on left */}
               <button
                 onClick={() => setRightOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition flex-shrink-0"
+                className="flex-shrink-0 p-2 text-gray-400 transition hover:text-gray-700 hover:bg-gray-50"
                 title="收起"
               >
                 <PanelRight size={16} />
@@ -924,7 +928,7 @@ export default function BookViewer() {
                   rightTab === 'assignments' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                作业
+                作业 ({assignmentCount})
               </button>
               <button
                 onClick={loadMistakes}
@@ -932,7 +936,7 @@ export default function BookViewer() {
                   rightTab === 'mistakes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                错题本
+                错题 ({mistakeCount})
               </button>
               <button
                 onClick={() => setRightTab('annotations')}
@@ -952,7 +956,7 @@ export default function BookViewer() {
                   onFilterChange={setMistakeFilter}
                   onToggle={handleMistakeToggle}
                   onDelete={handleMistakeDelete}
-                  onRefresh={() => fetchMistakes(mistakeFilter ? { subject: mistakeFilter } : undefined)}
+                  onRefresh={() => fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) })}
                 />
               ) : rightTab === 'assignments' ? (
                 <AssignmentList
@@ -960,6 +964,7 @@ export default function BookViewer() {
                   onSelect={(a) => { setCurrentAssignment(a); setAssignmentMode(true); }}
                   selectedId={currentAssignment?.id ?? null}
                   onRefresh={assignmentRefresh}
+                  onCountChange={setAssignmentCount}
                 />
               ) : (
                 <AnnotationList
@@ -985,11 +990,11 @@ export default function BookViewer() {
           onClick={() => setDeleteAnnId(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl p-5 w-80"
+            className="p-5 bg-white shadow-2xl rounded-xl w-80"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold text-gray-800 mb-2">确认删除批注</h3>
-            <p className="text-sm text-gray-500 mb-4">删除后无法恢复，确定要删除这条批注吗？</p>
+            <h3 className="mb-2 text-base font-semibold text-gray-800">确认删除批注</h3>
+            <p className="mb-4 text-sm text-gray-500">删除后无法恢复，确定要删除这条批注吗？</p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteAnnId(null)}
@@ -1067,7 +1072,7 @@ function AnnotationList({
   onDelete: (id: number) => void;
 }) {
   if (annotations.length === 0) {
-    return <div className="p-4 text-center text-gray-400 text-sm">暂无批注</div>;
+    return <div className="p-4 text-sm text-center text-gray-400">暂无批注</div>;
   }
   return (
     <div className="p-2 space-y-2">
@@ -1112,7 +1117,7 @@ function AnnotationList({
             </div>
             <div className="flex-1 min-w-0">
               {ann.type === 'note' && (
-                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{ann.contentJson.text}</p>
+                <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">{ann.contentJson.text}</p>
               )}
               {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
               {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
@@ -1128,7 +1133,7 @@ function AnnotationList({
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }}
-              className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
+              className="flex-shrink-0 text-gray-300 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
             >
               <Trash2 size={14} />
             </button>
@@ -1202,7 +1207,7 @@ function AnnotationSidePanel({
                 )}
               </div>
               {ann.type === 'note' && (
-                <p className="text-xs text-gray-700 whitespace-pre-wrap break-words leading-relaxed">{ann.contentJson.text}</p>
+                <p className="text-xs leading-relaxed text-gray-700 break-words whitespace-pre-wrap">{ann.contentJson.text}</p>
               )}
               {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
               {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
@@ -1297,7 +1302,7 @@ function DashedConnector({
 
   return (
     <svg
-      className="absolute inset-0 pointer-events-none z-50"
+      className="absolute inset-0 z-50 pointer-events-none"
       style={{ width: '100%', height: '100%' }}
     >
       <line
@@ -1344,17 +1349,17 @@ function MistakeList({
         />
       </div>
       {mistakes.length === 0 ? (
-        <div className="p-4 text-center text-gray-400 text-sm">暂无错题</div>
+        <div className="p-4 text-sm text-center text-gray-400">暂无错题</div>
       ) : (
         <div className="p-2 space-y-2">
           {mistakes.map((m) => (
-            <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex gap-2 group">
-              <div className="w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-amber-50 border border-amber-100 flex items-center justify-center">
+            <div key={m.id} className="flex gap-2 p-2 rounded-lg bg-gray-50 group">
+              <div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-amber-50 border-amber-100">
                 {m.imagePath ? (
                   <img
                     src={m.imagePath}
                     alt="错题"
-                    className="w-full h-full object-cover"
+                    className="object-cover w-full h-full"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 ) : (
@@ -1380,7 +1385,7 @@ function MistakeList({
                   </button>
                   <button
                     onClick={() => onDelete(m.id)}
-                    className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                    className="text-gray-300 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
                   >
                     <Trash2 size={14} />
                   </button>

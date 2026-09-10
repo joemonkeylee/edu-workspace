@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, FileText, Trash2, Clock } from 'lucide-react';
-import { getAssignments, createAssignment, deleteAssignment, type Assignment } from '../api/client';
+import { FileText, Trash2, Clock } from 'lucide-react';
+import { getAssignments, deleteAssignment, type Assignment } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
 
 export interface AssignmentListProps {
@@ -8,15 +8,10 @@ export interface AssignmentListProps {
   onSelect: (assignment: Assignment) => void;
   selectedId: number | null;
   onRefresh?: number;
+  onCountChange?: (count: number) => void;
 }
 
-function genTimestampTitle(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-}
-
-export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh }: AssignmentListProps) {
+export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh, onCountChange }: AssignmentListProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,18 +19,13 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     setLoading(true);
     getAssignments(bookId).then(({ assignments }) => {
       setAssignments(assignments);
+      onCountChange?.(assignments.length);
     }).finally(() => setLoading(false));
   };
 
   useEffect(() => {
     load();
   }, [bookId, onRefresh]);
-
-  const handleCreate = async () => {
-    const { assignment } = await createAssignment(bookId, genTimestampTitle());
-    load();
-    onSelect(assignment);
-  };
 
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
@@ -56,29 +46,11 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
   }
 
   if (assignments.length === 0) {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-gray-400 text-sm mb-3">暂无作业</p>
-        <button
-          onClick={handleCreate}
-          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Plus size={14} /> 新建作业
-        </button>
-      </div>
-    );
+    return <div className="p-4 text-center text-gray-400 text-sm">暂无作业</div>;
   }
 
   return (
     <div className="flex flex-col">
-      <div className="px-3 py-2">
-        <button
-          onClick={handleCreate}
-          className="w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Plus size={14} /> 新建作业
-        </button>
-      </div>
       <div className="flex-1 overflow-auto">
         {assignments.map((a) => (
           <button
