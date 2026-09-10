@@ -468,7 +468,7 @@ export default function AssignmentMode({
                   }`}
                   title={formatAssignmentTitle(a.title) || `作业 #${a.id}`}
                 >
-                  {renderTextByCharacter(label, chineseRotation)}
+                  {renderTextByCharacter(label, chineseRotation, isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : '')}
                 </button>
               );
             })}
