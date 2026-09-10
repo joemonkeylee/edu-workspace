@@ -50,27 +50,27 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-surface">
-      <header className="bg-sidebar text-white px-6 py-4 flex items-center gap-4 flex-shrink-0 h-14">
-        <Link to="/" className="flex items-center gap-2 text-gray-300 hover:text-white transition">
+    <div className="flex flex-col h-full bg-surface">
+      <header className="flex items-center flex-shrink-0 gap-4 px-6 py-4 text-white bg-sidebar h-14">
+        <Link to="/" className="flex items-center gap-2 text-gray-300 transition hover:text-white">
           <ArrowLeft size={20} />
         </Link>
         <h1 className="text-lg font-bold">后台 · {title}</h1>
         {authEnabled && user && (
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-3 ml-auto">
             <span className="text-sm text-gray-300">{user.nickName || user.phone}{user.isAdmin ? ' (管理员)' : ''}</span>
-            <button onClick={handleLogout} className="flex items-center gap-1 text-sm text-gray-300 hover:text-white transition" title="退出登录">
+            <button onClick={handleLogout} className="flex items-center gap-1 text-sm text-gray-300 transition hover:text-white" title="退出登录">
               <LogOut size={16} />
             </button>
           </div>
         )}
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        <nav className="w-48 bg-white border-r border-gray-200 flex-shrink-0 py-4 overflow-y-auto">
+      <div className="flex flex-1 overflow-hidden">
+        <nav className="flex-shrink-0 w-48 py-4 overflow-y-auto bg-white border-r border-gray-200">
           {MENU_GROUPS.map((group) => (
             <div key={group.group} className="mb-4">
-              <p className="px-4 pb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">{group.group}</p>
+              <p className="px-4 pb-2 text-xs font-medium tracking-wider text-gray-400 uppercase">{group.group}</p>
               {group.items.map((item) => {
                 const Icon = item.icon;
                 return (
