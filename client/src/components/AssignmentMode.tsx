@@ -74,10 +74,11 @@ export default function AssignmentMode({
     : effectiveRotation === 180
       ? 0
       : effectiveRotation === 270
-        ? -90
+        ? 90
         : 0;
   const toolbarRotationClass = effectiveRotation === 180 ? 'rotate-180' : '';
   const rotatedDir = effectiveRotation === 90 ? 'flex-col' : 'flex-col-reverse';
+  const textFlipClass = effectiveRotation === 270 ? 'rotate-180' : '';
   const iconRotationAll = isRotated
     ? effectiveRotation === 90 ? '[&_button]:rotate-90' : '[&_button]:-rotate-90'
     : '';
@@ -437,7 +438,7 @@ export default function AssignmentMode({
         >
           <X size={18} />
         </button>
-        <span className={`text-sm text-gray-200 ${isRotated ? '[writing-mode:vertical-rl] flex-1 overflow-hidden text-ellipsis' : ''}`}>
+        <span className={`text-sm text-gray-200 ${isRotated ? `[writing-mode:vertical-rl] flex-1 overflow-hidden text-ellipsis ${textFlipClass}` : ''}`}>
           {renderTextByCharacter(`${bookTitle} · ${formatAssignmentTitle(assignment?.title) || '作业'}`, chineseRotation)}
           {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
         </span>
@@ -476,7 +477,7 @@ export default function AssignmentMode({
           >
             <ChevronLeft size={18} />
           </button>
-          <span className={`text-sm text-gray-300 text-center ${isRotated ? 'min-w-0 [writing-mode:vertical-rl]' : 'min-w-[60px]'}`}>{currentPage} / {totalPages}</span>
+          <span className={`text-sm text-gray-300 text-center ${isRotated ? `min-w-0 [writing-mode:vertical-rl] ${textFlipClass}` : 'min-w-[60px]'}`}>{currentPage} / {totalPages}</span>
           <button
             onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage >= totalPages}
@@ -486,9 +487,9 @@ export default function AssignmentMode({
           </button>
         </div>
         <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
-        {saving && renderTextByCharacter('保存中...', chineseRotation, `text-xs text-yellow-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`)}
-        {dirty && !saving && renderTextByCharacter('未保存', chineseRotation, `text-xs text-orange-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`)}
-        {!dirty && !saving && renderTextByCharacter('已保存', chineseRotation, `text-xs text-green-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`)}
+        {saving && renderTextByCharacter('保存中...', chineseRotation, `text-xs text-yellow-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
+        {dirty && !saving && renderTextByCharacter('未保存', chineseRotation, `text-xs text-orange-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
+        {!dirty && !saving && renderTextByCharacter('已保存', chineseRotation, `text-xs text-green-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
         <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
         <button
           onClick={handleExport}
@@ -649,7 +650,7 @@ export default function AssignmentMode({
 
       {/* Read-only banner */}
       {readOnly && (
-        <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3 [writing-mode:vertical-rl]` : 'px-3 py-2'}`}>
+        <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3 [writing-mode:vertical-rl] ${textFlipClass}` : 'px-3 py-2'}`}>
           <FileText size={16} />
           {renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation)}
         </div>
