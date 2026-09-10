@@ -48,13 +48,15 @@ type PageLayout = 'single' | 'double';
 
 export default function BookViewer() {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const bookId = Number(id);
   const navigate = useNavigate();
   const assignmentId = Number(searchParams.get('assignmentId'));
   const gradingEntry = searchParams.get('grading') === '1';
+  const role = searchParams.get('role') || '';
   const { user, authEnabled } = useAuthStore();
-  const canGrade = gradingEntry && (!authEnabled || Boolean(user?.isAdmin));
+  const isTeacher = role === 'teacher' || gradingEntry;
+  const canGrade = isTeacher && (!authEnabled || Boolean(user?.isAdmin));
 
   const {
     currentBook,
@@ -434,6 +436,7 @@ export default function BookViewer() {
       setAssignmentMode(true);
       setRightTab('assignments');
       setAssignmentRefresh(v => v + 1);
+      setSearchParams({ assignmentId: String(assignment.id), role: 'student' }, { replace: true });
     } catch (err) {
       console.error('Failed to enter assignment mode:', err);
     }
@@ -448,7 +451,8 @@ export default function BookViewer() {
     setAssignmentMode(true);
     setRightTab('assignments');
     setAssignmentRefresh(v => v + 1);
-  }, [bookId]);
+    setSearchParams({ assignmentId: String(assignment.id), role: 'student' }, { replace: true });
+  }, [bookId, setSearchParams]);
 
   const handleMistakeToggle = async (id: number, current: number) => {
     await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
@@ -992,7 +996,11 @@ export default function BookViewer() {
               ) : rightTab === 'assignments' ? (
                 <AssignmentList
                   bookId={bookId}
-                  onSelect={(a) => { setCurrentAssignment(a); setAssignmentMode(true); }}
+                  onSelect={(a) => {
+                    setCurrentAssignment(a);
+                    setAssignmentMode(true);
+                    setSearchParams({ assignmentId: String(a.id), role: isTeacher ? 'teacher' : 'student' }, { replace: true });
+                  }}
                   selectedId={currentAssignment?.id ?? null}
                   onRefresh={assignmentRefresh}
                   onCountChange={setAssignmentCount}
@@ -1076,6 +1084,7 @@ export default function BookViewer() {
                   setCurrentAssignment(a);
                   setAssignmentMode(true);
                   setRightTab('assignments');
+                  setSearchParams({ assignmentId: String(a.id), role: 'student' }, { replace: true });
                 }}
                 className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
@@ -1106,7 +1115,11 @@ export default function BookViewer() {
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
           assignment={currentAssignment}
-          onExit={() => { setAssignmentMode(false); setCurrentAssignment(null); }}
+          onExit={() => {
+            setAssignmentMode(false);
+            setCurrentAssignment(null);
+            setSearchParams({}, { replace: true });
+          }}
           onAssignmentUpdate={() => setAssignmentRefresh(v => v + 1)}
           pageAssignments={allAssignments.filter(a => a.pages?.includes(currentPage))}
           onSwitchAssignment={(a) => { setCurrentAssignment(a); }}

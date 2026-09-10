@@ -169,7 +169,7 @@ export default function AssignmentsTable() {
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(item.createdAt)}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button
-                      onClick={() => navigate(`/book/${item.bookId}?assignmentId=${item.id}&grading=1`)}
+                      onClick={() => navigate(`/book/${item.bookId}?assignmentId=${item.id}&grading=1&role=teacher`)}
                       className="inline-flex items-center gap-1 p-1.5 text-primary hover:bg-primary/10 rounded"
                       title="进入批改"
                     >
