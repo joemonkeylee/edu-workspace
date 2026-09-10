@@ -450,25 +450,25 @@ export default function AssignmentMode({
         </span>
         {/* Page assignment switcher — show assignments on this page, newest first */}
         {pageAssignments.length > 0 && (
-          <div className={`flex items-center gap-0.5 ${isRotated ? rotatedDir : ''}`}>
+          <div className={`flex items-center gap-1 ${isRotated ? rotatedDir : ''}`}>
             {pageAssignments.map((a, i) => {
-              const label = `作业${pageAssignments.length - i}`;
+              const num = pageAssignments.length - i;
               const active = a.id === assignment?.id;
               const graded = a.status === 'graded';
               return (
                 <button
                   key={a.id}
                   onClick={() => onSwitchAssignment(a)}
-                  className={`px-1.5 py-0.5 rounded text-xs transition ${
+                  className={`flex items-center justify-center w-5 h-5 rounded-full border text-xs transition ${
                     active
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-blue-600 border-blue-600 text-white'
                       : graded
-                        ? 'text-green-400 hover:bg-white/10'
-                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                        ? 'border-green-500 text-green-400 hover:bg-white/10'
+                        : 'border-gray-500 text-gray-400 hover:text-white hover:border-white/50'
                   }`}
-                  title={formatAssignmentTitle(a.title) || `作业 #${a.id}`}
+                  title={`作业${num} - ${formatAssignmentTitle(a.title) || `#${a.id}`}${graded ? ' (已批改)' : ''}`}
                 >
-                  {renderTextByCharacter(label, chineseRotation, isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : '')}
+                  {num}
                 </button>
               );
             })}
