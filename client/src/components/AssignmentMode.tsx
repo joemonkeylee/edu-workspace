@@ -339,7 +339,19 @@ export default function AssignmentMode({
   const canvasHeight = imgNatural.h * localZoom;
 
   return (
-    <div className="absolute inset-0 z-40 bg-[#525659] flex flex-col">
+    <div
+      className="absolute inset-0 z-40 bg-[#525659] flex flex-col select-none"
+      style={{
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+      }}
+      onPointerDown={(e) => {
+        if (e.pointerType === 'pen') e.preventDefault();
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       {/* Minimal top bar */}
       <div className="bg-[#323639] text-white px-3 py-1.5 flex items-center gap-2 flex-shrink-0">
         <button
