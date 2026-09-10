@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Trash2, Clock, Layers } from 'lucide-react';
+import { FileText, Trash2, Clock, Layers, CheckCircle } from 'lucide-react';
 import { getAssignments, deleteAssignment, type Assignment } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
 
@@ -55,7 +55,9 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
   return (
     <div className="flex flex-col">
       <div className="flex-1 overflow-auto">
-        {assignments.map((a) => (
+        {assignments.map((a) => {
+          const graded = a.status === 'graded';
+          return (
           <button
             key={a.id}
             onClick={() => onSelect(a)}
@@ -63,9 +65,17 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
               selectedId === a.id ? 'bg-[#006064]/10' : 'hover:bg-gray-50'
             }`}
           >
-            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${a.status === 'graded' ? 'text-green-500' : 'text-gray-400'}`} />
+            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${graded ? 'text-green-500' : 'text-gray-400'}`} />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-800 truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-medium text-gray-800 truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</span>
+                <span className={`flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  graded ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {graded ? <CheckCircle size={9} /> : null}
+                  {graded ? '已批改' : '草稿'}
+                </span>
+              </div>
               <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
                 <span className="flex items-center gap-0.5">
                   <Clock size={10} />
@@ -77,21 +87,23 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                     第 {a.pages.join('、')} 页
                   </span>
                 )}
-                {a.status === 'graded' && <span className="text-green-500">· 已批改</span>}
               </div>
             </div>
-            <span
-              onClick={(e) => handleDelete(e, a)}
-              className={`flex-shrink-0 p-1 rounded transition ${
-                a.status === 'graded'
-                  ? 'text-gray-200 cursor-not-allowed'
-                  : 'text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer'
-              }`}
-            >
-              <Trash2 size={14} />
-            </span>
+            {!graded ? (
+              <span
+                onClick={(e) => handleDelete(e, a)}
+                className="flex-shrink-0 p-1 rounded transition text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
+              >
+                <Trash2 size={14} />
+              </span>
+            ) : (
+              <span className="flex-shrink-0 p-1 text-gray-200">
+                <Trash2 size={14} />
+              </span>
+            )}
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
