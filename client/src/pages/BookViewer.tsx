@@ -252,6 +252,13 @@ export default function BookViewer() {
 
   useEffect(() => { calcZoom(); }, [calcZoom]);
 
+  // Set document title to grade + subject + book title for bookmarking
+  useEffect(() => {
+    if (!currentBook) return;
+    const parts = [currentBook.grade, currentBook.subject, currentBook.title].filter(Boolean);
+    document.title = parts.join(' ') || 'edu-workspace';
+  }, [currentBook]);
+
   useEffect(() => {
     if (!mainRef.current) return;
     const observer = new ResizeObserver(() => calcZoom());
