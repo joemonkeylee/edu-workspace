@@ -26,6 +26,7 @@ export interface DrawingCanvasHandle {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  clear: () => void;
   exportCanvas: () => HTMLCanvasElement | null;
 }
 
@@ -96,7 +97,16 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
       return canvasRef.current;
     }, []);
 
-    useImperativeHandle(ref, () => ({ undo, redo, canUndo, canRedo, exportCanvas }), [undo, redo, canUndo, canRedo, exportCanvas]);
+    const clear = useCallback(() => {
+      if (strokesRef.current.length === 0) return;
+      pushUndo();
+      strokesRef.current = [];
+      onStrokesChange(strokesRef.current);
+      redraw();
+      forceRender(v => v + 1);
+    }, [onStrokesChange, redraw]);
+
+    useImperativeHandle(ref, () => ({ undo, redo, canUndo, canRedo, clear, exportCanvas }), [undo, redo, canUndo, canRedo, clear, exportCanvas]);
 
     // ── Pointer Events ──────────────────────────────────────────
 

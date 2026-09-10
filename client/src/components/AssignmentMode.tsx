@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Pen, Highlighter, Eraser, Undo2, Redo2,
   ChevronLeft, ChevronRight, X, Save, CheckCircle2,
-  Download, FileText, RotateCcw, Minimize2, Maximize2,
+  Download, FileText, RotateCcw, Minimize2, Maximize2, Trash2,
 } from 'lucide-react';
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
@@ -25,8 +25,8 @@ type DrawTool = 'pen' | 'highlighter' | 'eraser';
 
 const COLORS = [
   { name: 'black', value: '#1a1a1a' },
-  { name: 'red', value: '#dc2626' },
   { name: 'blue', value: '#2563eb' },
+  { name: 'red', value: '#dc2626' },
 ];
 
 const HIGHLIGHT_COLOR = 'rgba(250, 204, 21, 0.5)';
@@ -438,9 +438,12 @@ export default function AssignmentMode({
         >
           <X size={18} />
         </button>
-        <span className={`text-sm text-gray-200 ${isRotated ? `[writing-mode:vertical-rl] flex-1 overflow-hidden text-ellipsis ${textFlipClass}` : ''}`}>
-          {renderTextByCharacter(`${bookTitle} · ${formatAssignmentTitle(assignment?.title) || '作业'}`, chineseRotation)}
-          {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
+        <span className={`flex-1 overflow-hidden flex flex-col justify-center leading-tight ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`}>
+          <span className="text-xs text-gray-400 truncate">{renderTextByCharacter(bookTitle, chineseRotation)}</span>
+          <span className="text-xs text-gray-400 truncate">
+            {renderTextByCharacter(formatAssignmentTitle(assignment?.title) || '作业', chineseRotation)}
+            {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
+          </span>
         </span>
         <div className={isRotated ? 'flex-1' : 'flex-1'} />
         {/* Rotation */}
@@ -636,6 +639,23 @@ export default function AssignmentMode({
 
           <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-1'} />
 
+          {/* Clear all */}
+          <button
+            onClick={() => {
+              if (strokes.length === 0) return;
+              if (window.confirm('确认清除当前页所有笔迹？')) {
+                canvasRef.current?.clear();
+              }
+            }}
+            disabled={strokes.length === 0}
+            className="p-2 rounded text-gray-400 hover:text-red-400 hover:bg-white/10 disabled:opacity-30 transition"
+            title="清除所有笔迹"
+          >
+            <Trash2 size={18} />
+          </button>
+
+          <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-1'} />
+
           {/* Manual save */}
           <button
             onClick={saveCurrentPage}
@@ -664,11 +684,18 @@ function renderTextByCharacter(text: string, rotation: number, className = '') {
     <span className={className}>
       {[...text].map((character, index) => {
         const isChineseCharacter = /[\u3400-\u9fff]/.test(character);
+        if (!isChineseCharacter) {
+          return (
+            <span key={`${character}-${index}`}>
+              {character}
+            </span>
+          );
+        }
         return (
           <span
             key={`${character}-${index}`}
             className="inline-block"
-            style={isChineseCharacter ? { transform: `rotate(${rotation}deg)` } : undefined}
+            style={{ transform: `rotate(${rotation}deg)` }}
           >
             {character}
           </span>
