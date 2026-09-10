@@ -20,7 +20,7 @@ export interface AssignmentModeProps {
   onExit: () => void;
   onAssignmentUpdate: () => void;
   pageAssignments: Assignment[];
-  onSwitchAssignment: (a: Assignment) => void;
+  onSwitchAssignment: (a: Assignment | null) => void;
 }
 
 type DrawTool = 'pen' | 'highlighter' | 'eraser';
@@ -234,6 +234,18 @@ export default function AssignmentMode({
       startMidpoint: remaining,
     };
   };
+
+  // Auto-switch assignment when page changes: find assignment on the new page
+  useEffect(() => {
+    if (pageAssignments.length === 0) {
+      if (assignment) onSwitchAssignment(null);
+      return;
+    }
+    const onThisPage = pageAssignments.find(a => a.id === assignment?.id);
+    if (!onThisPage) {
+      onSwitchAssignment(pageAssignments[0]);
+    }
+  }, [pageAssignments]);
 
   // Load strokes when page or assignment changes
   useEffect(() => {
@@ -541,7 +553,7 @@ export default function AssignmentMode({
           >
             <ChevronLeft size={18} />
           </button>
-          <span className={`text-sm text-gray-300 text-center ${isRotated ? `min-w-0 [writing-mode:vertical-rl] ${textFlipClass}` : 'min-w-[60px]'}`}>{currentPage} / {totalPages}</span>
+          <span className={`text-sm text-gray-300 text-center whitespace-nowrap ${isRotated ? `min-w-0 [writing-mode:vertical-rl] ${textFlipClass}` : 'min-w-[90px]'}`}>{currentPage} / {totalPages}</span>
           <button
             onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage >= totalPages}
