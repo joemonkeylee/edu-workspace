@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Pen, Highlighter, Eraser, Undo2, Redo2,
   ChevronLeft, ChevronRight, X, Save, CheckCircle2,
-  Download, FileText, RotateCcw, Minimize2, Maximize2, Trash2, Send, CornerUpLeft,
+  Download, FileText, RotateCw, RotateCcw, Minimize2, Maximize2, Trash2, Send, CornerUpLeft,
 } from 'lucide-react';
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
@@ -518,6 +518,13 @@ export default function AssignmentMode({
         <div className={isRotated ? 'flex-1' : 'flex-1'} />
         {/* Rotation */}
         <div className={isRotated ? `flex ${rotatedDir} items-center gap-1` : 'contents'}>
+          <button
+            onClick={() => setLocalRotation((r: number) => r + 90)}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            title="顺时针旋转 90°"
+          >
+            <RotateCw size={16} />
+          </button>
           <button
             onClick={() => setLocalRotation((r: number) => r - 90)}
             className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"

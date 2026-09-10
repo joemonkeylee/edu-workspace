@@ -28,6 +28,7 @@ import {
   Trash2,
   CheckCircle2,
   Circle,
+  RotateCw,
   RotateCcw,
   Layers,
   Download,
@@ -757,6 +758,12 @@ export default function BookViewer() {
               <>
                 <div className="fixed inset-0 z-50" onClick={() => setMoreOpen(false)} />
                 <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-44">
+                  <button
+                    onClick={() => { setRotation((r: number) => r + 90); }}
+                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-gray-200 transition hover:bg-white/5"
+                  >
+                    <RotateCw size={14} /> 顺时针旋转 90°
+                  </button>
                   <button
                     onClick={() => { setRotation((r: number) => r - 90); }}
                     className="flex items-center w-full gap-2 px-3 py-2 text-sm text-gray-200 transition hover:bg-white/5"
