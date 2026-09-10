@@ -418,11 +418,18 @@ export default function AssignmentMode({
       {/* Drawing area — same pattern as BookViewer: single overflow-auto container + min-h-full wrapper */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto touch-none"
+        className="flex-1 overflow-auto touch-none select-none"
+        style={{
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+        }}
         onPointerDown={handleTouchStart}
         onPointerMove={handleTouchMove}
         onPointerUp={handleTouchEnd}
         onPointerCancel={handleTouchEnd}
+        onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
       >
         <div className="min-h-full flex items-center justify-center p-4">
           {imgNatural.w > 0 && (

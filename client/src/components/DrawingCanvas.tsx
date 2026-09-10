@@ -129,6 +129,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
       if (e.pointerType === 'touch') return;
 
       e.preventDefault();
+      e.stopPropagation();
       canvasRef.current?.setPointerCapture(e.pointerId);
 
       if (tool === 'eraser') {
@@ -159,6 +160,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
     const onPointerMove = (e: React.PointerEvent) => {
       if (!drawingRef.current || !currentStrokeRef.current) return;
       e.preventDefault();
+      e.stopPropagation();
       const pt = getNormalizedPoint(e.nativeEvent);
       const pts = currentStrokeRef.current.points;
       const last = pts[pts.length - 1];
@@ -171,6 +173,7 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
     const onPointerUp = (e: React.PointerEvent) => {
       if (!drawingRef.current || !currentStrokeRef.current) return;
       e.preventDefault();
+      e.stopPropagation();
       drawingRef.current = false;
       isPencilActiveRef.current = false;
 
