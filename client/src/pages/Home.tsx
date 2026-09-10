@@ -1,12 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List } from 'lucide-react';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
 const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
 const STORAGE_KEY = 'edu-home-filters';
+const STORAGE_KEY_VIEW = 'edu-home-view-mode';
+const STORAGE_KEY_LIST_PS = 'edu-home-list-page-size';
+
+type ViewMode = 'preview' | 'list';
+
+function loadViewMode(): ViewMode {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_VIEW);
+    if (raw === 'preview' || raw === 'list') return raw;
+  } catch { /* ignore */ }
+  return 'preview';
+}
+
+function loadListPageSize(): number {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LIST_PS);
+    if (raw) return Math.max(10, Math.min(50, parseInt(raw, 10) || 20));
+  } catch { /* ignore */ }
+  return 20;
+}
 const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST');
 const APP_COMMIT = import.meta.env.VITE_APP_COMMIT || '';
 const APP_ENV_CLASS = APP_ENV === 'PROD'
@@ -110,7 +130,7 @@ function SavePrompt({
 }
 
 export default function Home() {
-  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading, booksPerRow, pageSize: storePageSize, setBooksPerRow } = useStore();
+  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading, booksPerRow, setBooksPerRow } = useStore();
 
   const saved = useMemo(loadSavedFilters, []);
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
@@ -173,7 +193,25 @@ export default function Home() {
   ]);
   const [pageInput, setPageInput] = useState('1');
   const [rowsPerPage, setRowsPerPage] = useState(2);
-  const pageSize = booksPerRow * rowsPerPage;
+  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
+  const [listPageSize, setListPageSize] = useState(loadListPageSize);
+  const pageSize = viewMode === 'preview' ? booksPerRow * rowsPerPage : listPageSize;
+
+  const switchViewMode = (mode: ViewMode) => {
+    if (mode === viewMode) return;
+    setViewMode(mode);
+    try { localStorage.setItem(STORAGE_KEY_VIEW, mode); } catch { /* ignore */ }
+    setPage(1);
+    setPageInput('1');
+  };
+
+  const changeListPageSize = (n: number) => {
+    const clamped = Math.max(10, Math.min(50, n));
+    setListPageSize(clamped);
+    try { localStorage.setItem(STORAGE_KEY_LIST_PS, String(clamped)); } catch { /* ignore */ }
+    setPage(1);
+    setPageInput('1');
+  };
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false);
@@ -588,21 +626,69 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="relative flex flex-wrap gap-3">
-            {Array.from({ length: pageSize }).map((_, i) => (
-              <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: '3/4', width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
-            ))}
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-              <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+          viewMode === 'preview' ? (
+            <div className="relative flex flex-wrap gap-3">
+              {Array.from({ length: Math.min(pageSize, 16) }).map((_, i) => (
+                <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: '3/4', width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
+              ))}
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="relative">
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    {editMode && <col style={{ width: '3%' }} />}
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '42%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '8%' }} />
+                    {editMode && <col style={{ width: '3%' }} />}
+                  </colgroup>
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      {editMode && <th className="px-2 py-2 text-left font-medium"></th>}
+                      <th className="px-2 py-2 text-left font-medium">封面</th>
+                      <th className="px-2 py-2 text-left font-medium">书名</th>
+                      <th className="px-2 py-2 text-left font-medium">学科</th>
+                      <th className="px-2 py-2 text-left font-medium">学期</th>
+                      <th className="px-2 py-2 text-left font-medium">分类</th>
+                      <th className="px-2 py-2 text-right font-medium">页数</th>
+                      {editMode && <th className="px-2 py-2"></th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: Math.min(pageSize, 12) }).map((_, i) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        {editMode && <td className="px-2 py-2"><div className="h-4 w-4 rounded bg-gray-200 animate-pulse" /></td>}
+                        <td className="px-2 py-2"><div className="h-10 w-8 rounded bg-gray-200 animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-40 rounded bg-gray-200 animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-gray-200 animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-gray-200 animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-16 rounded bg-gray-200 animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="ml-auto h-4 w-8 rounded bg-gray-200 animate-pulse" /></td>
+                        {editMode && <td className="px-2 py-2"></td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+              </div>
+            </div>
+          )
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <BookOpen size={48} className="mb-4" />
             <p className="mb-2">暂无书籍</p>
             <Link to="/admin" className="text-primary hover:underline">前往后台导入 PDF</Link>
           </div>
-        ) : (
+        ) : viewMode === 'preview' ? (
           <div className="flex flex-wrap gap-3">
             {pagedBooks.map((book) => {
               const draft = getDraft(book.id);
@@ -710,36 +796,224 @@ export default function Home() {
                 </div>
               );
             })}
+            {/* Placeholder cards to fill remaining grid slots */}
+            {Array.from({ length: Math.max(0, pageSize - pagedBooks.length) }).map((_, i) => (
+              <div key={`ph-${i}`} style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: '3/4' }} />
+            ))}
+          </div>
+        ) : (
+          /* List view */
+          <div className="overflow-hidden rounded-lg border border-gray-200">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                {editMode && <col style={{ width: '3%' }} />}
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '42%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '8%' }} />
+                {editMode && <col style={{ width: '3%' }} />}
+              </colgroup>
+              <thead className="bg-gray-50 text-xs text-gray-500">
+                <tr>
+                  {editMode && <th className="px-2 py-2 text-left font-medium"></th>}
+                  <th className="px-2 py-2 text-left font-medium">封面</th>
+                  <th className="px-2 py-2 text-left font-medium">书名</th>
+                  <th className="px-2 py-2 text-left font-medium">学科</th>
+                  <th className="px-2 py-2 text-left font-medium">学期</th>
+                  <th className="px-2 py-2 text-left font-medium">分类</th>
+                  <th className="px-2 py-2 text-right font-medium">页数</th>
+                  {editMode && <th className="px-2 py-2"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {pagedBooks.map((book) => {
+                  const draft = getDraft(book.id);
+                  const isDeleted = pendingDeletes.has(book.id);
+                  const isSelected = selectedIds.has(book.id);
+                  return (
+                    <tr
+                      key={book.id}
+                      className={`border-t border-gray-100 transition hover:bg-gray-50 ${
+                        isDeleted ? 'opacity-40' : ''
+                      } ${isSelected ? 'bg-blue-50' : ''}`}
+                      onClick={() => { if (editMode) toggleSelect(book.id); else window.open(`/book/${book.id}`, '_blank'); }}
+                      style={{ cursor: editMode ? 'pointer' : 'pointer' }}
+                    >
+                      {editMode && (
+                        <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(book.id)}
+                            className="h-3.5 w-3.5 cursor-pointer accent-blue-600"
+                          />
+                        </td>
+                      )}
+                      <td className="px-2 py-2">
+                        <div className="h-10 w-8 overflow-hidden rounded">
+                          <BookCover book={book} className="h-full w-full object-cover" />
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 truncate">
+                        {editMode ? (
+                          <input
+                            value={draft.title}
+                            onChange={(e) => updateDraft(book.id, 'title', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full rounded border border-gray-300 px-1.5 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="书名"
+                          />
+                        ) : (
+                          <span className="block text-xs text-gray-700 truncate" title={book.title}>{book.title}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2">
+                        {editMode ? (
+                          <select
+                            value={draft.subject}
+                            onChange={(e) => updateDraft(book.id, 'subject', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">&nbsp;</option>
+                            {subjectOptions.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          book.subject && <span className="rounded bg-emerald-100 px-1 py-0.5 text-[10px] text-emerald-700">{book.subject}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2">
+                        {editMode ? (
+                          <select
+                            value={draft.grade}
+                            onChange={(e) => updateDraft(book.id, 'grade', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">&nbsp;</option>
+                            {gradeOptions.map((g) => (
+                              <option key={g} value={g}>{g}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          book.grade && <span className="rounded bg-blue-100 px-1 py-0.5 text-[10px] text-blue-700">{book.grade}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2">
+                        {editMode ? (
+                          <select
+                            value={draft.category}
+                            onChange={(e) => updateDraft(book.id, 'category', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">&nbsp;</option>
+                            {categoryOptions.map((c) => (
+                              <option key={c.name} value={c.name}>{c.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          book.category && <span className="rounded bg-violet-100 px-1 py-0.5 text-[10px] text-violet-700">{book.category}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-right text-xs text-gray-500">{book.totalPages}</td>
+                      {editMode && (
+                        <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => toggleDelete(book.id)}
+                            className={`flex h-6 w-6 items-center justify-center rounded-full transition ${
+                              isDeleted ? 'bg-red-500 text-white' : 'text-gray-400 hover:bg-red-100 hover:text-red-500'
+                            }`}
+                            title={isDeleted ? '取消删除' : '标记删除'}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+                {/* Placeholder rows to fill remaining table height */}
+                {Array.from({ length: Math.max(0, listPageSize - pagedBooks.length) }).map((_, i) => (
+                  <tr key={`ph-${i}`} className="border-t border-gray-100" style={{ height: '56px' }}>
+                    <td colSpan={editMode ? 8 : 6}></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
         {/* Pager (below the list): select actions on left, pager on right */}
         {total > 0 && (
           <div className="mt-5 flex items-center gap-3">
-            {/* Col 1: page size config (left) */}
+            {/* Col 1: page size config + view toggle (left) */}
             <div className="flex items-center justify-start gap-1.5 w-1/3">
-              <label className="text-xs text-gray-500">每行</label>
-              <select
-                value={booksPerRow}
-                onChange={(e) => setBooksPerRow(parseInt(e.target.value, 10))}
-                className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                title="每行显示几本书"
-              >
-                {Array.from({ length: 8 }, (_, i) => i + 3).map(n => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-              <label className="text-xs text-gray-500">行数</label>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
-                className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                title="每页显示几行"
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              {/* View toggle */}
+              <div className="flex items-center rounded-md border border-gray-300 bg-white overflow-hidden">
+                <button
+                  onClick={() => switchViewMode('preview')}
+                  className={`flex items-center px-1.5 py-1 text-xs transition ${
+                    viewMode === 'preview' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                  title="预览视图"
+                >
+                  <LayoutGrid size={13} />
+                </button>
+                <button
+                  onClick={() => switchViewMode('list')}
+                  className={`flex items-center px-1.5 py-1 text-xs transition ${
+                    viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'
+                  }`}
+                  title="列表视图"
+                >
+                  <List size={13} />
+                </button>
+              </div>
+              {viewMode === 'preview' ? (
+                <>
+                  <label className="text-xs text-gray-500">每行</label>
+                  <select
+                    value={booksPerRow}
+                    onChange={(e) => setBooksPerRow(parseInt(e.target.value, 10))}
+                    className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    title="每行显示几本书"
+                  >
+                    {Array.from({ length: 8 }, (_, i) => i + 3).map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <label className="text-xs text-gray-500">行数</label>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+                    className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    title="每页显示几行"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <label className="text-xs text-gray-500">每页</label>
+                  <select
+                    value={listPageSize}
+                    onChange={(e) => changeListPageSize(parseInt(e.target.value, 10))}
+                    className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    title="每页显示几本"
+                  >
+                    {[10, 15, 20, 30, 50].map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </>
+              )}
               <span className="text-xs text-gray-400">({pageSize}本/页)</span>
             </div>
             {/* Col 2: pager (center) */}
