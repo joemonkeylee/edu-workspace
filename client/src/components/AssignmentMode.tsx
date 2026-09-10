@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Pen, Highlighter, Eraser, Undo2, Redo2,
   ChevronLeft, ChevronRight, X, Save, CheckCircle2,
-  Download, FileText, RotateCcw, Minimize2, Maximize2, Trash2, Send,
+  Download, FileText, RotateCcw, Minimize2, Maximize2, Trash2, Send, CornerUpLeft,
 } from 'lucide-react';
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
@@ -67,6 +67,8 @@ export default function AssignmentMode({
 
   const isGraded = assignment?.status === 'graded';
   const isSubmitted = assignment?.status === 'submitted';
+  const isReturned = assignment?.status === 'returned';
+  const canEdit = assignment?.status === 'draft' || isReturned;
   const readOnly = isGraded || (isSubmitted && !canGrade);
   const layer = 'student';
 
@@ -389,8 +391,16 @@ export default function AssignmentMode({
     onAssignmentUpdate();
   };
 
+  const handleReturn = async () => {
+    if (!assignment || !isSubmitted) return;
+    const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
+    if (!window.confirm(`确认打回作业「${title}」吗？\n打回后学生可继续修改，不会保存任何批改笔迹。`)) return;
+    await updateAssignment(assignment.id, { status: 'returned' });
+    onAssignmentUpdate();
+  };
+
   const handleSubmit = async () => {
-    if (!assignment || assignment.status !== 'draft') return;
+    if (!assignment || !canEdit) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
     if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
     const ok = await saveCurrentPage();
@@ -400,7 +410,7 @@ export default function AssignmentMode({
   };
 
   const handleDeleteAssignment = async () => {
-    if (!assignment || assignment.status !== 'draft') return;
+    if (!assignment || !canEdit) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
     if (!window.confirm(`确认删除作业「${title}」吗？\n此操作不可撤销，所有页面的笔迹都将被删除。`)) return;
     await deleteAssignment(assignment.id);
@@ -467,6 +477,7 @@ export default function AssignmentMode({
             {renderTextByCharacter(formatAssignmentTitle(assignment?.title) || '作业', chineseRotation)}
             {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
             {isSubmitted && !canGrade && <> {renderTextByCharacter('(已提交)', chineseRotation, 'text-blue-400 ml-1')}</>}
+            {isReturned && <> {renderTextByCharacter('(已打回)', chineseRotation, 'text-amber-400 ml-1')}</>}
           </span>
         </span>
         {/* Page assignment switcher — show assignments on this page, newest first */}
@@ -551,7 +562,7 @@ export default function AssignmentMode({
         >
           <Download size={16} />
         </button>
-        {assignment?.status === 'draft' && (
+        {canEdit && assignment && (
           <>
             <button
               onClick={handleSubmit}
@@ -569,14 +580,23 @@ export default function AssignmentMode({
             </button>
           </>
         )}
-        {canGrade && !isGraded && assignment && (
-          <button
-            onClick={handleMarkGraded}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
-            title="标记为已批改"
-          >
-            <CheckCircle2 size={16} />
-          </button>
+        {canGrade && isSubmitted && assignment && (
+          <>
+            <button
+              onClick={handleMarkGraded}
+              className="p-1.5 rounded text-gray-400 hover:text-green-400 hover:bg-white/10 transition"
+              title="标记为已批改"
+            >
+              <CheckCircle2 size={16} />
+            </button>
+            <button
+              onClick={handleReturn}
+              className="p-1.5 rounded text-gray-400 hover:text-amber-400 hover:bg-white/10 transition"
+              title="打回作业"
+            >
+              <CornerUpLeft size={16} />
+            </button>
+          </>
         )}
       </div>
 

@@ -29,7 +29,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
 
   const handleDelete = async (e: React.MouseEvent, a: Assignment) => {
     e.stopPropagation();
-    if (a.status !== 'draft') return;
+    if (a.status !== 'draft' && a.status !== 'returned') return;
     const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
     if (!window.confirm(`确认删除作业「${title}」吗？此操作不可撤销。`)) return;
     await deleteAssignment(a.id);
@@ -38,7 +38,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
 
   const handleSubmit = async (e: React.MouseEvent, a: Assignment) => {
     e.stopPropagation();
-    if (a.status !== 'draft') return;
+    if (a.status !== 'draft' && a.status !== 'returned') return;
     const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
     if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
     await updateAssignment(a.id, { status: 'submitted' });
@@ -66,8 +66,10 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
       <div className="flex-1 overflow-auto">
         {assignments.map((a) => {
           const isDraft = a.status === 'draft';
+          const isReturned = a.status === 'returned';
           const isSubmitted = a.status === 'submitted';
           const isGraded = a.status === 'graded';
+          const canEdit = isDraft || isReturned;
           return (
           <button
             key={a.id}
@@ -76,17 +78,18 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
               selectedId === a.id ? 'bg-[#006064]/10' : 'hover:bg-gray-50'
             }`}
           >
-            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${isGraded ? 'text-green-500' : isSubmitted ? 'text-blue-500' : 'text-gray-400'}`} />
+            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${isGraded ? 'text-green-500' : isSubmitted ? 'text-blue-500' : isReturned ? 'text-amber-500' : 'text-gray-400'}`} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-medium text-gray-800 truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</span>
                 <span className={`flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                   isGraded ? 'bg-green-100 text-green-600'
                     : isSubmitted ? 'bg-blue-100 text-blue-600'
+                    : isReturned ? 'bg-amber-100 text-amber-600'
                     : 'bg-gray-100 text-gray-500'
                 }`}>
                   {isGraded ? <CheckCircle size={9} /> : null}
-                  {isGraded ? '已批改' : isSubmitted ? '已提交' : '草稿'}
+                  {isGraded ? '已批改' : isSubmitted ? '已提交' : isReturned ? '已打回' : '草稿'}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
@@ -102,7 +105,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                 )}
               </div>
             </div>
-            {isDraft ? (
+            {canEdit ? (
               <div className="flex-shrink-0 flex items-center gap-0.5">
                 <span
                   onClick={(e) => handleSubmit(e, a)}
