@@ -104,11 +104,22 @@ export default function AssignmentMode({
       const focusInside = isInsideAssignmentMode(selection.focusNode);
       if (anchorInside || focusInside) selection.removeAllRanges();
     };
+    const blockPencilDefaults = (event: PointerEvent) => {
+      if (event.pointerType !== 'pen' || !isInsideAssignmentMode(event.target)) return;
+      event.preventDefault();
+      clearAssignmentSelection();
+    };
     const blockedEvents = ['selectstart', 'contextmenu', 'dragstart', 'copy', 'cut'];
     blockedEvents.forEach((name) => document.addEventListener(name, blockSelectionEvent, true));
+    document.addEventListener('pointerdown', blockPencilDefaults, true);
+    document.addEventListener('pointerup', blockPencilDefaults, true);
+    document.addEventListener('pointercancel', blockPencilDefaults, true);
     document.addEventListener('selectionchange', clearAssignmentSelection, true);
     return () => {
       blockedEvents.forEach((name) => document.removeEventListener(name, blockSelectionEvent, true));
+      document.removeEventListener('pointerdown', blockPencilDefaults, true);
+      document.removeEventListener('pointerup', blockPencilDefaults, true);
+      document.removeEventListener('pointercancel', blockPencilDefaults, true);
       document.removeEventListener('selectionchange', clearAssignmentSelection, true);
     };
   }, []);
