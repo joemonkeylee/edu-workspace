@@ -19,6 +19,8 @@ export interface AssignmentModeProps {
   assignment: Assignment | null;
   onExit: () => void;
   onAssignmentUpdate: () => void;
+  pageAssignments: Assignment[];
+  onSwitchAssignment: (a: Assignment) => void;
 }
 
 type DrawTool = 'pen' | 'highlighter' | 'eraser';
@@ -33,7 +35,7 @@ const HIGHLIGHT_COLOR = 'rgba(250, 204, 21, 0.5)';
 
 export default function AssignmentMode({
   bookId, bookTitle, canGrade = false, totalPages, storagePath, currentPage, setCurrentPage,
-  assignment, onExit, onAssignmentUpdate,
+  assignment, onExit, onAssignmentUpdate, pageAssignments, onSwitchAssignment,
 }: AssignmentModeProps) {
   const [tool, setTool] = useState<DrawTool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
@@ -446,6 +448,32 @@ export default function AssignmentMode({
             {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
           </span>
         </span>
+        {/* Page assignment switcher — show assignments on this page, newest first */}
+        {pageAssignments.length > 0 && (
+          <div className={`flex items-center gap-0.5 ${isRotated ? rotatedDir : ''}`}>
+            {pageAssignments.map((a, i) => {
+              const label = `作业${pageAssignments.length - i}`;
+              const active = a.id === assignment?.id;
+              const graded = a.status === 'graded';
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => onSwitchAssignment(a)}
+                  className={`px-1.5 py-0.5 rounded text-xs transition ${
+                    active
+                      ? 'bg-blue-600 text-white'
+                      : graded
+                        ? 'text-green-400 hover:bg-white/10'
+                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={formatAssignmentTitle(a.title) || `作业 #${a.id}`}
+                >
+                  {renderTextByCharacter(label, chineseRotation)}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className={isRotated ? 'flex-1' : 'flex-1'} />
         {/* Rotation */}
         <div className={isRotated ? `flex ${rotatedDir} items-center gap-1` : 'contents'}>

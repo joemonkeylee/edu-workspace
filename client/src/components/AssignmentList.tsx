@@ -27,9 +27,12 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     load();
   }, [bookId, onRefresh]);
 
-  const handleDelete = async (e: React.MouseEvent, id: number) => {
+  const handleDelete = async (e: React.MouseEvent, a: Assignment) => {
     e.stopPropagation();
-    await deleteAssignment(id);
+    if (a.status === 'graded') return;
+    const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
+    if (!window.confirm(`确认删除作业「${title}」吗？此操作不可撤销。`)) return;
+    await deleteAssignment(a.id);
     load();
   };
 
@@ -78,8 +81,12 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
               </div>
             </div>
             <span
-              onClick={(e) => handleDelete(e, a.id)}
-              className="flex-shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer transition"
+              onClick={(e) => handleDelete(e, a)}
+              className={`flex-shrink-0 p-1 rounded transition ${
+                a.status === 'graded'
+                  ? 'text-gray-200 cursor-not-allowed'
+                  : 'text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer'
+              }`}
             >
               <Trash2 size={14} />
             </span>

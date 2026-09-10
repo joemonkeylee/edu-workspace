@@ -38,6 +38,7 @@ import { buildAnnotationColorIndex, getAnnotationColor } from '../utils/annotati
 import AssignmentMode from '../components/AssignmentMode';
 import AssignmentList from '../components/AssignmentList';
 import type { Assignment } from '../api/client';
+import { getAssignments } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 
 type FitMode = 'width' | 'page' | null;
@@ -117,6 +118,7 @@ export default function BookViewer() {
   const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(null);
   const [assignmentRefresh, setAssignmentRefresh] = useState(0);
   const [assignmentCount, setAssignmentCount] = useState(0);
+  const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
   const [mistakeCount, setMistakeCount] = useState(0);
 
   // Clear annotation selection when page changes via toolbar/keyboard
@@ -172,6 +174,14 @@ export default function BookViewer() {
     });
     return () => { cancelled = true; };
   }, [currentBook, assignmentId, bookId, navigate]);
+
+  // Load all assignments when refresh counter changes
+  useEffect(() => {
+    if (!bookId) return;
+    getAssignments(bookId).then(({ assignments }) => {
+      setAllAssignments(assignments);
+    }).catch(() => {});
+  }, [bookId, assignmentRefresh]);
 
   // Persist config changes
   useEffect(() => {
@@ -405,19 +415,35 @@ export default function BookViewer() {
 
   const handleEnterAssignmentMode = useCallback(async () => {
     if (!currentBook) return;
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
     try {
+      const { assignments: all } = await getAssignments(bookId);
+      // Find assignments that cover the current page
+      const pageAssignments = all.filter(a => a.pages?.includes(currentPage));
+      const ungraded = pageAssignments.filter(a => a.status !== 'graded');
+      if (ungraded.length > 0) {
+        // Use the latest ungraded assignment (already sorted desc by createdAt)
+        const latest = ungraded[0];
+        const confirmed = window.confirm(`当前页已有未批改作业（${latest.title ? latest.title : '作业 #' + latest.id}），是否进入该作业？\n点击"取消"将创建新作业。`);
+        if (confirmed) {
+          setCurrentAssignment(latest);
+          setAssignmentMode(true);
+          setRightTab('assignments');
+          return;
+        }
+      }
+      // Create new assignment
+      const d = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
       const { assignment } = await api.createAssignment(bookId, title);
       setCurrentAssignment(assignment);
       setAssignmentMode(true);
       setRightTab('assignments');
       setAssignmentRefresh(v => v + 1);
     } catch (err) {
-      console.error('Failed to create assignment:', err);
+      console.error('Failed to enter assignment mode:', err);
     }
-  }, [currentBook, bookId]);
+  }, [currentBook, bookId, currentPage]);
 
   const handleMistakeToggle = async (id: number, current: number) => {
     await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
@@ -1030,6 +1056,8 @@ export default function BookViewer() {
           assignment={currentAssignment}
           onExit={() => { setAssignmentMode(false); setCurrentAssignment(null); }}
           onAssignmentUpdate={() => setAssignmentRefresh(v => v + 1)}
+          pageAssignments={allAssignments.filter(a => a.pages?.includes(currentPage))}
+          onSwitchAssignment={(a) => { setCurrentAssignment(a); }}
         />
       )}
     </div>
