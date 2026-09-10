@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Pen, Highlighter, Eraser, Undo2, Redo2,
   ChevronLeft, ChevronRight, X, Save, CheckCircle2,
-  Download, FileText, RotateCcw, Minimize2, Maximize2, Trash2,
+  Download, FileText, RotateCcw, Minimize2, Maximize2, Trash2, Send,
 } from 'lucide-react';
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
@@ -388,6 +388,25 @@ export default function AssignmentMode({
     onAssignmentUpdate();
   };
 
+  const handleSubmit = async () => {
+    if (!assignment || isGraded) return;
+    const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
+    if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
+    const ok = await saveCurrentPage();
+    if (!ok) return;
+    await updateAssignment(assignment.id, { status: 'graded' });
+    onAssignmentUpdate();
+  };
+
+  const handleDeleteAssignment = async () => {
+    if (!assignment || isGraded) return;
+    const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
+    if (!window.confirm(`确认删除作业「${title}」吗？\n此操作不可撤销，所有页面的笔迹都将被删除。`)) return;
+    await deleteAssignment(assignment.id);
+    onAssignmentUpdate();
+    onExit();
+  };
+
   const handleExport = () => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current.exportCanvas();
@@ -530,6 +549,24 @@ export default function AssignmentMode({
         >
           <Download size={16} />
         </button>
+        {!isGraded && assignment && (
+          <>
+            <button
+              onClick={handleSubmit}
+              className="p-1.5 rounded text-gray-400 hover:text-[#5eead4] hover:bg-white/10 transition"
+              title="提交作业"
+            >
+              <Send size={16} />
+            </button>
+            <button
+              onClick={handleDeleteAssignment}
+              className="p-1.5 rounded text-gray-400 hover:text-red-400 hover:bg-white/10 transition"
+              title="删除作业"
+            >
+              <Trash2 size={16} />
+            </button>
+          </>
+        )}
         {canGrade && !isGraded && assignment && (
           <button
             onClick={handleMarkGraded}
