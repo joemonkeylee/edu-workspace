@@ -109,17 +109,35 @@ export default function AssignmentMode({
       event.preventDefault();
       clearAssignmentSelection();
     };
+    const blockPencilTouchDefaults = (event: TouchEvent) => {
+      const touches = [...event.changedTouches];
+      const hasPencilTouch = touches.some((touch) => {
+        const touchType = (touch as Touch & { touchType?: string }).touchType;
+        return touchType === 'stylus' || touchType === 'pen';
+      });
+      if (!hasPencilTouch || !isInsideAssignmentMode(event.target)) return;
+      event.preventDefault();
+      clearAssignmentSelection();
+    };
     const blockedEvents = ['selectstart', 'contextmenu', 'dragstart', 'copy', 'cut'];
     blockedEvents.forEach((name) => document.addEventListener(name, blockSelectionEvent, true));
     document.addEventListener('pointerdown', blockPencilDefaults, true);
     document.addEventListener('pointerup', blockPencilDefaults, true);
     document.addEventListener('pointercancel', blockPencilDefaults, true);
+    document.addEventListener('touchstart', blockPencilTouchDefaults, true);
+    document.addEventListener('touchmove', blockPencilTouchDefaults, true);
+    document.addEventListener('touchend', blockPencilTouchDefaults, true);
+    document.addEventListener('touchcancel', blockPencilTouchDefaults, true);
     document.addEventListener('selectionchange', clearAssignmentSelection, true);
     return () => {
       blockedEvents.forEach((name) => document.removeEventListener(name, blockSelectionEvent, true));
       document.removeEventListener('pointerdown', blockPencilDefaults, true);
       document.removeEventListener('pointerup', blockPencilDefaults, true);
       document.removeEventListener('pointercancel', blockPencilDefaults, true);
+      document.removeEventListener('touchstart', blockPencilTouchDefaults, true);
+      document.removeEventListener('touchmove', blockPencilTouchDefaults, true);
+      document.removeEventListener('touchend', blockPencilTouchDefaults, true);
+      document.removeEventListener('touchcancel', blockPencilTouchDefaults, true);
       document.removeEventListener('selectionchange', clearAssignmentSelection, true);
     };
   }, []);
@@ -378,11 +396,12 @@ export default function AssignmentMode({
   return (
     <div
       ref={modeRef}
-      className="absolute inset-0 z-40 bg-[#525659] flex flex-col select-none"
+      className="assignment-mode absolute inset-0 z-40 bg-[#525659] flex flex-col select-none"
       style={{
         userSelect: 'none',
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
+        touchAction: 'none',
       }}
       onPointerDown={(e) => {
         if (e.pointerType === 'pen') e.preventDefault();
