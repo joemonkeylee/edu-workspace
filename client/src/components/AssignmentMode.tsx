@@ -555,13 +555,6 @@ export default function AssignmentMode({
         {dirty && !saving && renderTextByCharacter('未保存', chineseRotation, `text-xs text-orange-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
         {!dirty && !saving && renderTextByCharacter('已保存', chineseRotation, `text-xs text-green-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
         <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
-        <button
-          onClick={handleExport}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
-          title="导出当前页"
-        >
-          <Download size={16} />
-        </button>
         {canEdit && assignment && (
           <>
             <button
@@ -753,16 +746,35 @@ export default function AssignmentMode({
           >
             <Save size={18} />
           </button>
+
+          <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-1'} />
+
+          {/* Export current page */}
+          <button
+            onClick={handleExport}
+            className="p-2 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            title="导出当前页"
+          >
+            <Download size={18} />
+          </button>
         </div>
       )}
 
-      {/* Read-only banner */}
+      {/* Read-only banner with export */}
       {readOnly && (
-        <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3 [writing-mode:vertical-rl] ${textFlipClass}` : 'px-3 py-2'}`}>
+        <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3 [writing-mode:vertical-rl] ${textFlipClass}` : 'h-12 px-3 py-2'}`}>
           <FileText size={16} />
           {isGraded
             ? renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation)
             : renderTextByCharacter('此作业已提交，笔迹只读', chineseRotation)}
+          <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-2'} />
+          <button
+            onClick={handleExport}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            title="导出当前页"
+          >
+            <Download size={16} />
+          </button>
         </div>
       )}
     </div>
