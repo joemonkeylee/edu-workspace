@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, FileText, Trash2, Clock } from 'lucide-react';
 import { getAssignments, createAssignment, deleteAssignment, type Assignment } from '../api/client';
+import { formatAssignmentTitle } from '../utils/assignment';
 
 export interface AssignmentListProps {
   bookId: number;
@@ -89,7 +90,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
           >
             <FileText size={16} className={`mt-0.5 flex-shrink-0 ${a.status === 'graded' ? 'text-green-500' : 'text-gray-400'}`} />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-800 truncate">{a.title || `作业 #${a.id}`}</div>
+              <div className="text-sm font-medium text-gray-800 truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</div>
               <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
                 <span className="flex items-center gap-0.5">
                   <Clock size={10} />

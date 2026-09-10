@@ -6,9 +6,11 @@ import {
 } from 'lucide-react';
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
+import { formatAssignmentTitle } from '../utils/assignment';
 
 export interface AssignmentModeProps {
   bookId: number;
+  bookTitle: string;
   totalPages: number;
   storagePath: string;
   currentPage: number;
@@ -29,7 +31,7 @@ const COLORS = [
 const HIGHLIGHT_COLOR = 'rgba(250, 204, 21, 0.5)';
 
 export default function AssignmentMode({
-  bookId, totalPages, storagePath, currentPage, setCurrentPage,
+  bookId, bookTitle, totalPages, storagePath, currentPage, setCurrentPage,
   assignment, onExit, onAssignmentUpdate,
 }: AssignmentModeProps) {
   const [tool, setTool] = useState<DrawTool>('pen');
@@ -300,6 +302,8 @@ export default function AssignmentMode({
 
   const handleMarkGraded = async () => {
     if (!assignment) return;
+    const confirmed = window.confirm('确认将此作业标记为已批改吗？标记后将不能继续编辑笔迹。');
+    if (!confirmed) return;
     const ok = await saveCurrentPage();
     if (!ok) return;
     await updateAssignment(assignment.id, { status: 'graded' });
@@ -345,7 +349,7 @@ export default function AssignmentMode({
           <X size={18} />
         </button>
         <span className="text-sm text-gray-200">
-          {assignment?.title || '作业'} {isGraded && <span className="text-green-400 ml-1">(已批改)</span>}
+          {bookTitle} · {formatAssignmentTitle(assignment?.title) || '作业'} {isGraded && <span className="text-green-400 ml-1">(已批改)</span>}
         </span>
         <div className="flex-1" />
         {/* Rotation */}

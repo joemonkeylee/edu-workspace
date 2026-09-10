@@ -995,6 +995,7 @@ export default function BookViewer() {
       {assignmentMode && currentAssignment && (
         <AssignmentMode
           bookId={bookId}
+          bookTitle={currentBook.title}
           totalPages={totalPages}
           storagePath={effectiveStoragePath}
           currentPage={currentPage}
