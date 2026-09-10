@@ -318,6 +318,7 @@ export default function AssignmentMode({
         <div className="min-h-full flex items-center justify-center p-4">
           {imgNatural.w > 0 && (
             <div
+              className="flex items-center justify-center"
               style={{
                 width: isRotated ? `${canvasHeight}px` : `${canvasWidth}px`,
                 height: isRotated ? `${canvasWidth}px` : `${canvasHeight}px`,
