@@ -50,6 +50,7 @@ export default function AssignmentMode({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const modeRef = useRef<HTMLDivElement>(null);
   const lastSavedPageRef = useRef(currentPage);
   const autoRotatedRef = useRef(false);
   const gestureScaleRef = useRef(1);
@@ -86,6 +87,31 @@ export default function AssignmentMode({
   useEffect(() => {
     resetViewport();
   }, [currentPage, effectiveRotation, fitMode, resetViewport]);
+
+  useEffect(() => {
+    const isInsideAssignmentMode = (target: EventTarget | null) => {
+      return target instanceof Node && modeRef.current?.contains(target);
+    };
+    const blockSelectionEvent = (event: Event) => {
+      if (!isInsideAssignmentMode(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const clearAssignmentSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const anchorInside = isInsideAssignmentMode(selection.anchorNode);
+      const focusInside = isInsideAssignmentMode(selection.focusNode);
+      if (anchorInside || focusInside) selection.removeAllRanges();
+    };
+    const blockedEvents = ['selectstart', 'contextmenu', 'dragstart', 'copy', 'cut'];
+    blockedEvents.forEach((name) => document.addEventListener(name, blockSelectionEvent, true));
+    document.addEventListener('selectionchange', clearAssignmentSelection, true);
+    return () => {
+      blockedEvents.forEach((name) => document.removeEventListener(name, blockSelectionEvent, true));
+      document.removeEventListener('selectionchange', clearAssignmentSelection, true);
+    };
+  }, []);
 
   const handleTouchStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== 'touch') return;
@@ -340,6 +366,7 @@ export default function AssignmentMode({
 
   return (
     <div
+      ref={modeRef}
       className="absolute inset-0 z-40 bg-[#525659] flex flex-col select-none"
       style={{
         userSelect: 'none',
