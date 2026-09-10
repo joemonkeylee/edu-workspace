@@ -59,18 +59,20 @@ function ClearableSelect({
   onChange,
   placeholder,
   options,
+  className = 'w-36',
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   options: string[] | { name: string; count?: number }[];
+  className?: string;
 }) {
   const opts = options.map((o) =>
     typeof o === 'string' ? { name: o, count: undefined } : o
   );
   const totalCount = opts.reduce((sum, o) => sum + (o.count || 0), 0);
   return (
-    <div className="relative w-36">
+    <div className={`relative ${className}`}>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -541,10 +543,10 @@ export default function Home() {
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-gray-400 mr-1">筛选</span> */}
-          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} />
-          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} />
+          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-18" />
+          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-18" />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
-          <div className="relative w-40">
+          <div className="relative w-36">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
             <input
               type="text"
@@ -621,8 +623,8 @@ export default function Home() {
             onClick={resetSort}
             className={`flex items-center rounded-lg border px-2 py-1.5 text-xs transition ${
               sortString
-                ? 'border-primary/40 bg-primary/5 text-primary hover:bg-primary/10'
-                : 'border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300'
+                ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10'
+                : 'border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary'
             }`}
             title="重置排序"
           >
