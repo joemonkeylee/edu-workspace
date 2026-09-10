@@ -237,10 +237,7 @@ export default function AssignmentMode({
 
   // Auto-switch assignment when page changes: find assignment on the new page
   useEffect(() => {
-    if (pageAssignments.length === 0) {
-      if (assignment) onSwitchAssignment(null);
-      return;
-    }
+    if (pageAssignments.length === 0) return;
     const onThisPage = pageAssignments.find(a => a.id === assignment?.id);
     if (!onThisPage) {
       onSwitchAssignment(pageAssignments[0]);
