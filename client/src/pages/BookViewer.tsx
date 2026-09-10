@@ -33,12 +33,14 @@ import {
   Download,
   PenLine,
   MoreVertical,
+  X,
 } from 'lucide-react';
 import { buildAnnotationColorIndex, getAnnotationColor } from '../utils/annotationColors';
 import AssignmentMode from '../components/AssignmentMode';
 import AssignmentList from '../components/AssignmentList';
 import type { Assignment } from '../api/client';
 import { getAssignments } from '../api/client';
+import { formatAssignmentTitle } from '../utils/assignment';
 import { useAuthStore } from '../store/authStore';
 
 type FitMode = 'width' | 'page' | null;
@@ -119,6 +121,7 @@ export default function BookViewer() {
   const [assignmentRefresh, setAssignmentRefresh] = useState(0);
   const [assignmentCount, setAssignmentCount] = useState(0);
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
+  const [assignmentPrompt, setAssignmentPrompt] = useState<Assignment | null>(null);
   const [mistakeCount, setMistakeCount] = useState(0);
 
   // Clear annotation selection when page changes via toolbar/keyboard
@@ -417,21 +420,12 @@ export default function BookViewer() {
     if (!currentBook) return;
     try {
       const { assignments: all } = await getAssignments(bookId);
-      // Find assignments that cover the current page
       const pageAssignments = all.filter(a => a.pages?.includes(currentPage));
       const ungraded = pageAssignments.filter(a => a.status !== 'graded');
       if (ungraded.length > 0) {
-        // Use the latest ungraded assignment (already sorted desc by createdAt)
-        const latest = ungraded[0];
-        const confirmed = window.confirm(`当前页已有未批改作业（${latest.title ? latest.title : '作业 #' + latest.id}），是否进入该作业？\n点击"取消"将创建新作业。`);
-        if (confirmed) {
-          setCurrentAssignment(latest);
-          setAssignmentMode(true);
-          setRightTab('assignments');
-          return;
-        }
+        setAssignmentPrompt(ungraded[0]);
+        return;
       }
-      // Create new assignment
       const d = new Date();
       const pad = (n: number) => String(n).padStart(2, '0');
       const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
@@ -444,6 +438,17 @@ export default function BookViewer() {
       console.error('Failed to enter assignment mode:', err);
     }
   }, [currentBook, bookId, currentPage]);
+
+  const createNewAssignment = useCallback(async () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    const { assignment } = await api.createAssignment(bookId, title);
+    setCurrentAssignment(assignment);
+    setAssignmentMode(true);
+    setRightTab('assignments');
+    setAssignmentRefresh(v => v + 1);
+  }, [bookId]);
 
   const handleMistakeToggle = async (id: number, current: number) => {
     await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
@@ -1037,6 +1042,53 @@ export default function BookViewer() {
                 className="px-3 py-1.5 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600"
               >
                 删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assignment reuse prompt */}
+      {assignmentPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setAssignmentPrompt(null)}
+        >
+          <div
+            className="relative p-5 bg-white shadow-2xl rounded-xl w-80"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setAssignmentPrompt(null)}
+              className="absolute top-3 right-3 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            >
+              <X size={16} />
+            </button>
+            <h3 className="mb-2 text-base font-semibold text-gray-800">当前页已有未批改作业</h3>
+            <p className="mb-4 text-sm text-gray-500">
+              {formatAssignmentTitle(assignmentPrompt.title) || `作业 #${assignmentPrompt.id}`}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={async () => {
+                  const a = assignmentPrompt;
+                  setAssignmentPrompt(null);
+                  setCurrentAssignment(a);
+                  setAssignmentMode(true);
+                  setRightTab('assignments');
+                }}
+                className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                复用
+              </button>
+              <button
+                onClick={async () => {
+                  setAssignmentPrompt(null);
+                  await createNewAssignment();
+                }}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+              >
+                新建
               </button>
             </div>
           </div>
