@@ -346,6 +346,7 @@ export default function AssignmentMode({
                   ref={canvasRef}
                   width={canvasWidth}
                   height={canvasHeight}
+                  rotation={localRotation}
                   strokes={strokes}
                   layer={layer}
                   readOnly={readOnly}

@@ -11,6 +11,7 @@ export interface Stroke {
 export interface DrawingCanvasProps {
   width: number;
   height: number;
+  rotation?: number;
   strokes: Stroke[];
   layer: 'student' | 'teacher';
   readOnly: boolean;
@@ -29,7 +30,7 @@ export interface DrawingCanvasHandle {
 }
 
 const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
-  ({ width, height, strokes, readOnly, tool, color, penWidth, onStrokesChange }, ref) => {
+  ({ width, height, rotation = 0, strokes, readOnly, tool, color, penWidth, onStrokesChange }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
     const drawingRef = useRef(false);
@@ -107,8 +108,21 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
     const getNormalizedPoint = (e: PointerEvent): { x: number; y: number; p: number } => {
       const canvas = canvasRef.current!;
       const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top) / rect.height;
+      const visualX = (e.clientX - rect.left) / rect.width;
+      const visualY = (e.clientY - rect.top) / rect.height;
+      const normalizedRotation = ((rotation % 360) + 360) % 360;
+      let x = visualX;
+      let y = visualY;
+      if (normalizedRotation === 90) {
+        x = visualY;
+        y = 1 - visualX;
+      } else if (normalizedRotation === 180) {
+        x = 1 - visualX;
+        y = 1 - visualY;
+      } else if (normalizedRotation === 270) {
+        x = 1 - visualY;
+        y = visualX;
+      }
       const p = e.pressure && e.pressure > 0 ? e.pressure : 0.5;
       return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)), p };
     };
