@@ -385,6 +385,7 @@ export interface Assignment {
   updatedAt: string;
   gradedAt: string | null;
   _count?: { strokes: number };
+  pages?: number[];
 }
 
 export interface AssignmentStroke {

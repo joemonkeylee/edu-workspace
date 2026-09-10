@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Trash2, Clock } from 'lucide-react';
+import { FileText, Trash2, Clock, Layers } from 'lucide-react';
 import { getAssignments, deleteAssignment, type Assignment } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
 
@@ -68,7 +68,12 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                   <Clock size={10} />
                   {formatTime(a.createdAt)}
                 </span>
-                {a._count && <span>· {a._count.strokes} 条笔迹</span>}
+                {a.pages && a.pages.length > 0 && (
+                  <span className="flex items-center gap-0.5">
+                    <Layers size={10} />
+                    第 {a.pages.join('、')} 页
+                  </span>
+                )}
                 {a.status === 'graded' && <span className="text-green-500">· 已批改</span>}
               </div>
             </div>

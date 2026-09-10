@@ -22,10 +22,17 @@ router.get('/', authRequired, async (req: AuthedRequest, res: Response) => {
       id: true, bookId: true, userId: true, title: true, subject: true,
       status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
       _count: { select: { strokes: true } },
+      strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
     },
     orderBy: { createdAt: 'desc' },
   });
-  res.json({ assignments });
+  res.json({
+    assignments: assignments.map(a => ({
+      ...a,
+      pages: a.strokes.map(s => s.pageNumber),
+      strokes: undefined,
+    })),
+  });
 });
 
 // ── Get assignment detail ─────────────────────────────────────────
