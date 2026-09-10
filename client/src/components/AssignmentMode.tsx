@@ -69,6 +69,14 @@ export default function AssignmentMode({
 
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
   const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
+  const toolbarRotationClass = effectiveRotation === 0 ? '' : 'rotate-180';
+  const layoutDirectionClass = effectiveRotation === 90
+    ? 'flex-row-reverse'
+    : effectiveRotation === 180
+      ? 'flex-col-reverse'
+      : effectiveRotation === 270
+        ? 'flex-row'
+        : 'flex-col';
 
   const updateViewport = useCallback((scale: number, pan: { x: number; y: number }) => {
     const nextScale = Math.max(0.5, Math.min(4, scale));
@@ -396,7 +404,7 @@ export default function AssignmentMode({
   return (
     <div
       ref={modeRef}
-      className="assignment-mode absolute inset-0 z-40 bg-[#525659] flex flex-col select-none"
+      className={`assignment-mode absolute inset-0 z-40 bg-[#525659] flex select-none ${layoutDirectionClass}`}
       style={{
         userSelect: 'none',
         WebkitUserSelect: 'none',
@@ -410,7 +418,7 @@ export default function AssignmentMode({
       onDragStart={(e) => e.preventDefault()}
     >
       {/* Minimal top bar */}
-      <div className="bg-[#323639] text-white px-3 py-1.5 flex items-center gap-2 flex-shrink-0">
+      <div className={`bg-[#323639] text-white flex items-center flex-shrink-0 ${toolbarRotationClass} ${isRotated ? 'h-full w-12 flex-col gap-2 px-1 py-3' : 'gap-2 px-3 py-1.5'}`}>
         <button
           onClick={handleExit}
           className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
@@ -418,54 +426,58 @@ export default function AssignmentMode({
         >
           <X size={18} />
         </button>
-        <span className="text-sm text-gray-200">
+        <span className={`text-sm text-gray-200 ${isRotated ? '[writing-mode:vertical-rl] flex-1 overflow-hidden text-ellipsis' : ''}`}>
           {bookTitle} · {formatAssignmentTitle(assignment?.title) || '作业'} {isGraded && <span className="text-green-400 ml-1">(已批改)</span>}
         </span>
-        <div className="flex-1" />
+        <div className={isRotated ? 'flex-1' : 'flex-1'} />
         {/* Rotation */}
-        <button
-          onClick={() => setLocalRotation((r: number) => r - 90)}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
-          title="逆时针旋转 90°"
-        >
-          <RotateCcw size={16} />
-        </button>
-        <button
-          onClick={() => setFitMode('page')}
-          className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-          title="适应页面"
-        >
-          <Minimize2 size={16} />
-        </button>
-        <button
-          onClick={() => setFitMode('width')}
-          className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-          title="适应宽度"
-        >
-          <Maximize2 size={16} />
-        </button>
-        <div className="w-px h-5 bg-white/10 mx-1" />
+        <div className={isRotated ? 'flex flex-col items-center gap-1' : 'contents'}>
+          <button
+            onClick={() => setLocalRotation((r: number) => r - 90)}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            title="逆时针旋转 90°"
+          >
+            <RotateCcw size={16} />
+          </button>
+          <button
+            onClick={() => setFitMode('page')}
+            className={`p-1.5 rounded transition ${fitMode === 'page' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            title="适应页面"
+          >
+            <Minimize2 size={16} />
+          </button>
+          <button
+            onClick={() => setFitMode('width')}
+            className={`p-1.5 rounded transition ${fitMode === 'width' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            title="适应宽度"
+          >
+            <Maximize2 size={16} />
+          </button>
+        </div>
+        <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
         {/* Page navigation */}
-        <button
-          onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-          disabled={currentPage <= 1}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <span className="text-sm text-gray-300 min-w-[60px] text-center">{currentPage} / {totalPages}</span>
-        <button
-          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage >= totalPages}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
-        >
-          <ChevronRight size={18} />
-        </button>
-        <div className="w-px h-5 bg-white/10 mx-1" />
-        {saving && <span className="text-xs text-yellow-400">保存中...</span>}
-        {dirty && !saving && <span className="text-xs text-orange-400">未保存</span>}
-        {!dirty && !saving && <span className="text-xs text-green-400">已保存</span>}
-        <div className="w-px h-5 bg-white/10 mx-1" />
+        <div className={isRotated ? 'flex flex-col items-center gap-1' : 'contents'}>
+          <button
+            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage <= 1}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className={`text-sm text-gray-300 text-center ${isRotated ? 'min-w-0 [writing-mode:vertical-rl]' : 'min-w-[60px]'}`}>{currentPage} / {totalPages}</span>
+          <button
+            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage >= totalPages}
+            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+        <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
+        {saving && <span className={`text-xs text-yellow-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`}>保存中...</span>}
+        {dirty && !saving && <span className={`text-xs text-orange-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`}>未保存</span>}
+        {!dirty && !saving && <span className={`text-xs text-green-400 ${isRotated ? '[writing-mode:vertical-rl]' : ''}`}>已保存</span>}
+        <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
         <button
           onClick={handleExport}
           className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
@@ -487,7 +499,7 @@ export default function AssignmentMode({
       {/* Drawing area — same pattern as BookViewer: single overflow-auto container + min-h-full wrapper */}
       <div
         ref={containerRef}
-        className="min-h-0 flex-1 overflow-auto touch-none select-none"
+        className="min-h-0 min-w-0 flex-1 overflow-auto touch-none select-none"
         style={{
           userSelect: 'none',
           WebkitUserSelect: 'none',
@@ -548,9 +560,9 @@ export default function AssignmentMode({
 
       {/* Floating toolbar */}
       {!readOnly && (
-        <div className="relative z-50 flex h-12 flex-shrink-0 items-center justify-center gap-1 bg-[#323639] px-3 py-2">
+        <div className={`relative z-50 flex flex-shrink-0 items-center justify-center gap-1 bg-[#323639] ${toolbarRotationClass} ${isRotated ? 'h-full w-12 flex-col px-2 py-3' : 'h-12 px-3 py-2'}`}>
           {/* Tool buttons */}
-          <div className="flex items-center gap-0.5">
+          <div className={`flex items-center gap-0.5 ${isRotated ? 'flex-col' : ''}`}>
             <button
               onClick={() => setTool('pen')}
               className={`p-2 rounded transition ${tool === 'pen' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
@@ -574,11 +586,11 @@ export default function AssignmentMode({
             </button>
           </div>
 
-          <div className="w-px h-6 bg-white/10 mx-1" />
+          <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-1'} />
 
           {/* Color picker (pen mode only) */}
           {tool === 'pen' && (
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-1 ${isRotated ? 'flex-col' : ''}`}>
               {COLORS.map((c) => (
                 <button
                   key={c.name}
@@ -591,7 +603,7 @@ export default function AssignmentMode({
             </div>
           )}
 
-          <div className="w-px h-6 bg-white/10 mx-1" />
+          <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-1'} />
 
           {/* Undo / Redo */}
           <button
@@ -609,7 +621,7 @@ export default function AssignmentMode({
             <Redo2 size={18} />
           </button>
 
-          <div className="w-px h-6 bg-white/10 mx-1" />
+          <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-1'} />
 
           {/* Manual save */}
           <button
@@ -625,7 +637,7 @@ export default function AssignmentMode({
 
       {/* Read-only banner */}
       {readOnly && (
-        <div className="flex-shrink-0 bg-[#323639] px-3 py-2 flex items-center justify-center gap-2 text-gray-400 text-sm">
+        <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${isRotated ? 'h-full w-12 flex-col px-2 py-3 [writing-mode:vertical-rl]' : 'px-3 py-2'}`}>
           <FileText size={16} />
           此作业已批改，笔迹只读
         </div>
