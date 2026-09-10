@@ -186,8 +186,15 @@ export default function BookViewer() {
     if (!bookId) return;
     getAssignments(bookId).then(({ assignments }) => {
       setAllAssignments(assignments);
+      // Sync currentAssignment status if it exists in the refreshed list
+      if (currentAssignment) {
+        const updated = assignments.find(a => a.id === currentAssignment.id);
+        if (updated && updated.status !== currentAssignment.status) {
+          setCurrentAssignment(updated);
+        }
+      }
     }).catch(() => {});
-  }, [bookId, assignmentRefresh]);
+  }, [bookId, assignmentRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist config changes
   useEffect(() => {
@@ -1000,6 +1007,7 @@ export default function BookViewer() {
                   onSelect={(a) => {
                     setCurrentAssignment(a);
                     setAssignmentMode(true);
+                    setRightTab('assignments');
                     setSearchParams({ assignmentId: String(a.id), role: isTeacher ? 'teacher' : 'student' }, { replace: true });
                   }}
                   selectedId={currentAssignment?.id ?? null}
@@ -1117,13 +1125,20 @@ export default function BookViewer() {
           setCurrentPage={setCurrentPage}
           assignment={currentAssignment}
           onExit={() => {
-            setAssignmentMode(false);
-            setCurrentAssignment(null);
             setSearchParams({}, { replace: true });
+            setCurrentAssignment(null);
+            setAssignmentMode(false);
+            setRightOpen(true);
           }}
           onAssignmentUpdate={() => setAssignmentRefresh(v => v + 1)}
-          pageAssignments={allAssignments.filter(a => a.pages?.includes(currentPage))}
-          onSwitchAssignment={(a) => { setCurrentAssignment(a); }}
+          pageAssignments={(() => {
+            const filtered = allAssignments.filter(a => a.pages?.includes(currentPage));
+            if (currentAssignment && !filtered.some(a => a.id === currentAssignment.id)) {
+              return [currentAssignment, ...filtered];
+            }
+            return filtered;
+          })()}
+          onSwitchAssignment={(a) => { if (a) setCurrentAssignment(a); }}
         />
       )}
     </div>

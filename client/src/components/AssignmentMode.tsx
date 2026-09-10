@@ -44,6 +44,7 @@ export default function AssignmentMode({
   const [savedStrokes, setSavedStrokes] = useState<Stroke[]>([]);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [strokesLoaded, setStrokesLoaded] = useState(false);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
   const [localRotation, setLocalRotation] = useState(0);
   const [localZoom, setLocalZoom] = useState(0);
@@ -247,6 +248,7 @@ export default function AssignmentMode({
   // Load strokes when page or assignment changes
   useEffect(() => {
     if (!assignment) return;
+    setStrokesLoaded(false);
     let cancelled = false;
     getStrokes(assignment.id, currentPage).then(({ strokes: dbStrokes }) => {
       if (cancelled) return;
@@ -260,6 +262,7 @@ export default function AssignmentMode({
       setStrokes(mapped);
       setSavedStrokes(mapped);
       setDirty(false);
+      setStrokesLoaded(true);
     });
     return () => { cancelled = true; };
   }, [assignment, currentPage]);
@@ -331,7 +334,7 @@ export default function AssignmentMode({
         await saveStrokes(assignment.id, currentPage, layer, strokes);
         setSavedStrokes(strokes);
         setDirty(false);
-        if (strokes.length === 0) {
+        if (strokes.length === 0 && strokesLoaded) {
           const { strokes: allStrokes } = await getStrokes(assignment.id);
           if (allStrokes.length === 0) {
             await deleteAssignment(assignment.id);
@@ -347,11 +350,11 @@ export default function AssignmentMode({
     }
     lastSavedPageRef.current = newPage;
     setCurrentPage(newPage);
-  }, [assignment, dirty, isGraded, strokes, currentPage, layer, setCurrentPage, onExit]);
+    onAssignmentUpdate();
+  }, [assignment, dirty, isGraded, strokes, strokesLoaded, currentPage, layer, setCurrentPage, onExit, onAssignmentUpdate]);
 
-  // On exit: save current page, then clean up empty assignments (only if save succeeded)
+  // On exit: save current page, then exit immediately, then clean up empty assignments async
   const handleExit = useCallback(async () => {
-    let saveOk = true;
     if (assignment && dirty && !isGraded) {
       setSaving(true);
       try {
@@ -360,28 +363,26 @@ export default function AssignmentMode({
         setDirty(false);
       } catch (err) {
         console.error('Save on exit failed:', err);
-        saveOk = false;
       } finally {
         setSaving(false);
       }
     }
-    // Only clean up empty assignments if save succeeded
-    if (saveOk) {
-      try {
-        const { assignments } = await getAssignments(bookId);
-        for (const a of assignments) {
-          if (a.status === 'graded') continue;
-          const { strokes: allStrokes } = await getStrokes(a.id);
-          if (allStrokes.length === 0) {
-            await deleteAssignment(a.id);
-          }
-        }
-      } catch (err) {
-        console.error('Cleanup empty assignments failed:', err);
-      }
-    }
-    onAssignmentUpdate();
+    // Exit immediately so UI is responsive
     onExit();
+    // Clean up empty assignments asynchronously after exit
+    try {
+      const { assignments } = await getAssignments(bookId);
+      for (const a of assignments) {
+        if (a.status === 'graded') continue;
+        const { strokes: allStrokes } = await getStrokes(a.id);
+        if (allStrokes.length === 0) {
+          await deleteAssignment(a.id);
+        }
+      }
+      onAssignmentUpdate();
+    } catch (err) {
+      console.error('Cleanup empty assignments failed:', err);
+    }
   }, [assignment, dirty, isGraded, strokes, layer, bookId, onExit, onAssignmentUpdate]);
 
   const handleStrokesChange = useCallback((newStrokes: Stroke[]) => {
