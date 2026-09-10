@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { TocNode } from '../types';
-import { ChevronRight, ChevronDown, FileText, LayoutGrid, List, PanelLeft } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, LayoutGrid, List } from 'lucide-react';
 
 interface TocTreeProps {
   toc: TocNode[];
@@ -8,10 +8,9 @@ interface TocTreeProps {
   totalPages: number;
   storagePath: string;
   onPageSelect: (page: number) => void;
-  onClose?: () => void;
 }
 
-export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect, onClose }: TocTreeProps) {
+export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect }: TocTreeProps) {
   const [view, setView] = useState<'toc' | 'thumbs'>('thumbs');
   const visibleToc = filterVisibleToc(toc);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,15 +61,6 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
           <List size={14} />
           目录
         </button>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
-            title="收起目录"
-          >
-            <PanelLeft size={16} />
-          </button>
-        )}
       </div>
 
       <div className="flex-1 overflow-auto scrollbar-thin" ref={scrollRef}>

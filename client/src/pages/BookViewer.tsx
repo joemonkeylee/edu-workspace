@@ -529,15 +529,13 @@ export default function BookViewer() {
           >
             <ArrowLeft size={18} />
           </button>
-          {!leftOpen && (
-            <button
-              onClick={() => setLeftOpen(true)}
-              className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
-              title="目录"
-            >
-              <PanelLeft size={18} />
-            </button>
-          )}
+          <button
+            onClick={() => setLeftOpen(!leftOpen)}
+            className={`p-1.5 rounded transition flex-shrink-0 ${leftOpen ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            title="目录"
+          >
+            <PanelLeft size={18} />
+          </button>
           <h1 className="text-sm text-gray-200 truncate" title={currentBook.title}>{currentBook.title}</h1>
         </div>
 
@@ -798,16 +796,14 @@ export default function BookViewer() {
             )}
           </div>
 
-          {/* Right sidebar toggle - shown when sidebar is closed */}
-          {!rightOpen && (
-            <button
-              onClick={() => setRightOpen(true)}
-              data-tooltip="作业 / 错题 / 批注"
-              className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
-            >
-              <PanelRight size={18} />
-            </button>
-          )}
+          {/* Right sidebar toggle */}
+          <button
+            onClick={() => setRightOpen(!rightOpen)}
+            data-tooltip="作业 / 错题 / 批注"
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${rightOpen ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+          >
+            <PanelRight size={18} />
+          </button>
         </div>
       </header>
 
@@ -822,7 +818,6 @@ export default function BookViewer() {
               totalPages={totalPages}
               storagePath={currentBook.storagePath || ''}
               onPageSelect={setCurrentPage}
-              onClose={() => setLeftOpen(false)}
             />
           </aside>
         )}
@@ -956,14 +951,6 @@ export default function BookViewer() {
         {rightOpen && (
           <aside className="flex flex-col flex-shrink-0 bg-white border-l border-gray-200 w-72">
             <div className="flex items-center border-b border-gray-200">
-              {/* Right sidebar toggle on left */}
-              <button
-                onClick={() => setRightOpen(false)}
-                className="flex-shrink-0 p-2 text-gray-400 transition hover:text-gray-700 hover:bg-gray-50"
-                title="收起"
-              >
-                <PanelRight size={16} />
-              </button>
               <button
                 onClick={() => setRightTab('assignments')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
