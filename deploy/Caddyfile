@@ -1,5 +1,5 @@
 :5173 {
-    root * /Users/{user}/工作/github/edu-workspace/client/dist
+    root * {$EDU_WORKSPACE:-/Users/lizhen/工作/github/edu-workspace}/client/dist
     encode gzip zstd
 
     handle /api/* {
