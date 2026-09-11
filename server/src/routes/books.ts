@@ -4,12 +4,12 @@ import fs from 'fs';
 import prisma from '../prisma.js';
 import { getBestDpiPath, getAvailableDpisAsync } from '../services/pdfProcessor.js';
 import { getBookRoot, getCropsRoot } from '../services/storage.js';
-import { authRequired, adminRequired, AuthedRequest } from '../middleware/auth.js';
+import { authRequired, adminRequired, optionalAuth, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
-router.get('/', asyncHandler(async (req: Request, res: Response) => {
+router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const category = req.query.category as string;
   const grade = req.query.grade as string;
   const subject = req.query.subject as string;
@@ -17,6 +17,17 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const sort = req.query.sort as string; // e.g. "subject:asc,grade:desc,title:asc"
   const page = parseInt(req.query.page as string, 10) || 1;
   const pageSize = parseInt(req.query.pageSize as string, 10) || 16;
+  const favoritesOnly = req.query.favoritesOnly === 'true';
+
+  // Current user (null in standalone mode → global favorites)
+  const userId = req.user?.userId ?? null;
+
+  // Resolve favorite book IDs for the current user (used for isFavorite flag + favoritesOnly filter)
+  const favoriteRows = await prisma.bookFavorite.findMany({
+    where: { userId },
+    select: { bookId: true },
+  });
+  const favoriteIdSet = new Set(favoriteRows.map((r) => r.bookId));
 
   const where: any = {};
   if (category && category !== 'all') where.category = category;
@@ -29,6 +40,9 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
       { grade: { contains: search } },
       { subject: { contains: search } },
     ];
+  }
+  if (favoritesOnly) {
+    where.id = { in: [...favoriteIdSet] };
   }
 
   // Build orderBy from sort param; fallback to createdAt desc
@@ -67,11 +81,11 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     prisma.book.count({ where }),
   ]);
 
-  // Async compute availableDpis for the current page only (16 books)
-  const booksWithDpi = await Promise.all(books.map(async (b) => {
+  // Attach isFavorite and compute availableDpis for the current page
+  const booksWithMeta = await Promise.all(books.map(async (b) => {
     const bookDir = getBookRoot(b.id);
     const dpis = await getAvailableDpisAsync(bookDir);
-    return { ...b, availableDpis: dpis };
+    return { ...b, isFavorite: favoriteIdSet.has(b.id), availableDpis: dpis };
   }));
 
   // Distinct filter options, filtered by all active filters except the one being computed
@@ -126,7 +140,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  res.json({ data: booksWithDpi, total, page, pageSize, options: { subjects, grades, categories } });
+  res.json({ data: booksWithMeta, total, page, pageSize, options: { subjects, grades, categories } });
 }));
 
 router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
@@ -189,6 +203,31 @@ router.put('/:id', adminRequired, asyncHandler(async (req: Request, res: Respons
   } catch {
     res.status(404).json({ error: '书籍不存在' });
   }
+}));
+
+// Toggle favorite for the current user (standalone mode → global, userId=null)
+router.post('/:id/favorite', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'invalid bookId' });
+
+  const userId = req.user?.userId ?? null;
+
+  const existing = await prisma.bookFavorite.findFirst({
+    where: { userId, bookId: id },
+  });
+
+  if (existing) {
+    await prisma.bookFavorite.deleteMany({ where: { userId, bookId: id } });
+    return res.json({ data: { isFavorite: false } });
+  }
+
+  // delete-then-create in a transaction to avoid duplicate rows
+  // (the unique constraint does not catch NULL userId in standalone mode)
+  await prisma.$transaction([
+    prisma.bookFavorite.deleteMany({ where: { userId, bookId: id } }),
+    prisma.bookFavorite.create({ data: { userId, bookId: id } }),
+  ]);
+  res.json({ data: { isFavorite: true } });
 }));
 
 export default router;

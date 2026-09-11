@@ -24,6 +24,7 @@ export interface Book {
   availableDpis?: number[];
   pdfFileName?: string | null;
   pdfUrl?: string | null;
+  isFavorite?: boolean;
 }
 
 export interface Annotation {

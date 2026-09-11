@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star } from 'lucide-react';
+import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
@@ -9,6 +10,7 @@ const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
 const STORAGE_KEY = 'edu-home-filters';
 const STORAGE_KEY_VIEW = 'edu-home-view-mode';
 const STORAGE_KEY_LIST_PS = 'edu-home-list-page-size';
+const STORAGE_KEY_FAV = 'edu-home-favorites-only';
 
 type ViewMode = 'preview' | 'list';
 
@@ -132,7 +134,11 @@ function SavePrompt({
 }
 
 export default function Home() {
-  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading, booksPerRow, setBooksPerRow } = useStore();
+  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading, booksPerRow, setBooksPerRow, toggleFavorite } = useStore();
+
+  const loadFavoritesOnly = (): boolean => {
+    try { return localStorage.getItem(STORAGE_KEY_FAV) === '1'; } catch { return false; }
+  };
 
   const saved = useMemo(loadSavedFilters, []);
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
@@ -140,6 +146,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState(saved.category);
   const [search, setSearch] = useState(saved.search);
   const [debouncedSearch, setDebouncedSearch] = useState(saved.search);
+  const [favoritesOnly, setFavoritesOnly] = useState<boolean>(loadFavoritesOnly);
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
   const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[]>(
     saved.sortFields && saved.sortFields.length > 0
@@ -258,8 +265,9 @@ export default function Home() {
       sort: sortString,
       page,
       pageSize: pageSize,
+      favoritesOnly,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize]);
+  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -277,7 +285,7 @@ export default function Home() {
   useEffect(() => {
     setPage(1);
     setPageInput('1');
-  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize]);
+  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -418,6 +426,7 @@ export default function Home() {
         sort: sortString,
         page: safePage,
         pageSize: pageSize,
+        favoritesOnly,
       });
     }
   };
@@ -478,7 +487,7 @@ export default function Home() {
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
 
-  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory);
+  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory || favoritesOnly);
 
   const resetFilters = () => {
     const reset = () => {
@@ -486,6 +495,7 @@ export default function Home() {
       setSelectedGrade('');
       setSelectedCategory('');
       setSearch('');
+      handleFavoritesOnlyChange(false);
     };
     if (editMode && hasUnsavedChanges) {
       setPromptAction('filter');
@@ -505,7 +515,21 @@ export default function Home() {
       sort: sortString,
       page: safePage,
       pageSize: pageSize,
+      favoritesOnly,
     });
+  };
+
+  const handleFavoritesOnlyChange = (v: boolean) => {
+    setFavoritesOnly(v);
+    try { localStorage.setItem(STORAGE_KEY_FAV, v ? '1' : '0'); } catch { /* ignore */ }
+  };
+
+  const handleToggleFavorite = async (bookId: number) => {
+    try {
+      await toggleFavorite(bookId);
+    } catch (e: any) {
+      toast.error(e?.message || '收藏操作失败');
+    }
   };
 
   const handlePromptSaveFilter = async () => {
@@ -578,6 +602,28 @@ export default function Home() {
             title={hasActiveFilters ? '重置所有筛选条件' : '刷新列表'}
           >
             {hasActiveFilters ? <RotateCcw size={13} /> : <RefreshCw size={13} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !favoritesOnly;
+              if (editMode && hasUnsavedChanges) {
+                setPromptAction('filter');
+                setShowSavePrompt(true);
+                (window as any).__pendingFilter = { setter: handleFavoritesOnlyChange, value: next };
+              } else {
+                handleFavoritesOnlyChange(next);
+              }
+            }}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${
+              favoritesOnly
+                ? 'border-amber-400 bg-amber-50 text-amber-600 hover:bg-amber-100'
+                : 'border-gray-300 bg-white text-gray-600 hover:border-amber-400 hover:text-amber-500'
+            }`}
+            title="只看收藏"
+          >
+            <Star size={13} className={favoritesOnly ? 'fill-amber-400 text-amber-400' : ''} />
+            <span>只看收藏</span>
           </button>
           <div className="flex-1" />
 
@@ -703,7 +749,7 @@ export default function Home() {
               return (
                 <div
                   key={book.id}
-                  className={`relative bg-white rounded-lg shadow overflow-hidden transition ${
+                  className={`relative group bg-white rounded-lg shadow overflow-hidden transition ${
                     isDeleted ? 'opacity-40 ring-2 ring-red-400' : ''
                   } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
                   style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }}
@@ -729,6 +775,22 @@ export default function Home() {
                       title={isDeleted ? '取消删除' : '标记删除'}
                     >
                       <Trash2 size={13} />
+                    </button>
+                  )}
+
+                  {/* Favorite toggle (non-edit mode) */}
+                  {!editMode && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleToggleFavorite(book.id); }}
+                      className={`absolute right-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full shadow-md transition ${
+                        book.isFavorite
+                          ? 'bg-amber-400 text-white opacity-100'
+                          : 'bg-white/80 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-amber-50 hover:text-amber-500'
+                      }`}
+                      title={book.isFavorite ? '取消收藏' : '收藏'}
+                    >
+                      <Star size={14} className={book.isFavorite ? 'fill-white' : ''} />
                     </button>
                   )}
 
@@ -874,7 +936,17 @@ export default function Home() {
                             placeholder="书名"
                           />
                         ) : (
-                          <span className="block text-xs text-gray-700 truncate" title={book.title}>{book.title}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleToggleFavorite(book.id); }}
+                              className={`flex-shrink-0 transition ${book.isFavorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-400'}`}
+                              title={book.isFavorite ? '取消收藏' : '收藏'}
+                            >
+                              <Star size={13} className={book.isFavorite ? 'fill-amber-400' : ''} />
+                            </button>
+                            <span className="block text-xs text-gray-700 truncate" title={book.title}>{book.title}</span>
+                          </div>
                         )}
                       </td>
                       <td className="px-2 py-2">

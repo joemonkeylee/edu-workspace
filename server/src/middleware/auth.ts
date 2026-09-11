@@ -144,3 +144,29 @@ export function teacherOrAdminRequired(req: AuthedRequest, res: Response, next: 
       res.status(401).json({ error: 'token invalid or expired' });
     });
 }
+
+/**
+ * Optional auth: populate req.user when a valid token/ticket is present,
+ * but never reject the request. Used by endpoints that should remain
+ * publicly accessible but can personalize results for logged-in users
+ * (e.g. the books list, which marks each book's favorite status).
+ */
+export async function optionalAuth(req: AuthedRequest, _res: Response, next: NextFunction): Promise<void> {
+  if (!isAuthEnabled()) {
+    return next();
+  }
+  const ticketUser = trySseTicket(req);
+  if (ticketUser) {
+    req.user = ticketUser;
+    return next();
+  }
+  const token = extractToken(req);
+  if (token) {
+    try {
+      req.user = await verifyAccessToken(token);
+    } catch {
+      // invalid token — proceed without a user
+    }
+  }
+  next();
+}

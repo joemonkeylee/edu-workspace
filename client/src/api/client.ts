@@ -184,7 +184,7 @@ export interface BooksResponse {
   options: { subjects: string[]; grades: string[]; categories: { name: string; count: number }[] };
 }
 
-export async function getBooks(params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number }) {
+export async function getBooks(params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean }) {
   const { data } = await api.get('/books', { params });
   return data as BooksResponse;
 }
@@ -202,6 +202,11 @@ export async function deleteBook(id: number) {
 export async function updateBook(id: number, body: { title?: string; category?: string; grade?: string; subject?: string }) {
   const { data } = await api.put(`/books/${id}`, body);
   return data;
+}
+
+export async function toggleFavorite(bookId: number): Promise<{ isFavorite: boolean }> {
+  const { data } = await api.post(`/books/${bookId}/favorite`);
+  return data.data;
 }
 
 export async function saveAnnotation(formData: FormData) {

@@ -18,7 +18,7 @@ interface StoreState {
   mistakes: Mistake[];
   loading: boolean;
 
-  fetchBooks: (params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number }) => Promise<void>;
+  fetchBooks: (params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean }) => Promise<void>;
   fetchBook: (id: number) => Promise<void>;
   setCurrentPage: (page: number) => void;
   setZoom: (zoom: number) => void;
@@ -28,6 +28,7 @@ interface StoreState {
   fetchMistakes: (params?: Record<string, any>) => Promise<void>;
   removeBook: (id: number) => Promise<void>;
   removeAnnotation: (id: number) => Promise<void>;
+  toggleFavorite: (id: number) => Promise<void>;
   clearCurrent: () => void;
 }
 
@@ -121,6 +122,27 @@ export const useStore = create<StoreState>((set, get) => ({
   removeAnnotation: async (id: number) => {
     await api.deleteAnnotation(id);
     set({ annotations: get().annotations.filter(a => a.id !== id) });
+  },
+
+  toggleFavorite: async (id: number) => {
+    // Optimistically toggle in store
+    const book = get().books.find((b) => b.id === id);
+    const optimistic = !book?.isFavorite;
+    set({
+      books: get().books.map((b) => (b.id === id ? { ...b, isFavorite: optimistic } : b)),
+    });
+    try {
+      const { isFavorite } = await api.toggleFavorite(id);
+      set({
+        books: get().books.map((b) => (b.id === id ? { ...b, isFavorite } : b)),
+      });
+    } catch (e) {
+      // Revert on failure
+      set({
+        books: get().books.map((b) => (b.id === id ? { ...b, isFavorite: !optimistic } : b)),
+      });
+      throw e;
+    }
   },
 
   clearCurrent: () => set({ currentBook: null, annotations: [], currentPage: 1, tool: 'view' }),
