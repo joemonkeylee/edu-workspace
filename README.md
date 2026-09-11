@@ -123,10 +123,10 @@ brew install caddy
 ```bash
 cd /Users/{user}/工作/github/edu-workspace
 npm run build
-./scripts/install-lan-service.sh
+./scripts/start-lan-service.sh
 ```
 
-安装脚本会注册以下服务，并设置为登录后自动启动、异常后自动拉起：
+启动脚本会注册以下服务，并设置为登录后自动启动、异常后自动拉起：
 
 ```text
 com.edu-workspace.server
@@ -188,7 +188,7 @@ npm run build:prod → PROD 未来公网部署
 
 局域网发布继续使用 `npm run build`。未来部署到公网服务器时使用 `npm run build:prod`，前端会显示 `PROD` 标识。
 
-通常不需要重复执行安装脚本；只有修改了 `deploy/*.plist` 或首次配置服务时才需要执行 `install-lan-service.sh`。
+通常不需要重复执行启动脚本；只有修改了 `deploy/*.plist` 或首次配置服务时才需要执行 `start-lan-service.sh`。
 
 ### main 分支自动发布（手动开启）
 
