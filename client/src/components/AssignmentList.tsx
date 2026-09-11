@@ -105,8 +105,30 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
           >
             <FileText size={16} className={`mt-0.5 flex-shrink-0 ${isGraded ? 'text-green-500' : isSubmitted ? 'text-blue-500' : isReturned ? 'text-amber-500' : 'text-gray-400'}`} />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-gray-800 truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</span>
+                {canEdit ? (
+                  <div className="flex-shrink-0 flex items-center gap-0.5">
+                    <span
+                      onClick={(e) => handleSubmit(e, a)}
+                      title="提交作业"
+                      className="p-1 rounded transition text-gray-300 hover:text-[#006064] hover:bg-[#006064]/10 cursor-pointer"
+                    >
+                      <Send size={14} />
+                    </span>
+                    <span
+                      onClick={(e) => handleDelete(e, a)}
+                      title="删除作业"
+                      className="p-1 rounded transition text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
+                    >
+                      <Trash2 size={14} />
+                    </span>
+                  </div>
+                ) : (
+                  <span className="flex-shrink-0 p-1 text-gray-200">
+                    <Trash2 size={14} />
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between gap-2 text-xs text-gray-400 mt-0.5">
                 <div className="flex items-center gap-2 min-w-0">
@@ -132,28 +154,6 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                 </span>
               </div>
             </div>
-            {canEdit ? (
-              <div className="flex-shrink-0 flex items-center gap-0.5">
-                <span
-                  onClick={(e) => handleSubmit(e, a)}
-                  title="提交作业"
-                  className="p-1 rounded transition text-gray-300 hover:text-[#006064] hover:bg-[#006064]/10 cursor-pointer"
-                >
-                  <Send size={14} />
-                </span>
-                <span
-                  onClick={(e) => handleDelete(e, a)}
-                  title="删除作业"
-                  className="p-1 rounded transition text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
-                >
-                  <Trash2 size={14} />
-                </span>
-              </div>
-            ) : (
-              <span className="flex-shrink-0 p-1 text-gray-200">
-                <Trash2 size={14} />
-              </span>
-            )}
           </button>
           );
         })}
