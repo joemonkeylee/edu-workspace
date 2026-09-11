@@ -107,6 +107,29 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-gray-800 truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</span>
+                <span className={`flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  isGraded ? 'bg-green-100 text-green-600'
+                    : isSubmitted ? 'bg-blue-100 text-blue-600'
+                    : isReturned ? 'bg-amber-100 text-amber-600'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {isGraded ? <CheckCircle size={9} /> : null}
+                  {isGraded ? '已批改' : isSubmitted ? '已提交' : isReturned ? '已打回' : '草稿'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-xs text-gray-400 mt-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="flex items-center gap-0.5 flex-shrink-0">
+                    <Clock size={10} />
+                    {formatTime(a.createdAt)}
+                  </span>
+                  {a.pages && a.pages.length > 0 && (
+                    <span className="flex items-center gap-0.5 truncate">
+                      <Layers size={10} />
+                      第 {a.pages.join('、')} 页
+                    </span>
+                  )}
+                </div>
                 {canEdit ? (
                   <div className="flex-shrink-0 flex items-center gap-0.5">
                     <span
@@ -129,29 +152,6 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                     <Trash2 size={14} />
                   </span>
                 )}
-              </div>
-              <div className="flex items-center justify-between gap-2 text-xs text-gray-400 mt-0.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="flex items-center gap-0.5 flex-shrink-0">
-                    <Clock size={10} />
-                    {formatTime(a.createdAt)}
-                  </span>
-                  {a.pages && a.pages.length > 0 && (
-                    <span className="flex items-center gap-0.5 truncate">
-                      <Layers size={10} />
-                      第 {a.pages.join('、')} 页
-                    </span>
-                  )}
-                </div>
-                <span className={`flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                  isGraded ? 'bg-green-100 text-green-600'
-                    : isSubmitted ? 'bg-blue-100 text-blue-600'
-                    : isReturned ? 'bg-amber-100 text-amber-600'
-                    : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {isGraded ? <CheckCircle size={9} /> : null}
-                  {isGraded ? '已批改' : isSubmitted ? '已提交' : isReturned ? '已打回' : '草稿'}
-                </span>
               </div>
             </div>
           </button>
