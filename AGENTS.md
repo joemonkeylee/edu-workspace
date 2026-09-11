@@ -61,6 +61,20 @@ feat(client): add batch select/delete to admin books table
 - Progress modal with per-book tracking
 ```
 
+### Desensitization Rule (Username / Path Privacy)
+
+Never commit your local OS username in any file — code, comments, scripts, docs, or config. Always use the placeholder `{user}` instead.
+
+| Context | Rule |
+|---|---|
+| Docs / README / comments | Use `/Users/{user}/...` for path examples |
+| Scripts / config (default values) | Use `/Users/{user}/...` or read from `$HOME` / env var |
+| Code (runtime paths) | Use `os.homedir()` or env var — never hardcode a username |
+
+Before committing, verify with: `grep -rn "$(whoami)" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" --include="*.md" --include="*.sh" --include="*.env" . | grep -v node_modules | grep -v '.git/'`
+
+If any hit is found, replace with `{user}` (or appropriate env-based alternative) before committing.
+
 ## Project Structure
 
 ```
