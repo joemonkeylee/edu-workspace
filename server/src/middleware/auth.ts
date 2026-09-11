@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { isAuthEnabled, verifyAccessToken } from '../services/auth.js';
 
 export interface AuthedRequest extends Request {
-  user?: { userId: number; phone: string; isAdmin: boolean };
+  user?: { userId: number; phone: string; isAdmin: boolean; role: string };
 }
 
 export function authRequired(req: AuthedRequest, res: Response, next: NextFunction): void {

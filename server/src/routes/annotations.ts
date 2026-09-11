@@ -78,6 +78,9 @@ router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res:
   try {
     const annotation = await prisma.annotation.findUnique({ where: { id } });
     if (!annotation) return res.status(404).json({ error: '批注不存在' });
+    if (req.user && annotation.userId !== req.user.userId && !req.user.isAdmin) {
+      return res.status(403).json({ error: '没有权限删除此批注' });
+    }
 
     // Clean up crops files if this is a crop annotation
     if (annotation.type === 'crop') {

@@ -76,8 +76,8 @@ model Assignment {
   id        Int      @id @default(autoincrement())
   bookId    Int
   book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String   @default("") @db.VarChar(255)
   subject   String   @default("") @db.VarChar(64)
   status    String   @default("draft") @db.VarChar(20) // draft | submitted | graded | returned

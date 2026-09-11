@@ -61,6 +61,7 @@ export interface JwtPayload {
   userId: number;
   phone: string;
   isAdmin: boolean;
+  role: string;
 }
 
 function getJwtSecret(): string {

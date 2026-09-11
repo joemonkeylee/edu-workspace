@@ -88,7 +88,7 @@ router.post('/login', async (req: Request, res: Response) => {
       }
     }
 
-    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin };
+    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin, role: user.role };
     const accessToken = await signAccessToken(payload);
     const refreshToken = await signRefreshToken(payload);
     const refreshExpiry = await getSetting('auth.refresh_token_expiry');
@@ -102,6 +102,7 @@ router.post('/login', async (req: Request, res: Response) => {
         phone: user.phone,
         email: user.email,
         isAdmin: user.isAdmin,
+        role: user.role,
         nickName: user.nickName,
         avatar: user.avatar,
         status: user.status,
@@ -137,7 +138,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
       await revokeRefreshToken(refreshToken);
     }
 
-    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin };
+    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin, role: user.role };
     const newAccessToken = await signAccessToken(payload);
     let newRefreshToken = refreshToken;
 

@@ -11,6 +11,15 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 const execFileAsync = promisify(execFile);
 const router = Router();
 
+function canAccessAssignment(req: AuthedRequest, assignment: { userId: number | null }): boolean {
+  if (!req.user) return true;
+  return assignment.userId === req.user.userId || req.user.isAdmin || req.user.role === 'teacher';
+}
+
+function canGradeAssignment(req: AuthedRequest): boolean {
+  return !req.user || req.user.isAdmin || req.user.role === 'teacher';
+}
+
 // ── List assignments for a book ──────────────────────────────────
 
 router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
@@ -19,7 +28,8 @@ router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Respo
 
   const userId = req.user?.userId;
   const where: any = { bookId };
-  if (userId) where.userId = userId;
+  const canViewAll = Boolean(req.user?.isAdmin || req.user?.role === 'teacher');
+  if (userId && !canViewAll) where.userId = userId;
 
   const assignments = await prisma.assignment.findMany({
     where,
@@ -51,6 +61,7 @@ router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
     },
   });
   if (!assignment) return res.status(404).json({ error: 'not found' });
+  if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to view this assignment' });
   res.json({ assignment });
 }));
 
@@ -60,7 +71,7 @@ router.post('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Resp
   const bookId = parseInt(req.body?.bookId);
   if (isNaN(bookId)) return res.status(400).json({ error: 'bookId required' });
 
-  const userId = req.user?.userId || 0;
+  const userId = req.user?.userId ?? null;
   const title = typeof req.body?.title === 'string' ? req.body.title : '';
   const subject = typeof req.body?.subject === 'string' ? req.body.subject : '';
 
@@ -82,9 +93,8 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
   if (!assignment) return res.status(404).json({ error: 'not found' });
 
   const userId = req.user?.userId;
-  const isOwner = !userId || assignment.userId === userId || assignment.userId === 0;
-  const isAdmin = req.user?.isAdmin;
-  if (!isOwner && !isAdmin) {
+  const isOwner = !userId || assignment.userId === userId || assignment.userId === null;
+  if (!isOwner && !canAccessAssignment(req, assignment)) {
     return res.status(403).json({ error: 'no permission to modify this assignment' });
   }
 
@@ -94,10 +104,8 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
 
   if (typeof req.body?.status === 'string' && ['draft', 'submitted', 'graded', 'returned'].includes(req.body.status)) {
     const newStatus = req.body.status;
-    const isTeacher = isAdmin;
-
     if (newStatus === 'graded' || newStatus === 'returned') {
-      if (!isTeacher) {
+      if (!canGradeAssignment(req)) {
         return res.status(403).json({ error: 'only teacher/admin can grade or return assignments' });
       }
       data.gradedAt = newStatus === 'graded' ? new Date() : null;
@@ -122,9 +130,8 @@ router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res:
   if (!assignment) return res.status(404).json({ error: 'not found' });
 
   const userId = req.user?.userId;
-  const isOwner = !userId || assignment.userId === userId || assignment.userId === 0;
-  const isAdmin = req.user?.isAdmin;
-  if (!isOwner && !isAdmin) {
+  const isOwner = !userId || assignment.userId === userId || assignment.userId === null;
+  if (!isOwner && !canAccessAssignment(req, assignment)) {
     return res.status(403).json({ error: 'no permission to delete this assignment' });
   }
 
@@ -164,7 +171,10 @@ router.post('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest
 
   const assignment = await prisma.assignment.findUnique({ where: { id } });
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
+  if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to view this assignment' });
+  if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to modify this assignment' });
   if (assignment.status === 'graded') return res.status(403).json({ error: 'assignment is graded, read-only' });
+  if (layer === 'teacher' && !canGradeAssignment(req)) return res.status(403).json({ error: 'only teacher/admin can save teacher strokes' });
 
   await prisma.$transaction([
     prisma.assignmentStroke.deleteMany({
@@ -189,8 +199,15 @@ router.post('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest
 // ── Delete a single stroke ────────────────────────────────────────
 
 router.delete('/:id/strokes/:strokeId', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const id = parseInt(req.params.id);
   const strokeId = parseInt(req.params.strokeId);
-  await prisma.assignmentStroke.delete({ where: { id: strokeId } }).catch(() => {});
+  const assignment = await prisma.assignment.findUnique({ where: { id } });
+  if (!assignment) return res.status(404).json({ error: 'assignment not found' });
+  if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to modify this assignment' });
+  const stroke = await prisma.assignmentStroke.findFirst({ where: { id: strokeId, assignmentId: id } });
+  if (!stroke) return res.status(404).json({ error: 'stroke not found' });
+  if (stroke.layer === 'teacher' && !canGradeAssignment(req)) return res.status(403).json({ error: 'only teacher/admin can delete teacher strokes' });
+  await prisma.assignmentStroke.delete({ where: { id: strokeId } });
   res.json({ success: true });
 }));
 
@@ -206,6 +223,7 @@ router.post('/:id/export', authRequired, asyncHandler(async (req: AuthedRequest,
     include: { book: true },
   });
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
+  if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to view this assignment' });
 
   const strokes = await prisma.assignmentStroke.findMany({
     where: { assignmentId: id, pageNumber },

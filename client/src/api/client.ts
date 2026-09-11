@@ -94,6 +94,7 @@ export interface LoginUser {
   phone: string;
   email: string | null;
   isAdmin: boolean;
+  role: string;
   nickName: string;
   avatar: string;
   status: string;
@@ -125,7 +126,7 @@ export async function getAuthStatus() {
 
 export async function getMe() {
   const { data } = await api.get('/auth/me');
-  return data as { userId: number; phone: string; email: string | null; isAdmin: boolean; nickName: string; avatar: string; status: string; maxDevices: number };
+  return data as { userId: number; phone: string; email: string | null; isAdmin: boolean; role: string; nickName: string; avatar: string; status: string; maxDevices: number };
 }
 
 // ── Admin user API ────────────────────────────────────────────────
@@ -217,7 +218,7 @@ export async function deleteAnnotation(id: number) {
 
 export async function getMistakes(params?: Record<string, any>) {
   const { data } = await api.get('/mistakes', { params });
-  return data;
+  return data as { data: any[]; total: number; page: number; pageSize: number };
 }
 
 export async function updateMistake(id: number, body: Record<string, any>) {

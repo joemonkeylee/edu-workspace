@@ -39,6 +39,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             phone: me.phone,
             email: me.email ?? null,
             isAdmin: me.isAdmin,
+            role: me.role,
             nickName: me.nickName ?? '',
             avatar: me.avatar ?? '',
             status: me.status ?? 'normal',

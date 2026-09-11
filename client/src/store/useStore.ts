@@ -106,8 +106,8 @@ export const useStore = create<StoreState>((set, get) => ({
 
   fetchMistakes: async (params?: Record<string, any>) => {
     try {
-      const mistakes = await api.getMistakes(params);
-      set({ mistakes });
+      const result = await api.getMistakes(params);
+      set({ mistakes: result.data });
     } catch (e) {
       console.error('fetchMistakes failed:', e);
     }

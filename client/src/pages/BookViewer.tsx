@@ -57,7 +57,7 @@ export default function BookViewer() {
   const role = searchParams.get('role') || '';
   const { user, authEnabled } = useAuthStore();
   const isTeacher = role === 'teacher' || gradingEntry;
-  const canGrade = isTeacher && (!authEnabled || Boolean(user?.isAdmin));
+  const canGrade = isTeacher && (!authEnabled || Boolean(user?.isAdmin || user?.role === 'teacher'));
 
   const {
     currentBook,
@@ -161,7 +161,7 @@ export default function BookViewer() {
         if (cfg.page > 1) setCurrentPage(cfg.page);
       });
       fetchAnnotations(bookId);
-      api.getMistakes({ bookId }).then((items) => setMistakeCount(items.length));
+      api.getMistakes({ bookId }).then((result) => setMistakeCount(result.total));
     }
     return () => clearCurrent();
   }, [bookId]);

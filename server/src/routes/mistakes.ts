@@ -44,6 +44,11 @@ router.patch('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: 
   if (subject !== undefined) data.subject = subject;
 
   try {
+    const mistake = await prisma.mistake.findUnique({ where: { id } });
+    if (!mistake) return res.status(404).json({ error: '错题不存在' });
+    if (req.user && mistake.userId !== req.user.userId && !req.user.isAdmin) {
+      return res.status(403).json({ error: '没有权限修改此错题' });
+    }
     const updated = await prisma.mistake.update({ where: { id }, data });
     res.json(updated);
   } catch {
@@ -54,6 +59,11 @@ router.patch('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: 
 router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
+    const mistake = await prisma.mistake.findUnique({ where: { id } });
+    if (!mistake) return res.status(404).json({ error: '错题不存在' });
+    if (req.user && mistake.userId !== req.user.userId && !req.user.isAdmin) {
+      return res.status(403).json({ error: '没有权限删除此错题' });
+    }
     await prisma.mistake.delete({ where: { id } });
     res.json({ success: true });
   } catch {

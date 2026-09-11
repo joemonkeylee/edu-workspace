@@ -26,7 +26,7 @@ export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
 
   // Role check
   if (allowedRoles && user) {
-    const role = user.isAdmin ? 'admin' : 'user';
+    const role = user.isAdmin ? 'admin' : user.role;
     if (!allowedRoles.includes(role)) {
       return <Navigate to="/" replace />;
     }
