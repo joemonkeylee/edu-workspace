@@ -8,7 +8,7 @@ const PAGE_SIZE = 10;
 const TYPE_LABELS: Record<string, string> = {
   highlight: '高亮',
   note: '批注',
-  underline: '下划线',
+  crop: '裁剪',
 };
 
 export default function AnnotationsTable() {
@@ -86,7 +86,7 @@ export default function AnnotationsTable() {
           <option value="all">全部类型</option>
           <option value="highlight">高亮</option>
           <option value="note">批注</option>
-          <option value="underline">下划线</option>
+          <option value="crop">裁剪</option>
         </select>
         <button onClick={handleFilter} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
           筛选

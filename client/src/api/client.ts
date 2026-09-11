@@ -49,6 +49,13 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
+
+    // Normalize error message from server response
+    const serverMsg = error.response?.data;
+    if (serverMsg && typeof serverMsg === 'object') {
+      error.message = serverMsg.error || serverMsg.message || error.message;
+    }
+
     if (error.response?.status === 401 && !original._retry && refreshToken) {
       if (refreshing) {
         return new Promise((resolve, reject) => {

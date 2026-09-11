@@ -5,10 +5,11 @@ import prisma from '../prisma.js';
 import { getBestDpiPath, getAvailableDpisAsync } from '../services/pdfProcessor.js';
 import { getBookRoot, getCropsRoot } from '../services/storage.js';
 import { authRequired, adminRequired, AuthedRequest } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const category = req.query.category as string;
   const grade = req.query.grade as string;
   const subject = req.query.subject as string;
@@ -126,9 +127,9 @@ router.get('/', async (req: Request, res: Response) => {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   res.json({ books: booksWithDpi, total, page, pageSize, options: { subjects, grades, categories } });
-});
+}));
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const book = await prisma.book.findUnique({ where: { id } });
   if (!book) {
@@ -149,9 +150,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     ? `/storage/books/${id}/${encodeURIComponent(pdfFileName)}`
     : null;
   res.json({ ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl });
-});
+}));
 
-router.delete('/:id', adminRequired, async (req: Request, res: Response) => {
+router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
     const bookDir = getBookRoot(id);
@@ -164,9 +165,9 @@ router.delete('/:id', adminRequired, async (req: Request, res: Response) => {
   } catch {
     res.status(404).json({ error: '书籍不存在' });
   }
-});
+}));
 
-router.put('/:id', adminRequired, async (req: Request, res: Response) => {
+router.put('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const { title, category, grade, subject } = req.body;
   const data: any = {};
@@ -183,6 +184,6 @@ router.put('/:id', adminRequired, async (req: Request, res: Response) => {
   } catch {
     res.status(404).json({ error: '书籍不存在' });
   }
-});
+}));
 
 export default router;

@@ -1,31 +1,41 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
 import { authRequired, AuthedRequest } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
+const PAGE_SIZE = 20;
 
-router.get('/', authRequired, async (req: AuthedRequest, res: Response) => {
-  const { subject, reviewStatus, bookId, tag } = req.query;
+router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const { subject, reviewStatus, bookId, tag, page: pageStr, pageSize: pageSizeStr } = req.query;
   const userId = req.user?.userId;
   const where: any = {};
   if (subject) where.subject = subject;
   if (reviewStatus !== undefined) where.reviewStatus = parseInt(reviewStatus as string, 10);
   if (bookId) where.bookId = parseInt(bookId as string, 10);
   if (tag) where.tags = { contains: tag as string };
-  // Data isolation: show only user's mistakes + shared (null userId) when auth enabled
   if (userId) {
     where.OR = [{ userId }, { userId: null }];
   }
 
-  const mistakes = await prisma.mistake.findMany({
-    where,
-    include: { book: { select: { title: true, category: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
-  res.json(mistakes);
-});
+  const page = parseInt(pageStr as string, 10) || 1;
+  const pageSize = parseInt(pageSizeStr as string, 10) || PAGE_SIZE;
+  const skip = (page - 1) * pageSize;
 
-router.patch('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
+  const [mistakes, total] = await Promise.all([
+    prisma.mistake.findMany({
+      where,
+      include: { book: { select: { title: true, category: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: pageSize,
+    }),
+    prisma.mistake.count({ where }),
+  ]);
+  res.json({ data: mistakes, total, page, pageSize });
+}));
+
+router.patch('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const { reviewStatus, tags, subject } = req.body;
   const data: any = {};
@@ -39,9 +49,9 @@ router.patch('/:id', authRequired, async (req: AuthedRequest, res: Response) => 
   } catch {
     res.status(404).json({ error: '错题不存在' });
   }
-});
+}));
 
-router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
+router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
     await prisma.mistake.delete({ where: { id } });
@@ -49,6 +59,6 @@ router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) =>
   } catch {
     res.status(404).json({ error: '错题不存在' });
   }
-});
+}));
 
 export default router;

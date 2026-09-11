@@ -6,6 +6,7 @@ import multer from 'multer';
 import prisma from '../prisma.js';
 import { getCropsRoot } from '../services/storage.js';
 import { authRequired, AuthedRequest } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
 });
 
-router.post('/', authRequired, upload.single('image'), async (req: AuthedRequest, res: Response) => {
+router.post('/', authRequired, upload.single('image'), asyncHandler(async (req: AuthedRequest, res: Response) => {
   const { bookId, pageNumber, type, contentJson, tags } = req.body;
 
   if (!bookId || !pageNumber || !type) {
@@ -56,9 +57,9 @@ router.post('/', authRequired, upload.single('image'), async (req: AuthedRequest
   }
 
   res.json({ annotation });
-});
+}));
 
-router.get('/book/:bookId', authRequired, async (req: AuthedRequest, res: Response) => {
+router.get('/book/:bookId', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.params.bookId, 10);
   const userId = req.user?.userId;
   const where: any = { bookId };
@@ -70,9 +71,9 @@ router.get('/book/:bookId', authRequired, async (req: AuthedRequest, res: Respon
     orderBy: { pageNumber: 'asc' },
   });
   res.json(annotations);
-});
+}));
 
-router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
+router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
     const annotation = await prisma.annotation.findUnique({ where: { id } });
@@ -98,6 +99,6 @@ router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) =>
   } catch {
     res.status(404).json({ error: '批注不存在' });
   }
-});
+}));
 
 export default router;

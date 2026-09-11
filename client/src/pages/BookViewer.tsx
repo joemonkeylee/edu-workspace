@@ -507,20 +507,12 @@ export default function BookViewer() {
   // Assign each annotation a color index based on its position within its page
   const annColorIndex = buildAnnotationColorIndex(annotations);
 
-  const tools: { mode: ToolMode; icon: any; label: string; disabled?: boolean }[] = [
-    { mode: 'view', icon: MousePointer2, label: '浏览' },
-    { mode: 'note', icon: StickyNote, label: '批注' },
-    { mode: 'highlight', icon: Highlighter, label: '高亮', disabled: true },
-    { mode: 'crop', icon: Scissors, label: '裁剪' },
-  ];
-
   const toolsBefore: { mode: ToolMode; icon: any; label: string; disabled?: boolean }[] = [
     { mode: 'view', icon: MousePointer2, label: '浏览' },
   ];
 
   const toolsAfter: { mode: ToolMode; icon: any; label: string; disabled?: boolean }[] = [
     { mode: 'note', icon: StickyNote, label: '批注' },
-    { mode: 'highlight', icon: Highlighter, label: '高亮', disabled: true },
     { mode: 'crop', icon: Scissors, label: '裁剪' },
   ];
 
@@ -1052,7 +1044,9 @@ export default function BookViewer() {
               </button>
               <button
                 onClick={() => {
-                  removeAnnotation(deleteAnnId);
+                  removeAnnotation(deleteAnnId).catch((e: any) => {
+                    console.error('removeAnnotation failed:', e);
+                  });
                   setDeleteAnnId(null);
                   setSelectedAnnotationId(null);
                 }}

@@ -6,17 +6,17 @@ import { promisify } from 'util';
 import prisma from '../prisma.js';
 import { getBookRoot } from '../services/storage.js';
 import { authRequired, AuthedRequest } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const execFileAsync = promisify(execFile);
 const router = Router();
 
 // ── List assignments for a book ──────────────────────────────────
 
-router.get('/', authRequired, async (req: AuthedRequest, res: Response) => {
+router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.query.bookId as string);
   if (isNaN(bookId)) return res.status(400).json({ error: 'bookId required' });
 
-  // Filter by userId when auth is enabled (data isolation)
   const userId = req.user?.userId;
   const where: any = { bookId };
   if (userId) where.userId = userId;
@@ -38,11 +38,11 @@ router.get('/', authRequired, async (req: AuthedRequest, res: Response) => {
       strokes: undefined,
     })),
   });
-});
+}));
 
 // ── Get assignment detail ─────────────────────────────────────────
 
-router.get('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
+router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
   const assignment = await prisma.assignment.findUnique({
     where: { id },
@@ -52,11 +52,11 @@ router.get('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   });
   if (!assignment) return res.status(404).json({ error: 'not found' });
   res.json({ assignment });
-});
+}));
 
 // ── Create assignment ─────────────────────────────────────────────
 
-router.post('/', authRequired, async (req: AuthedRequest, res: Response) => {
+router.post('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.body?.bookId);
   if (isNaN(bookId)) return res.status(400).json({ error: 'bookId required' });
 
@@ -71,18 +71,16 @@ router.post('/', authRequired, async (req: AuthedRequest, res: Response) => {
     data: { bookId, userId, title: title || book.title, subject: subject || book.subject },
   });
   res.json({ assignment });
-});
+}));
 
 // ── Update assignment ─────────────────────────────────────────────
 
-router.put('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
+router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
 
-  // Fetch assignment for ownership check
   const assignment = await prisma.assignment.findUnique({ where: { id } });
   if (!assignment) return res.status(404).json({ error: 'not found' });
 
-  // Ownership check: when auth is enabled, only owner or admin can modify
   const userId = req.user?.userId;
   const isOwner = !userId || assignment.userId === userId || assignment.userId === 0;
   const isAdmin = req.user?.isAdmin;
@@ -94,7 +92,6 @@ router.put('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   if (typeof req.body?.title === 'string') data.title = req.body.title;
   if (typeof req.body?.subject === 'string') data.subject = req.body.subject;
 
-  // Status flow: students can only draft→submitted; graded/returned require admin
   if (typeof req.body?.status === 'string' && ['draft', 'submitted', 'graded', 'returned'].includes(req.body.status)) {
     const newStatus = req.body.status;
     const isTeacher = isAdmin;
@@ -106,7 +103,6 @@ router.put('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
       data.gradedAt = newStatus === 'graded' ? new Date() : null;
       data.gradedBy = userId || null;
     } else {
-      // draft / submitted — student can set, but only for their own assignment
       data.gradedAt = null;
       data.gradedBy = null;
     }
@@ -115,14 +111,13 @@ router.put('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
 
   const updated = await prisma.assignment.update({ where: { id }, data });
   res.json({ assignment: updated });
-});
+}));
 
 // ── Delete assignment ─────────────────────────────────────────────
 
-router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
+router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
 
-  // Ownership check
   const assignment = await prisma.assignment.findUnique({ where: { id } });
   if (!assignment) return res.status(404).json({ error: 'not found' });
 
@@ -133,18 +128,17 @@ router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) =>
     return res.status(403).json({ error: 'no permission to delete this assignment' });
   }
 
-  // Only draft or returned assignments can be deleted
   if (assignment.status === 'submitted' || assignment.status === 'graded') {
     return res.status(403).json({ error: 'cannot delete submitted or graded assignment' });
   }
 
   await prisma.assignment.delete({ where: { id } }).catch(() => {});
   res.json({ success: true });
-});
+}));
 
 // ── Get strokes for a page ────────────────────────────────────────
 
-router.get('/:id/strokes', authRequired, async (req: AuthedRequest, res: Response) => {
+router.get('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
   const pageNumber = req.query.pageNumber ? parseInt(req.query.pageNumber as string) : undefined;
 
@@ -156,11 +150,11 @@ router.get('/:id/strokes', authRequired, async (req: AuthedRequest, res: Respons
     orderBy: { createdAt: 'asc' },
   });
   res.json({ strokes });
-});
+}));
 
 // ── Save strokes for a page (replace all) ─────────────────────────
 
-router.post('/:id/strokes', authRequired, async (req: AuthedRequest, res: Response) => {
+router.post('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
   const pageNumber = parseInt(req.body?.pageNumber);
   const layer = typeof req.body?.layer === 'string' ? req.body.layer : 'student';
@@ -172,7 +166,6 @@ router.post('/:id/strokes', authRequired, async (req: AuthedRequest, res: Respon
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
   if (assignment.status === 'graded') return res.status(403).json({ error: 'assignment is graded, read-only' });
 
-  // Delete existing + insert new strokes atomically
   await prisma.$transaction([
     prisma.assignmentStroke.deleteMany({
       where: { assignmentId: id, pageNumber, layer },
@@ -191,19 +184,19 @@ router.post('/:id/strokes', authRequired, async (req: AuthedRequest, res: Respon
   ]);
 
   res.json({ success: true, count: strokes.length });
-});
+}));
 
 // ── Delete a single stroke ────────────────────────────────────────
 
-router.delete('/:id/strokes/:strokeId', authRequired, async (req: AuthedRequest, res: Response) => {
+router.delete('/:id/strokes/:strokeId', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const strokeId = parseInt(req.params.strokeId);
   await prisma.assignmentStroke.delete({ where: { id: strokeId } }).catch(() => {});
   res.json({ success: true });
-});
+}));
 
 // ── Export composite JPG ──────────────────────────────────────────
 
-router.post('/:id/export', authRequired, async (req: AuthedRequest, res: Response) => {
+router.post('/:id/export', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
   const pageNumber = parseInt(req.body?.pageNumber);
   if (isNaN(pageNumber)) return res.status(400).json({ error: 'pageNumber required' });
@@ -214,9 +207,6 @@ router.post('/:id/export', authRequired, async (req: AuthedRequest, res: Respons
   });
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
 
-  // Export endpoint returns a JSON with the page image URL and strokes
-  // The actual compositing happens on the client side (canvas)
-  // This endpoint just gathers the data needed
   const strokes = await prisma.assignmentStroke.findMany({
     where: { assignmentId: id, pageNumber },
     orderBy: { createdAt: 'asc' },
@@ -231,6 +221,6 @@ router.post('/:id/export', authRequired, async (req: AuthedRequest, res: Respons
     strokes,
     assignment: { id: assignment.id, title: assignment.title, status: assignment.status },
   });
-});
+}));
 
 export default router;

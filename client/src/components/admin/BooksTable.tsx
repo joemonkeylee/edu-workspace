@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { TocNode } from '../../types';
 import { adminGetBooks, adminGetBatches, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch, adminClearBooks } from '../../api/client';
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 import BookCover from '../BookCover';
 
 const PAGE_SIZE = 10;
@@ -224,23 +225,14 @@ export default function BooksTable() {
         setDeleting(true);
         setDeleteProgress({ current: 0, total: ids.length, title: '' });
         try {
-          for (let i = 0; i < ids.length; i++) {
-            const book = books.find((b) => b.id === ids[i]);
-            setDeleteProgress({ current: i, total: ids.length, title: book?.title || `ID:${ids[i]}` });
-            try {
-              await adminDeleteBook(ids[i]);
-            } catch {
-              // skip failed deletions
-            }
-            setSelectedIds((prev) => {
-              const next = new Set(prev);
-              next.delete(ids[i]);
-              return next;
-            });
-          }
+          setDeleteProgress({ current: 0, total: ids.length, title: `批量删除 ${ids.length} 本` });
+          await adminDeleteBooksBatch(ids);
           setDeleteProgress({ current: ids.length, total: ids.length, title: '完成' });
           await new Promise((r) => setTimeout(r, 300));
+          setSelectedIds(new Set());
           fetch();
+        } catch (e: any) {
+          toast.error('批量删除失败: ' + (e?.message || ''));
         } finally {
           setDeleting(false);
           setDeleteProgress(null);

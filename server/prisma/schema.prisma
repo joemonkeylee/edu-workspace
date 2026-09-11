@@ -63,6 +63,10 @@ model Book {
   updatedAt   DateTime @default(now()) @updatedAt
 
   @@index([fileHash])
+  @@index([category])
+  @@index([grade])
+  @@index([subject])
+  @@unique([title, category])
   annotations Annotation[]
   mistakes    Mistake[]
   assignments Assignment[]
@@ -119,6 +123,7 @@ model Annotation {
   mistakes Mistake[]
 
   @@index([userId])
+  @@index([bookId, pageNumber])
 }
 
 model Mistake {

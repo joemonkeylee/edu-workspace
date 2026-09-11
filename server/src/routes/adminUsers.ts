@@ -38,10 +38,18 @@ router.get('/', async (req: Request, res: Response) => {
     prisma.user.count({ where }),
   ]);
 
-  // Attach device counts
+  // Batch device counts (avoid N+1)
   const userIds = users.map((u) => u.id);
-  const deviceCounts = await Promise.all(userIds.map((id) => countUserDevices(id)));
-  const result = users.map((u, i) => ({ ...u, deviceCount: deviceCounts[i] }));
+  const deviceCounts = await prisma.refreshToken.groupBy({
+    by: ['userId'],
+    where: { userId: { in: userIds } },
+    _count: { userId: true },
+  });
+  const deviceCountMap = new Map<number, number>();
+  for (const dc of deviceCounts) {
+    deviceCountMap.set(dc.userId, dc._count.userId);
+  }
+  const result = users.map((u) => ({ ...u, deviceCount: deviceCountMap.get(u.id) || 0 }));
 
   res.json({ users: result, total, page, pageSize });
 });
