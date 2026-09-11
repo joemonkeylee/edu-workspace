@@ -478,7 +478,7 @@ export default function Home() {
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
 
-  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory || sortString);
+  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory);
 
   const resetFilters = () => {
     const reset = () => {
@@ -486,7 +486,6 @@ export default function Home() {
       setSelectedGrade('');
       setSelectedCategory('');
       setSearch('');
-      resetSort();
     };
     if (editMode && hasUnsavedChanges) {
       setPromptAction('filter');
