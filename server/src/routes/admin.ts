@@ -10,12 +10,19 @@ import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from 
 import { execFile } from 'child_process';
 import { adminRequired, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { createSseTicket } from '../utils/sseTicket.js';
 
 const router = Router();
 const maxConcurrency = Math.max(1, os.cpus().length - 1);
 const scanConcurrency = new Map<string, { value: number }>();
 
 router.use(adminRequired);
+
+router.post('/scan-pdf/ticket', asyncHandler(async (req: AuthedRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ error: 'unauthorized' });
+  const ticket = createSseTicket(req.user);
+  res.json({ data: { ticket } });
+}));
 
 router.get('/scan-pdf/capacity', (_req: Request, res: Response) => {
   res.json({ cores: os.cpus().length, maxConcurrency });

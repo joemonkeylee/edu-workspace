@@ -102,7 +102,9 @@ export async function cropsAuthMiddleware(req: Request, res: Response, next: Nex
     if (!owns) {
       return res.status(403).json({ error: 'access denied' });
     }
-  } else if (mistake.userId !== null && mistake.userId !== user.userId) {
+  } else if (mistake.userId === null || mistake.userId !== user.userId) {
+    // Anonymous (null) crops are only accessible to admin/teacher (handled above)
+    // Students can only access their own crops
     return res.status(403).json({ error: 'access denied' });
   }
 

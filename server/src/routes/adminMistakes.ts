@@ -3,13 +3,13 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../prisma.js';
 import { getStorageRoot } from '../services/storage.js';
-import { teacherOrAdminRequired, adminRequired } from '../middleware/auth.js';
+import { teacherOrAdminRequired, adminRequired, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 router.use(teacherOrAdminRequired);
 
-router.get('/', asyncHandler(async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 20;
   const subject = req.query.subject as string;
@@ -22,6 +22,11 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     where.reviewStatus = Number(reviewStatus);
   }
   if (tag) where.tags = { contains: tag };
+
+  // Admin sees all; teacher sees only their own mistakes
+  if (req.user && !req.user.isAdmin && req.user.role === 'teacher') {
+    where.userId = req.user.userId;
+  }
 
   const [data, total] = await Promise.all([
     prisma.mistake.findMany({
@@ -37,7 +42,8 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   res.json({ data, total, page, pageSize });
 }));
 
-router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
+// Only admin can modify/delete mistakes in admin panel
+router.put('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const { reviewStatus, tags, subject } = req.body;
   const data: any = {};

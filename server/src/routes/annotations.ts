@@ -62,10 +62,18 @@ router.post('/', authRequired, upload.single('image'), asyncHandler(async (req: 
 router.get('/book/:bookId', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.params.bookId, 10);
   const userId = req.user?.userId;
+  const isAdmin = req.user?.isAdmin;
   const where: any = { bookId };
-  if (userId) {
-    where.OR = [{ userId }, { userId: null }];
+
+  // Auth mode: admin sees all, regular users see only their own (no null)
+  // Standalone mode (no user): all annotations are public (userId=null)
+  if (userId && !isAdmin) {
+    where.userId = userId;
+  } else if (!userId && req.user) {
+    // Should not happen (authed user always has userId), but be safe
+    where.userId = null;
   }
+
   const annotations = await prisma.annotation.findMany({
     where,
     orderBy: { pageNumber: 'asc' },

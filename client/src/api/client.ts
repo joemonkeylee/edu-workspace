@@ -158,7 +158,7 @@ export async function adminDeleteUser(id: number) {
 
 export async function adminGetUserDevices(id: number) {
   const { data } = await api.get(`/admin/users/${id}/devices`);
-  return data as { devices: any[] };
+  return data.data as any[];
 }
 
 export async function adminKickDevice(id: number, tokenId: number) {
@@ -231,15 +231,22 @@ export async function deleteMistake(id: number) {
   return data;
 }
 
-export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string, grade?: string, subject?: string, skipDb?: boolean) {
+export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string, grade?: string, subject?: string, skipDb?: boolean, ticket?: string) {
   const params = new URLSearchParams({ targetPath, category, dpi: String(dpi) });
   if (concurrency) params.set('concurrency', String(concurrency));
   if (taskId) params.set('taskId', taskId);
   if (grade) params.set('grade', grade);
   if (subject) params.set('subject', subject);
   if (skipDb) params.set('skipDb', 'true');
-  if (accessToken) params.set('token', accessToken);
+  // Use one-time ticket instead of raw token in URL (avoids log/referer/history leaks)
+  if (ticket) params.set('ticket', ticket);
   return `/api/admin/scan-pdf?${params}`;
+}
+
+// Get a one-time SSE ticket for scan-pdf (replaces putting token in URL)
+export async function getScanPdfTicket() {
+  const { data } = await api.post('/admin/scan-pdf/ticket');
+  return data.data.ticket;
 }
 
 // Append auth token to crop image URLs when auth is enabled
@@ -325,7 +332,7 @@ export async function adminDeleteBooksBatch(ids: number[]) {
 export async function adminClearBooks(onProgress: (progress: { current: number; total: number; title: string }) => void) {
   const headers: Record<string, string> = {};
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  const response = await fetch('/api/admin/books/all/stream', { method: 'POST', headers });
+  const response = await fetch('/api/admin/books/all/stream', { method: 'DELETE', headers });
   if (!response.ok || !response.body) throw new Error('清空书籍失败');
 
   const reader = response.body.getReader();

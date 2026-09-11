@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { getScanCapacity, scanPdfUrl, updateScanConcurrency, previewScanPdf } from '../../api/client';
+import { getScanCapacity, scanPdfUrl, updateScanConcurrency, previewScanPdf, getScanPdfTicket } from '../../api/client';
 import type { PreviewFile } from '../../api/client';
 import { useStore } from '../../store/useStore';
 import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check, ChevronDown, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ProgressData {
   phase?: number;
@@ -177,7 +178,7 @@ export default function PdfScanImport() {
     setShowConfirm(true);
   };
 
-  const confirmScan = () => {
+  const confirmScan = async () => {
     setShowConfirm(false);
     if (!targetPath.trim()) return;
     pushPathToHistory(targetPath);
@@ -189,6 +190,17 @@ export default function PdfScanImport() {
 
     const taskId = createTaskId();
     setScanTaskId(taskId);
+
+    // Get a one-time SSE ticket first (avoids putting auth token in URL)
+    let ticket: string | undefined;
+    try {
+      ticket = await getScanPdfTicket();
+    } catch (e: any) {
+      toast.error('获取扫描凭证失败: ' + (e?.message || ''));
+      setScanning(false);
+      return;
+    }
+
     const url = scanPdfUrl(
       targetPath.trim(),
       category.trim(),
@@ -198,6 +210,7 @@ export default function PdfScanImport() {
       grade.trim() || undefined,
       subject.trim() || undefined,
       !importToDb,
+      ticket,
     );
     const es = new EventSource(url);
     esRef.current = es;

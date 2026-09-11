@@ -9,13 +9,17 @@ const PAGE_SIZE = 20;
 router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const { subject, reviewStatus, bookId, tag, page: pageStr, pageSize: pageSizeStr } = req.query;
   const userId = req.user?.userId;
+  const isAdmin = req.user?.isAdmin;
   const where: any = {};
   if (subject) where.subject = subject;
   if (reviewStatus !== undefined) where.reviewStatus = parseInt(reviewStatus as string, 10);
   if (bookId) where.bookId = parseInt(bookId as string, 10);
   if (tag) where.tags = { contains: tag as string };
-  if (userId) {
-    where.OR = [{ userId }, { userId: null }];
+
+  // Auth mode: admin sees all, regular users see only their own (no null)
+  // Standalone mode (no user): all mistakes are public (userId=null)
+  if (userId && !isAdmin) {
+    where.userId = userId;
   }
 
   const page = parseInt(pageStr as string, 10) || 1;

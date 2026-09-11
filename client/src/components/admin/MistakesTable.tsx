@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminGetMistakes, adminUpdateMistake, adminDeleteMistake, withAuthToken } from '../../api/client';
 import { Search, Trash2, ChevronLeft, ChevronRight, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '../../store/authStore';
 
 const PAGE_SIZE = 10;
 
@@ -12,6 +13,8 @@ const REVIEW_STATUS: Record<number, { label: string; color: string }> = {
 };
 
 export default function MistakesTable() {
+  const { user, authEnabled } = useAuthStore();
+  const isAdmin = !authEnabled || Boolean(user?.isAdmin);
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -142,39 +145,43 @@ export default function MistakesTable() {
                         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.color}`}>
                           {st.label}
                         </span>
-                        <div className="flex gap-0.5 ml-1">
-                          {item.reviewStatus < 2 && (
-                            <button
-                              onClick={() => handleStatusChange(item.id, item.reviewStatus + 1)}
-                              className="p-1 text-green-500 hover:bg-green-50 rounded"
-                              title="升级状态"
-                            >
-                              <CheckCircle2 size={14} />
-                            </button>
-                          )}
-                          {item.reviewStatus > 0 && (
-                            <button
-                              onClick={() => handleStatusChange(item.id, item.reviewStatus - 1)}
-                              className="p-1 text-gray-400 hover:bg-gray-100 rounded"
-                              title="回退状态"
-                            >
-                              <RotateCcw size={14} />
-                            </button>
-                          )}
-                        </div>
+                        {isAdmin && (
+                          <div className="flex gap-0.5 ml-1">
+                            {item.reviewStatus < 2 && (
+                              <button
+                                onClick={() => handleStatusChange(item.id, item.reviewStatus + 1)}
+                                className="p-1 text-green-500 hover:bg-green-50 rounded"
+                                title="升级状态"
+                              >
+                                <CheckCircle2 size={14} />
+                              </button>
+                            )}
+                            {item.reviewStatus > 0 && (
+                              <button
+                                onClick={() => handleStatusChange(item.id, item.reviewStatus - 1)}
+                                className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                title="回退状态"
+                              >
+                                <RotateCcw size={14} />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                       {new Date(item.createdAt).toLocaleString('zh-CN')}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="p-1.5 text-red-400 hover:bg-red-50 rounded"
-                        title="删除"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="p-1.5 text-red-400 hover:bg-red-50 rounded"
+                          title="删除"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

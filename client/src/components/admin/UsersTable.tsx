@@ -52,8 +52,8 @@ export default function UsersTable() {
 
   const fetchDevices = useCallback(async (userId: number) => {
     try {
-      const res = await adminGetUserDevices(userId);
-      setDevices(res.devices);
+      const devices = await adminGetUserDevices(userId);
+      setDevices(devices);
       setShowDevices(userId);
     } catch { /* ignore */ }
   }, []);
