@@ -107,7 +107,7 @@ export default function AssignmentsTable() {
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
           {[
             { value: 'all', label: '全部' },
-            { value: 'draft', label: '草稿' },
+            { value: 'draft', label: '待提交' },
             { value: 'submitted', label: '已提交' },
             { value: 'returned', label: '已打回' },
             { value: 'graded', label: '已批改' },
@@ -189,7 +189,7 @@ export default function AssignmentsTable() {
                         : item.status === 'returned' ? 'bg-amber-100 text-amber-700'
                         : 'bg-gray-100 text-gray-600'
                     }`}>
-                      {item.status === 'graded' ? '已批改' : item.status === 'submitted' ? '已提交' : item.status === 'returned' ? '已打回' : '草稿'}
+                      {item.status === 'graded' ? '已批改' : item.status === 'submitted' ? '已提交' : item.status === 'returned' ? '已打回' : '待提交'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(item.createdAt)}</td>

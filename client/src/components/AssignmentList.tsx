@@ -114,7 +114,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                     : 'bg-gray-100 text-gray-500'
                 }`}>
                   {isGraded ? <CheckCircle size={9} /> : null}
-                  {isGraded ? '已批改' : isSubmitted ? '已提交' : isReturned ? '已打回' : '草稿'}
+                  {isGraded ? '已批改' : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2 text-xs text-gray-400 mt-0.5">

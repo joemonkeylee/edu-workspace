@@ -142,7 +142,7 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
           }
         } else if (newStatus === 'draft') {
           if (currentStatus !== 'returned') {
-            return res.status(403).json({ error: '当前状态不可修改为草稿' });
+            return res.status(403).json({ error: '当前状态不可修改为待提交' });
           }
         }
       }
