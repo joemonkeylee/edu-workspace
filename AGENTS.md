@@ -140,6 +140,9 @@ edu-workspace/
 - **Role badge in admin header** — when AUTH_ENABLED=true, show the user's role badge in the admin top bar: `(管理员)` for admin, `(教师)` for teacher.
 - **Admin self-delete protection** — admin users cannot delete their own account via the user management API.
 - **Teacher can view but not modify books** — teachers can list/view books in the admin panel but cannot create, edit, or delete them (and cannot import PDFs).
+- **Admin sees all data, teacher sees only own** — in admin list endpoints (annotations, mistakes, assignments), admin role returns all records; teacher role returns only records where `userId` matches the current user. Backend must filter by role, never rely on frontend.
+- **Anonymous data (userId=null) is standalone-only** — records with `userId=null` were created in standalone mode (AUTH_ENABLED=false). When auth is enabled, these records should only be visible to admin (for migration purposes), not to regular users.
+- **Cloud + local dual-write for syncable data** — features like reading progress that sync to the cloud should always write to localStorage first, then to the server if auth is enabled. On read, prefer server data when available, fall back to local. This ensures the app works in both modes without data loss.
 
 ### React Conventions
 
@@ -151,20 +154,31 @@ edu-workspace/
 
 ## API Response Convention
 
-All API responses must follow a consistent format:
+All API responses must follow a consistent format. The goal is one shape for every endpoint so the frontend never has to guess.
 
 ### Success responses
 
-Return the resource object or array directly, or a paginated envelope:
+**Single resource** — always wrap in `data`:
 
 ```jsonc
-// Single resource
-{ "assignment": { ... } }
+{ "data": { "id": 1, "title": "..." } }
+```
 
-// List (paginated)
+**List (paginated)** — always `data` + `total` + `page` + `pageSize`:
+
+```jsonc
 { "data": [...], "total": 100, "page": 1, "pageSize": 20 }
+```
 
-// Delete / action
+**List (non-paginated / simple array)** — still wrap in `data`:
+
+```jsonc
+{ "data": [...] }
+```
+
+**Delete / action / write confirmation** — use `success: true`:
+
+```jsonc
 { "success": true }
 ```
 
@@ -186,10 +200,35 @@ Always use `{ "error": "message" }` with an appropriate HTTP status code:
 ### Rules
 
 - **Never** mix `success: false` into success responses — only use `success: true` for delete/action confirmations
+- **Single resource endpoints always return `{ data: resource }`** — never return the resource bare, and never use a key named after the resource (e.g. no `{ book: ... }` / `{ assignment: ... }`)
+- **All list endpoints return `{ data: [...] }`** — paginated lists add `total`, `page`, `pageSize`; non-paginated lists just have `data`
 - **All async route handlers** must be wrapped in `asyncHandler()` so unhandled errors reach the global error middleware (Express 4 does not catch async errors automatically)
 - **Global error middleware** returns `{ success: false, error, code }` with Prisma code mapping (P2002→409, P2025→404)
-- **Frontend** response interceptor normalizes `error.message` from server's `{ error }` field so all `.catch()` blocks get a human-readable message
 - **Do not** invent new response shapes — follow the patterns above
+
+### Frontend API client convention
+
+Frontend API functions in `client/src/api/client.ts` should:
+
+1. Accept typed parameters, return the resource directly (not the whole envelope)
+2. Unwrap `data.data` for single-resource and list endpoints, so callers get the object/array directly
+3. For action/delete endpoints, return `data` as-is (the `{ success: true }` object)
+
+```typescript
+// Good — caller gets the book object directly
+export async function getBook(id: number) {
+  const { data } = await api.get(`/books/${id}`);
+  return data.data;  // unwrap { data: book }
+}
+
+// Good — caller gets the paginated result directly
+export async function getBooks(params) {
+  const { data } = await api.get('/books', { params });
+  return data;  // { data: [...], total, page, pageSize }
+}
+```
+
+The axios response interceptor already normalizes `error.message` from the server's `{ error }` field, so all `.catch()` blocks receive a human-readable message directly.
 
 ### Auth Middleware Convention
 
