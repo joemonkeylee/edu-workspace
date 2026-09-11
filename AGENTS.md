@@ -100,3 +100,45 @@ edu-workspace/
 - **Home page is browse-only** — no edit/delete actions for end users
 - **Feature parity first, UI polish second** — when refactoring UI, never change existing functionality
 - **Do NOT start dev servers** — never run `npm run dev` (or any long-running dev script) in `client/` or `server/`. The user manages dev servers themselves. Only run short-lived commands like `npx tsc --noEmit`, `npm run build`, or one-off scripts.
+
+## API Response Convention
+
+All API responses must follow a consistent format:
+
+### Success responses
+
+Return the resource object or array directly, or a paginated envelope:
+
+```jsonc
+// Single resource
+{ "assignment": { ... } }
+
+// List (paginated)
+{ "data": [...], "total": 100, "page": 1, "pageSize": 20 }
+
+// Delete / action
+{ "success": true }
+```
+
+### Error responses
+
+Always use `{ "error": "message" }` with an appropriate HTTP status code:
+
+```jsonc
+// 400 Bad Request
+{ "error": "bookId required" }
+
+// 403 Forbidden
+{ "error": "no permission to modify this assignment" }
+
+// 404 Not Found
+{ "error": "not found" }
+```
+
+### Rules
+
+- **Never** mix `success: false` into success responses — only use `success: true` for delete/action confirmations
+- **All async route handlers** must be wrapped in `asyncHandler()` so unhandled errors reach the global error middleware (Express 4 does not catch async errors automatically)
+- **Global error middleware** returns `{ success: false, error, code }` with Prisma code mapping (P2002→409, P2025→404)
+- **Frontend** response interceptor normalizes `error.message` from server's `{ error }` field so all `.catch()` blocks get a human-readable message
+- **Do not** invent new response shapes — follow the patterns above
