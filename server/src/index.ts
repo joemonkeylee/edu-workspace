@@ -18,6 +18,7 @@ import booksRouter from './routes/books.js';
 import annotationsRouter from './routes/annotations.js';
 import mistakesRouter from './routes/mistakes.js';
 import assignmentsRouter from './routes/assignments.js';
+import readingProgressRouter from './routes/readingProgress.js';
 import { getStorageRoot, initializeStorageRoot } from './services/storage.js';
 import { isAuthEnabled } from './services/auth.js';
 import { cropsAuthMiddleware } from './middleware/cropsAuth.js';
@@ -57,6 +58,7 @@ app.use('/api/books', booksRouter);
 app.use('/api/annotations', annotationsRouter);
 app.use('/api/mistakes', mistakesRouter);
 app.use('/api/assignments', assignmentsRouter);
+app.use('/api/reading-progress', readingProgressRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

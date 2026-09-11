@@ -46,7 +46,7 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
   if (subject !== undefined) data.subject = subject;
 
   const updated = await prisma.mistake.update({ where: { id }, data });
-  res.json(updated);
+  res.json({ data: updated });
 }));
 
 router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {

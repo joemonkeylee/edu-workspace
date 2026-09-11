@@ -53,10 +53,10 @@ router.post('/', authRequired, upload.single('image'), asyncHandler(async (req: 
         userId,
       },
     });
-    return res.json({ annotation, mistake });
+    return res.json({ data: { annotation, mistake } });
   }
 
-  res.json({ annotation });
+  res.json({ data: { annotation } });
 }));
 
 router.get('/book/:bookId', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
@@ -70,7 +70,7 @@ router.get('/book/:bookId', authRequired, asyncHandler(async (req: AuthedRequest
     where,
     orderBy: { pageNumber: 'asc' },
   });
-  res.json(annotations);
+  res.json({ data: annotations });
 }));
 
 router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {

@@ -79,7 +79,7 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
       avatar: true, status: true, maxDevices: true, createdAt: true,
     },
   });
-  res.json({ user });
+  res.json({ data: user });
 }));
 
 // ── Update user ───────────────────────────────────────────────────
@@ -125,7 +125,7 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
     await incrementTokenVersion(id);
     await revokeAllUserRefreshTokens(id);
   }
-  res.json({ user: updated });
+  res.json({ data: updated });
 }));
 
 // ── Reset password ────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments } from '../../api/client';
 import { formatAssignmentTitle } from '../../utils/assignment';
 import { useConfirm } from '../ConfirmDialog';
+import { useAuthStore } from '../../store/authStore';
 
 const PAGE_SIZE = 20;
 
@@ -15,6 +16,8 @@ function formatDate(value: string) {
 export default function AssignmentsTable() {
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const { user, authEnabled } = useAuthStore();
+  const isAdmin = !authEnabled || user?.isAdmin || user?.role === 'admin';
   const [items, setItems] = useState<any[]>([]);
   const [books, setBooks] = useState<{ id: number; title: string }[]>([]);
   const [total, setTotal] = useState(0);
@@ -136,13 +139,15 @@ export default function AssignmentsTable() {
         <button onClick={fetchAssignments} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
           筛选
         </button>
-        <button
-          onClick={handleBatchDelete}
-          disabled={selectedIds.length === 0}
-          className="ml-auto inline-flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Trash2 size={15} /> 批量删除 ({selectedIds.length})
-        </button>
+        {isAdmin && (
+          <button
+            onClick={handleBatchDelete}
+            disabled={selectedIds.length === 0}
+            className="ml-auto inline-flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Trash2 size={15} /> 批量删除 ({selectedIds.length})
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -150,11 +155,13 @@ export default function AssignmentsTable() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="w-12 px-4 py-3 text-center">
-                  <button onClick={toggleAll} title={allSelected ? '取消全选' : '全选'} className="text-gray-500 hover:text-primary">
-                    {allSelected ? <CheckSquare size={17} /> : <Square size={17} />}
-                  </button>
-                </th>
+                {isAdmin && (
+                  <th className="w-12 px-4 py-3 text-center">
+                    <button onClick={toggleAll} title={allSelected ? '取消全选' : '全选'} className="text-gray-500 hover:text-primary">
+                      {allSelected ? <CheckSquare size={17} /> : <Square size={17} />}
+                    </button>
+                  </th>
+                )}
                 <th className="text-left px-4 py-3 font-medium">作业</th>
                 <th className="text-left px-4 py-3 font-medium">书籍</th>
                 <th className="text-left px-4 py-3 font-medium">学科</th>
@@ -166,16 +173,18 @@ export default function AssignmentsTable() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">加载中...</td></tr>
+                <tr><td colSpan={isAdmin ? 8 : 7} className="text-center py-8 text-gray-400">加载中...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">暂无作业</td></tr>
+                <tr><td colSpan={isAdmin ? 8 : 7} className="text-center py-8 text-gray-400">暂无作业</td></tr>
               ) : items.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 text-center">
-                    <button onClick={() => toggleSelected(item.id)} className="text-gray-500 hover:text-primary">
-                      {selectedIds.includes(item.id) ? <CheckSquare size={17} /> : <Square size={17} />}
-                    </button>
-                  </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => toggleSelected(item.id)} className="text-gray-500 hover:text-primary">
+                        {selectedIds.includes(item.id) ? <CheckSquare size={17} /> : <Square size={17} />}
+                      </button>
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
                     {formatAssignmentTitle(item.title) || `作业 #${item.id}`}
                   </td>
@@ -201,13 +210,15 @@ export default function AssignmentsTable() {
                     >
                       <ExternalLink size={16} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="p-1.5 text-red-400 hover:bg-red-50 rounded"
-                      title="删除"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 text-red-400 hover:bg-red-50 rounded"
+                        title="删除"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

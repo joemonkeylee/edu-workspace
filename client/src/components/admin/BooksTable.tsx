@@ -4,6 +4,7 @@ import { adminGetBooks, adminGetBatches, adminUpdateBook, adminDeleteBook, admin
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../BookCover';
+import { useAuthStore } from '../../store/authStore';
 
 const PAGE_SIZE = 10;
 
@@ -97,6 +98,8 @@ function getPageImageUrl(book: any, pageNumber: number) {
 }
 
 export default function BooksTable() {
+  const { user, authEnabled } = useAuthStore();
+  const isAdmin = !authEnabled || user?.isAdmin || user?.role === 'admin';
   const [books, setBooks] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -396,7 +399,7 @@ export default function BooksTable() {
           ))}
         </select>
         <div className="flex-1" />
-        {selectedIds.size > 0 && (
+        {isAdmin && selectedIds.size > 0 && (
           <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
             <span className="text-sm text-blue-700">已选 {selectedIds.size} 本</span>
             <button
@@ -409,14 +412,16 @@ export default function BooksTable() {
             </button>
           </div>
         )}
-        <button
-          onClick={handleClearAll}
-          disabled={deleting || total === 0}
-          className="flex items-center gap-1 border border-red-200 text-red-500 px-3 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-40"
-        >
-          <Trash2 size={14} />
-          一键清空
-        </button>
+        {isAdmin && (
+          <button
+            onClick={handleClearAll}
+            disabled={deleting || total === 0}
+            className="flex items-center gap-1 border border-red-200 text-red-500 px-3 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-40"
+          >
+            <Trash2 size={14} />
+            一键清空
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -612,15 +617,21 @@ export default function BooksTable() {
                       </div>
                     ) : (
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => openTocEditor(book)} className="p-1.5 text-violet-500 hover:bg-violet-50 rounded" title="目录排序">
-                          <BookOpen size={16} />
-                        </button>
-                        <button onClick={() => startEdit(book)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="编辑信息">
-                          <Edit3 size={16} />
-                        </button>
-                        <button onClick={() => handleDelete(book.id, book.title)} className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="删除">
-                          <Trash2 size={16} />
-                        </button>
+                        {isAdmin && (
+                          <button onClick={() => openTocEditor(book)} className="p-1.5 text-violet-500 hover:bg-violet-50 rounded" title="目录排序">
+                            <BookOpen size={16} />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button onClick={() => startEdit(book)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="编辑信息">
+                            <Edit3 size={16} />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button onClick={() => handleDelete(book.id, book.title)} className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="删除">
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

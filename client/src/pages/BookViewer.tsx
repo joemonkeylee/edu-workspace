@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import * as api from '../api/client';
-import { pageImageUrl, withAuthToken } from '../api/client';
+import { pageImageUrl, withAuthToken, getReadingProgress, saveReadingProgress } from '../api/client';
 import TocTree from '../components/TocTree';
 import PageCanvas from '../components/PageCanvas';
 import CropTool from '../components/CropTool';
@@ -81,7 +81,7 @@ export default function BookViewer() {
   // Persisted reading config (per book)
   const STORAGE_KEY = 'edu-readConfig';
 
-  function loadReadConfig(bookId: number) {
+  function loadReadConfigLocal(bookId: number) {
     try {
       const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       const cfg = all[String(bookId)] || {};
@@ -96,12 +96,44 @@ export default function BookViewer() {
     }
   }
 
-  function saveReadConfig(bookId: number, data: Record<string, any>) {
+  function saveReadConfigLocal(bookId: number, data: Record<string, any>) {
     try {
       const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       all[String(bookId)] = { ...all[String(bookId)], ...data };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     } catch { /* ignore */ }
+  }
+
+  async function loadReadConfig(bookId: number) {
+    const local = loadReadConfigLocal(bookId);
+    // Cloud sync only when auth is enabled and user is logged in
+    if (authEnabled && user) {
+      try {
+        const progress = await getReadingProgress(bookId);
+        if (progress) {
+          return {
+            page: progress.pageNumber || local.page,
+            pageLayout: progress.pageLayout || local.pageLayout,
+            fitMode: progress.fitMode || local.fitMode,
+            rotation: progress.rotation ?? local.rotation,
+          };
+        }
+      } catch { /* fall back to local */ }
+    }
+    return local;
+  }
+
+  function saveReadConfig(bookId: number, data: Record<string, any>) {
+    saveReadConfigLocal(bookId, data);
+    // Cloud sync only when auth is enabled and user is logged in
+    if (authEnabled && user) {
+      const payload: Record<string, any> = {};
+      if (data.page !== undefined) payload.pageNumber = data.page;
+      if (data.pageLayout !== undefined) payload.pageLayout = data.pageLayout;
+      if (data.fitMode !== undefined) payload.fitMode = data.fitMode;
+      if (data.rotation !== undefined) payload.rotation = data.rotation;
+      saveReadingProgress(bookId, payload).catch(() => { /* ignore */ });
+    }
   }
 
   const [leftOpen, setLeftOpen] = useState(true);
@@ -142,35 +174,38 @@ export default function BookViewer() {
     if (!showAnnotations || !layers.annotations) setSelectedAnnotationId(null);
   }, [showAnnotations, layers.annotations]);
 
-  const [savedConfig, setSavedConfig] = useState(() => bookId ? loadReadConfig(bookId) : null);
-  const [fitMode, setFitMode] = useState<FitMode>(savedConfig?.fitMode || 'page');
-  const [pageLayout, setPageLayout] = useState<PageLayout>(savedConfig?.pageLayout || 'single');
-  const [rotation, setRotation] = useState(savedConfig?.rotation || 0); // degrees, negative = CCW
+  const [savedConfig, setSavedConfig] = useState<any>(null);
+  const [fitMode, setFitMode] = useState<FitMode>('page');
+  const [pageLayout, setPageLayout] = useState<PageLayout>('single');
+  const [rotation, setRotation] = useState(0); // degrees, negative = CCW
   const effectiveRotation = ((rotation % 360) + 360) % 360; // normalize to 0-359
   const mainRef = useRef<HTMLDivElement>(null);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
   const [selectedDpi, setSelectedDpi] = useState<number>(0);
 
   useEffect(() => {
-    if (bookId) {
-      const cfg = loadReadConfig(bookId);
+    if (!bookId) return;
+    let cancelled = false;
+    (async () => {
+      const cfg = await loadReadConfig(bookId);
+      if (cancelled) return;
       setSavedConfig(cfg);
       setFitMode(cfg.fitMode);
       setPageLayout(cfg.pageLayout);
       setRotation(cfg.rotation);
       fetchBook(bookId).then(() => {
-        if (cfg.page > 1) setCurrentPage(cfg.page);
+        if (!cancelled && cfg.page > 1) setCurrentPage(cfg.page);
       });
       fetchAnnotations(bookId);
       api.getMistakes({ bookId }).then((result) => setMistakeCount(result.total));
-    }
-    return () => clearCurrent();
+    })();
+    return () => { cancelled = true; clearCurrent(); };
   }, [bookId]);
 
   useEffect(() => {
     if (!currentBook || !Number.isInteger(assignmentId) || assignmentId <= 0) return;
     let cancelled = false;
-    api.getAssignment(assignmentId).then(({ assignment }) => {
+    api.getAssignment(assignmentId).then((assignment) => {
       if (!cancelled && assignment.bookId === bookId) {
         setCurrentAssignment(assignment);
         setAssignmentMode(true);
@@ -457,7 +492,7 @@ export default function BookViewer() {
       const d = new Date();
       const pad = (n: number) => String(n).padStart(2, '0');
       const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-      const { assignment } = await api.createAssignment(bookId, title);
+      const assignment = await api.createAssignment(bookId, title);
       setCurrentAssignment(assignment);
       setAssignmentMode(true);
       setRightTab('assignments');
@@ -473,7 +508,7 @@ export default function BookViewer() {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-    const { assignment } = await api.createAssignment(bookId, title);
+    const assignment = await api.createAssignment(bookId, title);
     setCurrentAssignment(assignment);
     setAssignmentMode(true);
     setRightTab('assignments');

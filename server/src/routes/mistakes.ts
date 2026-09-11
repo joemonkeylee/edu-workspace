@@ -50,7 +50,7 @@ router.patch('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: 
       return res.status(403).json({ error: '没有权限修改此错题' });
     }
     const updated = await prisma.mistake.update({ where: { id }, data });
-    res.json(updated);
+    res.json({ data: updated });
   } catch {
     res.status(404).json({ error: '错题不存在' });
   }

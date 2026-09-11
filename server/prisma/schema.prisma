@@ -28,10 +28,11 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  refreshTokens RefreshToken[]
-  annotations   Annotation[]
-  mistakes      Mistake[]
-  assignments   Assignment[]
+  refreshTokens    RefreshToken[]
+  annotations      Annotation[]
+  mistakes         Mistake[]
+  assignments      Assignment[]
+  readingProgress  ReadingProgress[]
 }
 
 model RefreshToken {
@@ -71,6 +72,7 @@ model Book {
   annotations Annotation[]
   mistakes    Mistake[]
   assignments Assignment[]
+  readingProgress ReadingProgress[]
 }
 
 model Assignment {
@@ -125,6 +127,24 @@ model Annotation {
 
   @@index([userId])
   @@index([bookId, pageNumber])
+}
+
+model ReadingProgress {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId     Int
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber Int      @default(1)
+  pageLayout String   @default("single") @db.VarChar(20) // single | double
+  fitMode    String   @default("page") @db.VarChar(20)   // page | width
+  rotation   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
 }
 
 model Mistake {

@@ -203,4 +203,39 @@ router.get('/me', authRequired, asyncHandler(async (req: AuthedRequest, res: Res
   });
 }));
 
+// ── Claim anonymous data ──────────────────────────────────────────
+// Assign all userId=null records (annotations, mistakes, assignments)
+// to the currently logged-in user. Useful when migrating from standalone
+// mode (AUTH_ENABLED=false) to multi-user mode.
+
+router.post('/claim-anonymous', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
+  if (!req.user) return res.status(400).json({ error: 'not available in standalone mode' });
+
+  const userId = req.user.userId;
+
+  const [annotations, mistakes, assignments] = await Promise.all([
+    prisma.annotation.updateMany({
+      where: { userId: null },
+      data: { userId },
+    }),
+    prisma.mistake.updateMany({
+      where: { userId: null },
+      data: { userId },
+    }),
+    prisma.assignment.updateMany({
+      where: { userId: null },
+      data: { userId },
+    }),
+  ]);
+
+  res.json({
+    success: true,
+    claimed: {
+      annotations: annotations.count,
+      mistakes: mistakes.count,
+      assignments: assignments.count,
+    },
+  });
+}));
+
 export default router;

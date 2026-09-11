@@ -98,7 +98,7 @@ export const useStore = create<StoreState>((set, get) => ({
   fetchAnnotations: async (bookId: number) => {
     try {
       const res = await api.default.get(`/annotations/book/${bookId}`);
-      set({ annotations: res.data });
+      set({ annotations: res.data.data });
     } catch (e) {
       console.error('fetchAnnotations failed:', e);
     }

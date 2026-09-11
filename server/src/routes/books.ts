@@ -154,7 +154,7 @@ router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
   const pdfUrl = pdfFileName
     ? `/storage/books/${id}/${encodeURIComponent(pdfFileName)}`
     : null;
-  res.json({ ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl });
+  res.json({ data: { ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl } });
 }));
 
 router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
@@ -185,7 +185,7 @@ router.put('/:id', adminRequired, asyncHandler(async (req: Request, res: Respons
   }
   try {
     const updated = await prisma.book.update({ where: { id }, data });
-    res.json(updated);
+    res.json({ data: updated });
   } catch {
     res.status(404).json({ error: '书籍不存在' });
   }

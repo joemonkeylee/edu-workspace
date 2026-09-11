@@ -59,7 +59,7 @@ router.get('/batches', asyncHandler(async (_req: Request, res: Response) => {
     orderBy: { createdAt: 'desc' },
   });
   const batchIds = [...new Set(books.map(b => b.batchId))].filter(Boolean);
-  res.json(batchIds);
+  res.json({ data: batchIds });
 }));
 
 router.delete('/all', adminRequired, asyncHandler(async (_req: Request, res: Response) => {
@@ -147,7 +147,7 @@ router.put('/:id', adminRequired, asyncHandler(async (req: Request, res: Respons
   if (attributes !== undefined) data.attributes = attributes;
 
   const updated = await prisma.book.update({ where: { id }, data });
-  res.json(updated);
+  res.json({ data: updated });
 }));
 
 export default router;

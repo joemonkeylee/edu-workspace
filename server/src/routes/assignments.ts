@@ -74,10 +74,10 @@ router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
   });
   if (!assignment) return res.status(404).json({ error: 'not found' });
   if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to view this assignment' });
-  res.json({ assignment });
+  res.json({ data: assignment });
 }));
 
-// ── Create assignment ─────────────────────────────────────────────
+// ── Create assignment ──────────────────────────────────────────────
 
 router.post('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.body?.bookId);
@@ -93,7 +93,7 @@ router.post('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Resp
   const assignment = await prisma.assignment.create({
     data: { bookId, userId, title: title || book.title, subject: subject || book.subject },
   });
-  res.json({ assignment });
+  res.json({ data: assignment });
 }));
 
 // ── Update assignment ─────────────────────────────────────────────
@@ -162,7 +162,7 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
   }
 
   const updated = await prisma.assignment.update({ where: { id }, data });
-  res.json({ assignment: updated });
+  res.json({ data: updated });
 }));
 
 // ── Delete assignment ─────────────────────────────────────────────

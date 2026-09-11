@@ -136,14 +136,14 @@ export async function adminGetUsers(params?: Record<string, any>) {
   return data as { data: any[]; total: number; page: number; pageSize: number };
 }
 
-export async function adminCreateUser(body: { phone: string; password: string; email?: string; isAdmin?: boolean; nickName?: string; maxDevices?: number }) {
+export async function adminCreateUser(body: { phone: string; password: string; email?: string; isAdmin?: boolean; nickName?: string; maxDevices?: number; role?: string }) {
   const { data } = await api.post('/admin/users', body);
-  return data;
+  return data.data;
 }
 
 export async function adminUpdateUser(id: number, body: Record<string, any>) {
   const { data } = await api.put(`/admin/users/${id}`, body);
-  return data;
+  return data.data;
 }
 
 export async function adminResetPassword(id: number, password: string) {
@@ -191,7 +191,7 @@ export async function getBooks(params?: { category?: string; grade?: string; sub
 
 export async function getBook(id: number) {
   const { data } = await api.get(`/books/${id}`);
-  return data;
+  return data.data;
 }
 
 export async function deleteBook(id: number) {
@@ -304,7 +304,7 @@ export async function adminGetBooks(params?: Record<string, any>) {
 
 export async function adminGetBatches() {
   const { data } = await api.get('/admin/books/batches');
-  return data as string[];
+  return data.data as string[];
 }
 
 export async function adminUpdateBook(id: number, body: { title?: string; category?: string; grade?: string; subject?: string; coverPage?: number; tocJson?: any[]; attributes?: Record<string, any> }) {
@@ -428,17 +428,17 @@ export async function getAssignments(bookId: number, params?: { page?: number; p
 
 export async function getAssignment(id: number) {
   const { data } = await api.get(`/assignments/${id}`);
-  return data as { assignment: Assignment & { book: any } };
+  return data.data as Assignment & { book: any };
 }
 
 export async function createAssignment(bookId: number, title?: string, subject?: string) {
   const { data } = await api.post('/assignments', { bookId, title, subject });
-  return data as { assignment: Assignment };
+  return data.data as Assignment;
 }
 
 export async function updateAssignment(id: number, body: { title?: string; subject?: string; status?: string }) {
   const { data } = await api.put(`/assignments/${id}`, body);
-  return data as { assignment: Assignment };
+  return data.data as Assignment;
 }
 
 export async function deleteAssignment(id: number) {
@@ -484,6 +484,18 @@ export function getBookCoverUrl(book: { id?: number; storagePath?: string; avail
   }
 
   return `/storage/books/${book.id || 0}/page-${page}.png`;
+}
+
+// ── Reading progress (cloud sync) ───────────────────────────────────
+
+export async function getReadingProgress(bookId: number) {
+  const { data } = await api.get(`/reading-progress/${bookId}`);
+  return data.data;
+}
+
+export async function saveReadingProgress(bookId: number, progress: { pageNumber?: number; pageLayout?: string; fitMode?: string; rotation?: number }) {
+  const { data } = await api.put(`/reading-progress/${bookId}`, progress);
+  return data.data;
 }
 
 export default api;
