@@ -12,8 +12,9 @@ const execFileAsync = promisify(execFile);
 const router = Router();
 
 function canAccessAssignment(req: AuthedRequest, assignment: { userId: number | null }): boolean {
-  if (!req.user) return true;
-  return assignment.userId === req.user.userId || req.user.isAdmin || req.user.role === 'teacher';
+  if (!req.user) return true; // standalone mode: no restrictions
+  if (req.user.isAdmin || req.user.role === 'teacher') return true;
+  return assignment.userId === req.user.userId;
 }
 
 function canGradeAssignment(req: AuthedRequest): boolean {
@@ -93,7 +94,7 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
   if (!assignment) return res.status(404).json({ error: 'not found' });
 
   const userId = req.user?.userId;
-  const isOwner = !userId || assignment.userId === userId || assignment.userId === null;
+  const isOwner = !req.user || assignment.userId === userId;
   if (!isOwner && !canAccessAssignment(req, assignment)) {
     return res.status(403).json({ error: 'no permission to modify this assignment' });
   }
@@ -104,12 +105,44 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
 
   if (typeof req.body?.status === 'string' && ['draft', 'submitted', 'graded', 'returned'].includes(req.body.status)) {
     const newStatus = req.body.status;
-    if (newStatus === 'graded' || newStatus === 'returned') {
-      if (!canGradeAssignment(req)) {
-        return res.status(403).json({ error: 'only teacher/admin can grade or return assignments' });
+    const isTeacher = canGradeAssignment(req);
+    const currentStatus = assignment.status;
+
+    // Status transition rules (only enforced when auth is enabled)
+    if (req.user) {
+      if (isTeacher) {
+        // Teacher can move to graded or returned from submitted
+        if (newStatus === 'graded' || newStatus === 'returned') {
+          if (currentStatus !== 'submitted') {
+            return res.status(403).json({ error: '只能批改已提交的作业' });
+          }
+        } else {
+          // Teacher cannot revert to draft/submitted
+          return res.status(403).json({ error: '教师不能撤销已批改作业' });
+        }
+      } else {
+        // Student: draft/returned → submitted only
+        if (newStatus === 'graded' || newStatus === 'returned') {
+          return res.status(403).json({ error: 'only teacher/admin can grade or return assignments' });
+        }
+        if (newStatus === 'submitted') {
+          if (currentStatus !== 'draft' && currentStatus !== 'returned') {
+            return res.status(403).json({ error: '当前状态不可提交' });
+          }
+        } else if (newStatus === 'draft') {
+          if (currentStatus !== 'returned') {
+            return res.status(403).json({ error: '当前状态不可修改为草稿' });
+          }
+        }
       }
-      data.gradedAt = newStatus === 'graded' ? new Date() : null;
+    }
+
+    if (newStatus === 'graded') {
+      data.gradedAt = new Date();
       data.gradedBy = userId || null;
+    } else if (newStatus === 'returned') {
+      data.gradedAt = null;
+      data.gradedBy = null;
     } else {
       data.gradedAt = null;
       data.gradedBy = null;
@@ -130,7 +163,7 @@ router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res:
   if (!assignment) return res.status(404).json({ error: 'not found' });
 
   const userId = req.user?.userId;
-  const isOwner = !userId || assignment.userId === userId || assignment.userId === null;
+  const isOwner = !req.user || assignment.userId === userId;
   if (!isOwner && !canAccessAssignment(req, assignment)) {
     return res.status(403).json({ error: 'no permission to delete this assignment' });
   }
@@ -148,6 +181,10 @@ router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res:
 router.get('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
   const pageNumber = req.query.pageNumber ? parseInt(req.query.pageNumber as string) : undefined;
+
+  const assignment = await prisma.assignment.findUnique({ where: { id } });
+  if (!assignment) return res.status(404).json({ error: 'assignment not found' });
+  if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to view strokes' });
 
   const where: any = { assignmentId: id };
   if (pageNumber) where.pageNumber = pageNumber;

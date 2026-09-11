@@ -129,14 +129,19 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   res.json({ books: booksWithDpi, total, page, pageSize, options: { subjects, grades, categories } });
 }));
 
-router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const book = await prisma.book.findUnique({ where: { id } });
   if (!book) {
     return res.status(404).json({ error: '书籍不存在' });
   }
+  const userId = req.user?.userId;
+  const annotationWhere: any = { bookId: id };
+  if (userId) {
+    annotationWhere.OR = [{ userId }, { userId: null }];
+  }
   const annotations = await prisma.annotation.findMany({
-    where: { bookId: id },
+    where: annotationWhere,
     orderBy: { pageNumber: 'asc' },
   });
   const bookDir = getBookRoot(id);

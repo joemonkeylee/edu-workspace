@@ -91,7 +91,11 @@ router.delete('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res:
       for (const m of mistakes) {
         if (m.imagePath) {
           try {
-            fs.rmSync(path.join(getCropsRoot(), path.basename(m.imagePath)), { force: true });
+            // imagePath format: /storage/crops/{bookId}/{filename}
+            // Extract relative path after /storage/ to resolve correctly
+            const relPath = m.imagePath.replace(/^\/storage\//, '');
+            const storageRoot = path.resolve(getCropsRoot(), '..');
+            fs.rmSync(path.join(storageRoot, relPath), { force: true });
           } catch { /* file may not exist */ }
         }
       }
