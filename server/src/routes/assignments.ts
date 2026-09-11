@@ -219,10 +219,22 @@ router.post('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest
 
   const assignment = await prisma.assignment.findUnique({ where: { id } });
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
-  if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to view this assignment' });
   if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to modify this assignment' });
   if (assignment.status === 'graded') return res.status(403).json({ error: 'assignment is graded, read-only' });
-  if (layer === 'teacher' && !canGradeAssignment(req)) return res.status(403).json({ error: 'only teacher/admin can save teacher strokes' });
+
+  // Layer permission enforcement:
+  // - Teachers can only write to 'teacher' layer (grading layer)
+  // - Students can only write to 'student' layer (answer layer)
+  // - Admins can write to any layer
+  if (req.user && !req.user.isAdmin) {
+    const isTeacher = req.user.role === 'teacher';
+    if (isTeacher && layer !== 'teacher') {
+      return res.status(403).json({ error: 'teachers can only save to teacher layer' });
+    }
+    if (!isTeacher && layer !== 'student') {
+      return res.status(403).json({ error: 'students can only save to student layer' });
+    }
+  }
 
   await prisma.$transaction([
     prisma.assignmentStroke.deleteMany({
@@ -254,7 +266,16 @@ router.delete('/:id/strokes/:strokeId', authRequired, asyncHandler(async (req: A
   if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to modify this assignment' });
   const stroke = await prisma.assignmentStroke.findFirst({ where: { id: strokeId, assignmentId: id } });
   if (!stroke) return res.status(404).json({ error: 'stroke not found' });
-  if (stroke.layer === 'teacher' && !canGradeAssignment(req)) return res.status(403).json({ error: 'only teacher/admin can delete teacher strokes' });
+  // Layer permission: teachers can only delete teacher-layer strokes, students only student-layer
+  if (req.user && !req.user.isAdmin) {
+    const isTeacher = req.user.role === 'teacher';
+    if (isTeacher && stroke.layer !== 'teacher') {
+      return res.status(403).json({ error: 'teachers can only delete teacher layer strokes' });
+    }
+    if (!isTeacher && stroke.layer !== 'student') {
+      return res.status(403).json({ error: 'students can only delete student layer strokes' });
+    }
+  }
   await prisma.assignmentStroke.delete({ where: { id: strokeId } });
   res.json({ success: true });
 }));

@@ -14,23 +14,24 @@ model AppSetting {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  phone      String   @unique @db.VarChar(20)
-  email      String?  @unique @db.VarChar(128)
-  password   String   @db.VarChar(255)
-  isAdmin    Boolean  @default(false)
-  role       String   @default("student") @db.VarChar(20) // student | teacher | admin
-  nickName   String   @default("") @db.VarChar(64)
-  avatar     String   @default("") @db.VarChar(512)
-  status     String   @default("normal") @db.VarChar(20) // normal | disabled
-  maxDevices Int      @default(3)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  phone         String   @unique @db.VarChar(20)
+  email         String?  @unique @db.VarChar(128)
+  password      String   @db.VarChar(255)
+  isAdmin       Boolean  @default(false)
+  role          String   @default("student") @db.VarChar(20) // student | teacher | admin
+  nickName      String   @default("") @db.VarChar(64)
+  avatar        String   @default("") @db.VarChar(512)
+  status        String   @default("normal") @db.VarChar(20) // normal | disabled
+  maxDevices    Int      @default(3)
+  tokenVersion  Int      @default(0) // increment to invalidate all existing tokens
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   refreshTokens RefreshToken[]
-  annotations  Annotation[]
-  mistakes     Mistake[]
-  assignments  Assignment[]
+  annotations   Annotation[]
+  mistakes      Mistake[]
+  assignments   Assignment[]
 }
 
 model RefreshToken {

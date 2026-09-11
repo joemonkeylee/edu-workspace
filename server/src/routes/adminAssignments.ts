@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
-import { teacherOrAdminRequired } from '../middleware/auth.js';
+import { teacherOrAdminRequired, adminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
@@ -46,7 +46,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   res.json({ data, total, page, pageSize, books });
 }));
 
-router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   await prisma.$transaction([
     prisma.assignmentStroke.deleteMany({ where: { assignmentId: id } }),
@@ -55,7 +55,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true });
 }));
 
-router.post('/batch-delete', asyncHandler(async (req: Request, res: Response) => {
+router.post('/batch-delete', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const ids = Array.isArray(req.body?.ids)
     ? req.body.ids.map(Number).filter((id: number) => Number.isInteger(id) && id > 0)
     : [];

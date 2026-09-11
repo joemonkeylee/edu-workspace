@@ -238,7 +238,17 @@ export function scanPdfUrl(targetPath: string, category: string, dpi: number = 2
   if (grade) params.set('grade', grade);
   if (subject) params.set('subject', subject);
   if (skipDb) params.set('skipDb', 'true');
+  if (accessToken) params.set('token', accessToken);
   return `/api/admin/scan-pdf?${params}`;
+}
+
+// Append auth token to crop image URLs when auth is enabled
+// <img> tags can't send Authorization headers, so token goes in query string
+export function withAuthToken(url: string): string {
+  if (!accessToken) return url;
+  if (!url.startsWith('/storage/crops/')) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}token=${encodeURIComponent(accessToken)}`;
 }
 
 export interface PreviewFile {
@@ -386,7 +396,7 @@ export async function adminDeleteAssignmentsBatch(ids: number[]) {
 export interface Assignment {
   id: number;
   bookId: number;
-  userId: number;
+  userId: number | null;
   title: string;
   subject: string;
   status: string;
@@ -396,6 +406,7 @@ export interface Assignment {
   gradedAt: string | null;
   _count?: { strokes: number };
   pages?: number[];
+  user?: { id: number; nickName: string; phone: string } | null;
 }
 
 export interface AssignmentStroke {

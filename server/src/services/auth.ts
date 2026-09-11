@@ -62,6 +62,7 @@ export interface JwtPayload {
   phone: string;
   isAdmin: boolean;
   role: string;
+  tokenVersion: number;
 }
 
 function getJwtSecret(): string {
@@ -78,6 +79,38 @@ function getJwtRefreshSecret(): string {
     throw new Error('JWT_REFRESH_SECRET must be set when auth is enabled.');
   }
   return secret || 'standalone-dev-refresh-secret';
+}
+
+// ── Token version cache (short TTL to reduce DB lookups) ──────────
+
+const tokenVersionCache = new Map<number, { version: number; expiresAt: number }>();
+const TOKEN_VERSION_CACHE_TTL = 10_000; // 10 seconds
+
+async function getTokenVersion(userId: number): Promise<number> {
+  const now = Date.now();
+  const cached = tokenVersionCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    return cached.version;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { tokenVersion: true },
+  });
+  const version = user?.tokenVersion ?? 0;
+  tokenVersionCache.set(userId, { version, expiresAt: now + TOKEN_VERSION_CACHE_TTL });
+  return version;
+}
+
+export function invalidateTokenVersionCache(userId: number): void {
+  tokenVersionCache.delete(userId);
+}
+
+export async function incrementTokenVersion(userId: number): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
+  invalidateTokenVersionCache(userId);
 }
 
 export async function signAccessToken(payload: JwtPayload): Promise<string> {
@@ -98,8 +131,14 @@ export async function signRefreshToken(payload: JwtPayload): Promise<string> {
   return jwt.sign(payload, getJwtRefreshSecret(), options);
 }
 
-export function verifyAccessToken(token: string): JwtPayload {
-  return jwt.verify(token, getJwtSecret()) as JwtPayload;
+export async function verifyAccessToken(token: string): Promise<JwtPayload> {
+  const payload = jwt.verify(token, getJwtSecret()) as JwtPayload;
+  // Check token version for immediate revocation
+  const currentVersion = await getTokenVersion(payload.userId);
+  if (payload.tokenVersion !== currentVersion) {
+    throw new Error('token revoked');
+  }
+  return payload;
 }
 
 export function verifyRefreshToken(token: string): JwtPayload {

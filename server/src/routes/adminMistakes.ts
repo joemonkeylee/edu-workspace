@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../prisma.js';
 import { getStorageRoot } from '../services/storage.js';
-import { teacherOrAdminRequired } from '../middleware/auth.js';
+import { teacherOrAdminRequired, adminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
@@ -49,7 +49,7 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
   res.json(updated);
 }));
 
-router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const mistake = await prisma.mistake.findUnique({ where: { id } });
   if (mistake?.imagePath) {

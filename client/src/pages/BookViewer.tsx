@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import * as api from '../api/client';
-import { pageImageUrl } from '../api/client';
+import { pageImageUrl, withAuthToken } from '../api/client';
 import TocTree from '../components/TocTree';
 import PageCanvas from '../components/PageCanvas';
 import CropTool from '../components/CropTool';
@@ -1500,7 +1500,7 @@ function MistakeList({
               <div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-amber-50 border-amber-100">
                 {m.imagePath ? (
                   <img
-                    src={m.imagePath}
+                    src={withAuthToken(m.imagePath)}
                     alt="错题"
                     className="object-cover w-full h-full"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

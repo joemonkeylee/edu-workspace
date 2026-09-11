@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
-import { hashPassword, revokeAllUserRefreshTokens, countUserDevices, getAllAuthSettings, setSetting } from '../services/auth.js';
+import { hashPassword, revokeAllUserRefreshTokens, countUserDevices, getAllAuthSettings, setSetting, incrementTokenVersion } from '../services/auth.js';
 import { adminRequired, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -119,6 +119,12 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
       avatar: true, status: true, maxDevices: true, updatedAt: true,
     },
   });
+
+  // Invalidate all existing tokens if role or status changed
+  if (data.role || data.status || typeof data.isAdmin === 'boolean') {
+    await incrementTokenVersion(id);
+    await revokeAllUserRefreshTokens(id);
+  }
   res.json({ user: updated });
 }));
 
@@ -137,6 +143,7 @@ router.put('/:id/password', asyncHandler(async (req: Request, res: Response) => 
   const hashed = await hashPassword(password);
   await prisma.user.update({ where: { id }, data: { password: hashed } });
   await revokeAllUserRefreshTokens(id);
+  await incrementTokenVersion(id);
   res.json({ success: true });
 }));
 

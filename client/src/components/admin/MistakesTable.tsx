@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminGetMistakes, adminUpdateMistake, adminDeleteMistake } from '../../api/client';
+import { adminGetMistakes, adminUpdateMistake, adminDeleteMistake, withAuthToken } from '../../api/client';
 import { Search, Trash2, ChevronLeft, ChevronRight, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -123,7 +123,7 @@ export default function MistakesTable() {
                     <td className="px-4 py-3 text-gray-500">{item.id}</td>
                     <td className="px-4 py-3">
                       <img
-                        src={item.imagePath}
+                        src={withAuthToken(item.imagePath)}
                         alt={`错题#${item.id}`}
                         className="w-14 h-18 object-cover rounded border border-gray-200"
                         onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="72"><rect fill="%23f3f4f6" width="56" height="72"/><text x="50%25" y="50%25" text-anchor="middle" fill="%239ca3af" font-size="10" dy=".3em">N/A</text></svg>'; }}

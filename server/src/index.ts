@@ -20,6 +20,7 @@ import mistakesRouter from './routes/mistakes.js';
 import assignmentsRouter from './routes/assignments.js';
 import { getStorageRoot, initializeStorageRoot } from './services/storage.js';
 import { isAuthEnabled } from './services/auth.js';
+import { cropsAuthMiddleware } from './middleware/cropsAuth.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -78,6 +79,8 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 async function start() {
   await initializeStorageRoot();
   fs.mkdirSync(getStorageRoot(), { recursive: true });
+  // Protect crop images with auth middleware
+  app.use('/storage/crops', cropsAuthMiddleware);
   app.use('/storage', (req, res, next) => express.static(getStorageRoot())(req, res, next));
   app.listen(PORT, () => {
     console.log(`[edu-workspace] 后端服务已启动: http://localhost:${PORT}`);

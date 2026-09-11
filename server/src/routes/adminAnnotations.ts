@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
-import { teacherOrAdminRequired } from '../middleware/auth.js';
+import { teacherOrAdminRequired, adminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
@@ -30,7 +30,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   res.json({ data, total, page, pageSize });
 }));
 
-router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   await prisma.annotation.delete({ where: { id } });
   res.json({ success: true });
