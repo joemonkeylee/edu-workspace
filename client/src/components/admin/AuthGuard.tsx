@@ -1,11 +1,14 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { ReactNode } from 'react';
 
 interface AuthGuardProps {
   allowedRoles?: string[];
+  children?: ReactNode;
+  redirectTo?: string;
 }
 
-export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
+export default function AuthGuard({ allowedRoles, children, redirectTo = '/login' }: AuthGuardProps) {
   const location = useLocation();
   const { user, authEnabled, loading } = useAuthStore();
 
@@ -16,7 +19,7 @@ export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
 
   // Auth disabled — open access
   if (!authEnabled) {
-    return <Outlet />;
+    return children ? <>{children}</> : <Outlet />;
   }
 
   // Auth enabled but not logged in
@@ -28,9 +31,9 @@ export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
   if (allowedRoles && user) {
     const role = user.isAdmin ? 'admin' : user.role;
     if (!allowedRoles.includes(role)) {
-      return <Navigate to="/" replace />;
+      return <Navigate to={redirectTo} replace />;
     }
   }
 
-  return <Outlet />;
+  return children ? <>{children}</> : <Outlet />;
 }

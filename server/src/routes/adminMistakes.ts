@@ -3,11 +3,11 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../prisma.js';
 import { getStorageRoot } from '../services/storage.js';
-import { adminRequired } from '../middleware/auth.js';
+import { teacherOrAdminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
-router.use(adminRequired);
+router.use(teacherOrAdminRequired);
 
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;

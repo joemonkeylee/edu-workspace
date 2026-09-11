@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
-import { adminRequired } from '../middleware/auth.js';
+import { teacherOrAdminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
-router.use(adminRequired);
+router.use(teacherOrAdminRequired);
 
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;

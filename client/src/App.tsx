@@ -39,19 +39,19 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/book/:id" element={<BookViewer />} />
 
-          <Route path="/admin" element={<AuthGuard allowedRoles={['admin']} />}>
-            <Route element={<AdminLayout />}>
-              <Route index element={<Navigate to="/admin/scan" replace />} />
-              <Route path="scan" element={<PdfScanImport />} />
-              <Route path="books" element={<BooksTable />} />
-              <Route path="annotations" element={<AnnotationsTable />} />
-              <Route path="mistakes" element={<MistakesTable />} />
-              <Route path="assignments" element={<AssignmentsTable />} />
-              <Route path="users" element={<UsersTable />} />
-              <Route path="auth-settings" element={<AuthSettings />} />
-              <Route path="storage" element={<StorageSettings />} />
-            </Route>
+          <Route path="/admin" element={<AuthGuard allowedRoles={['admin', 'teacher']} redirectTo="/" />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/books" replace />} />
+            <Route path="scan" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><PdfScanImport /></AuthGuard>} />
+            <Route path="books" element={<BooksTable />} />
+            <Route path="annotations" element={<AnnotationsTable />} />
+            <Route path="mistakes" element={<MistakesTable />} />
+            <Route path="assignments" element={<AssignmentsTable />} />
+            <Route path="users" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><UsersTable /></AuthGuard>} />
+            <Route path="auth-settings" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><AuthSettings /></AuthGuard>} />
+            <Route path="storage" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><StorageSettings /></AuthGuard>} />
           </Route>
+        </Route>
 
           <Route path="*" element={<NotFound />} />
         </Routes>

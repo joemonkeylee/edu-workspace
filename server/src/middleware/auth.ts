@@ -48,3 +48,27 @@ export function adminRequired(req: AuthedRequest, res: Response, next: NextFunct
     res.status(401).json({ error: 'token invalid or expired' });
   }
 }
+
+export function teacherOrAdminRequired(req: AuthedRequest, res: Response, next: NextFunction): void {
+  if (!isAuthEnabled()) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'authentication required' });
+    return;
+  }
+
+  try {
+    const token = authHeader.slice(7);
+    req.user = verifyAccessToken(token);
+    if (!req.user.isAdmin && req.user.role !== 'teacher') {
+      res.status(403).json({ error: 'teacher or admin access required' });
+      return;
+    }
+    next();
+  } catch {
+    res.status(401).json({ error: 'token invalid or expired' });
+  }
+}

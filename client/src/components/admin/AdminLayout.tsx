@@ -7,6 +7,7 @@ interface MenuItem {
   path: string;
   label: string;
   icon: LucideIcon;
+  roles?: string[]; // roles allowed to see this item; undefined = all
 }
 
 interface MenuGroup {
@@ -18,7 +19,7 @@ const MENU_GROUPS: MenuGroup[] = [
   {
     group: '数据管理',
     items: [
-      { path: '/admin/scan', label: 'PDF 扫描导入', icon: Scan },
+      { path: '/admin/scan', label: 'PDF 扫描导入', icon: Scan, roles: ['admin'] },
       { path: '/admin/books', label: '书籍资产管理', icon: BookOpen },
       { path: '/admin/annotations', label: '批注数据管理', icon: Highlighter },
       { path: '/admin/mistakes', label: '错题本管理', icon: AlertCircle },
@@ -28,9 +29,9 @@ const MENU_GROUPS: MenuGroup[] = [
   {
     group: '系统管理',
     items: [
-      { path: '/admin/users', label: '用户管理', icon: Users },
-      { path: '/admin/auth-settings', label: '认证设置', icon: ShieldCheck },
-      { path: '/admin/storage', label: '资源目录', icon: FolderCog },
+      { path: '/admin/users', label: '用户管理', icon: Users, roles: ['admin'] },
+      { path: '/admin/auth-settings', label: '认证设置', icon: ShieldCheck, roles: ['admin'] },
+      { path: '/admin/storage', label: '资源目录', icon: FolderCog, roles: ['admin'] },
     ],
   },
 ];
@@ -41,13 +42,31 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, authEnabled } = useAuthStore();
-  const activeItem = ALL_ITEMS.find((item) => location.pathname.startsWith(item.path));
+
+  // Filter menu groups by user role
+  const userRole = user?.role || (user?.isAdmin ? 'admin' : 'student');
+  const filteredMenuGroups = MENU_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.roles || item.roles.includes(userRole)),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const allFilteredItems = filteredMenuGroups.flatMap((g) => g.items);
+  const activeItem = allFilteredItems.find((item) => location.pathname.startsWith(item.path));
   const title = activeItem?.label ?? '后台管理';
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
+
+  const roleBadge = (() => {
+    if (!authEnabled) return '';
+    if (user?.role === 'admin' || user?.isAdmin) return ' (管理员)';
+    if (user?.role === 'teacher') return ' (教师)';
+    return '';
+  })();
 
   return (
     <div className="flex flex-col h-full bg-surface">
@@ -58,7 +77,7 @@ export default function AdminLayout() {
         <h1 className="text-lg font-bold">后台 · {title}</h1>
         {authEnabled && user && (
           <div className="flex items-center gap-3 ml-auto">
-            <span className="text-sm text-gray-300">{user.nickName || user.phone}{user.isAdmin ? ' (管理员)' : ''}</span>
+            <span className="text-sm text-gray-300">{user.nickName || user.phone}{roleBadge}</span>
             <button onClick={handleLogout} className="flex items-center gap-1 text-sm text-gray-300 transition hover:text-white" title="退出登录">
               <LogOut size={16} />
             </button>
@@ -68,7 +87,7 @@ export default function AdminLayout() {
 
       <div className="flex flex-1 overflow-hidden">
         <nav className="flex-shrink-0 w-48 py-4 overflow-y-auto bg-white border-r border-gray-200">
-          {MENU_GROUPS.map((group) => (
+          {filteredMenuGroups.map((group) => (
             <div key={group.group} className="mb-4">
               <p className="px-4 pb-2 text-xs font-medium tracking-wider text-gray-400 uppercase">{group.group}</p>
               {group.items.map((item) => {

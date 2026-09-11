@@ -4,11 +4,11 @@ import fs from 'fs';
 import prisma from '../prisma.js';
 import { getAvailableDpis } from '../services/pdfProcessor.js';
 import { getBookRoot, getCropsRoot } from '../services/storage.js';
-import { adminRequired } from '../middleware/auth.js';
+import { adminRequired, teacherOrAdminRequired, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
-router.use(adminRequired);
+router.use(teacherOrAdminRequired);
 
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;
@@ -62,7 +62,7 @@ router.get('/batches', asyncHandler(async (_req: Request, res: Response) => {
   res.json(batchIds);
 }));
 
-router.delete('/all', asyncHandler(async (_req: Request, res: Response) => {
+router.delete('/all', adminRequired, asyncHandler(async (_req: Request, res: Response) => {
   const books = await prisma.book.findMany({ select: { id: true } });
   const booksRoot = path.dirname(getBookRoot(0));
   const cropsRoot = getCropsRoot();
@@ -72,7 +72,7 @@ router.delete('/all', asyncHandler(async (_req: Request, res: Response) => {
   res.json({ success: true, deleted: books.length });
 }));
 
-router.delete('/all/stream', asyncHandler(async (_req: Request, res: Response) => {
+router.delete('/all/stream', adminRequired, asyncHandler(async (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -103,7 +103,7 @@ router.delete('/all/stream', asyncHandler(async (_req: Request, res: Response) =
   }
 }));
 
-router.delete('/batch', asyncHandler(async (req: Request, res: Response) => {
+router.delete('/batch', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: 'ids 数组不能为空' });
@@ -125,7 +125,7 @@ router.delete('/batch', asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, deleted });
 }));
 
-router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const bookDir = getBookRoot(id);
   try { fs.rmSync(bookDir, { recursive: true, force: true }); } catch { /* files may not exist */ }
@@ -135,7 +135,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true });
 }));
 
-router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.put('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const { title, category, grade, subject, coverPage, attributes } = req.body;
   const data: any = {};

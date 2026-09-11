@@ -142,9 +142,13 @@ router.put('/:id/password', asyncHandler(async (req: Request, res: Response) => 
 
 // ── Delete user ────────────────────────────────────────────────────
 
-router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: 'invalid id' });
+
+  if (req.user && id === req.user.userId) {
+    return res.status(403).json({ error: 'cannot delete your own account' });
+  }
 
   await revokeAllUserRefreshTokens(id);
   await prisma.user.delete({ where: { id } });
