@@ -133,7 +133,7 @@ export async function getMe() {
 
 export async function adminGetUsers(params?: Record<string, any>) {
   const { data } = await api.get('/admin/users', { params });
-  return data as { users: any[]; total: number; page: number; pageSize: number };
+  return data as { data: any[]; total: number; page: number; pageSize: number };
 }
 
 export async function adminCreateUser(body: { phone: string; password: string; email?: string; isAdmin?: boolean; nickName?: string; maxDevices?: number }) {
@@ -177,7 +177,7 @@ export async function adminUpdateAuthSettings(body: Record<string, string>) {
 }
 
 export interface BooksResponse {
-  books: Book[];
+  data: Book[];
   total: number;
   page: number;
   pageSize: number;
@@ -313,7 +313,9 @@ export async function adminDeleteBooksBatch(ids: number[]) {
 }
 
 export async function adminClearBooks(onProgress: (progress: { current: number; total: number; title: string }) => void) {
-  const response = await fetch('/api/admin/books/all/stream', { method: 'POST' });
+  const headers: Record<string, string> = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const response = await fetch('/api/admin/books/all/stream', { method: 'POST', headers });
   if (!response.ok || !response.body) throw new Error('清空书籍失败');
 
   const reader = response.body.getReader();
@@ -408,9 +410,9 @@ export interface AssignmentStroke {
   createdAt: string;
 }
 
-export async function getAssignments(bookId: number) {
-  const { data } = await api.get('/assignments', { params: { bookId } });
-  return data as { assignments: Assignment[] };
+export async function getAssignments(bookId: number, params?: { page?: number; pageSize?: number }) {
+  const { data } = await api.get('/assignments', { params: { bookId, ...params } });
+  return data as { data: Assignment[]; total: number; page: number; pageSize: number };
 }
 
 export async function getAssignment(id: number) {

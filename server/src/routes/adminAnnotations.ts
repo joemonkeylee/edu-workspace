@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
 import { adminRequired } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 router.use(adminRequired);
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 20;
   const bookId = req.query.bookId as string;
@@ -27,16 +28,12 @@ router.get('/', async (req: Request, res: Response) => {
   ]);
 
   res.json({ data, total, page, pageSize });
-});
+}));
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
-  try {
-    await prisma.annotation.delete({ where: { id } });
-    res.json({ success: true });
-  } catch {
-    res.status(404).json({ error: '批注不存在' });
-  }
-});
+  await prisma.annotation.delete({ where: { id } });
+  res.json({ success: true });
+}));
 
 export default router;

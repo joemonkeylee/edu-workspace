@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { ConfirmProvider } from './components/ConfirmDialog';
 import Home from './pages/Home';
 import BookViewer from './pages/BookViewer';
 import Login from './pages/Login';
@@ -27,32 +28,34 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ScrollToTop />
-      <Toaster position="top-center" richColors />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+      <ConfirmProvider>
+        <ScrollToTop />
+        <Toaster position="top-center" richColors />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        <Route path="/" element={<Home />} />
-        <Route path="/book/:id" element={<BookViewer />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/book/:id" element={<BookViewer />} />
 
-        <Route path="/admin" element={<AuthGuard allowedRoles={['admin', 'editor']} />}>
-          <Route element={<AdminLayout />}>
-            <Route index element={<Navigate to="/admin/scan" replace />} />
-            <Route path="scan" element={<PdfScanImport />} />
-            <Route path="books" element={<BooksTable />} />
-            <Route path="annotations" element={<AnnotationsTable />} />
-            <Route path="mistakes" element={<MistakesTable />} />
-            <Route path="assignments" element={<AssignmentsTable />} />
-            <Route path="users" element={<UsersTable />} />
-            <Route path="auth-settings" element={<AuthSettings />} />
-            <Route path="storage" element={<StorageSettings />} />
+          <Route path="/admin" element={<AuthGuard allowedRoles={['admin']} />}>
+            <Route element={<AdminLayout />}>
+              <Route index element={<Navigate to="/admin/scan" replace />} />
+              <Route path="scan" element={<PdfScanImport />} />
+              <Route path="books" element={<BooksTable />} />
+              <Route path="annotations" element={<AnnotationsTable />} />
+              <Route path="mistakes" element={<MistakesTable />} />
+              <Route path="assignments" element={<AssignmentsTable />} />
+              <Route path="users" element={<UsersTable />} />
+              <Route path="auth-settings" element={<AuthSettings />} />
+              <Route path="storage" element={<StorageSettings />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ConfirmProvider>
     </BrowserRouter>
   );
 }

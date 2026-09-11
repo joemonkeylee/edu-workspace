@@ -4,6 +4,7 @@ import { Search, Trash2, CheckSquare, Square, ExternalLink, ChevronLeft, Chevron
 import { toast } from 'sonner';
 import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments } from '../../api/client';
 import { formatAssignmentTitle } from '../../utils/assignment';
+import { useConfirm } from '../ConfirmDialog';
 
 const PAGE_SIZE = 20;
 
@@ -13,6 +14,7 @@ function formatDate(value: string) {
 
 export default function AssignmentsTable() {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [items, setItems] = useState<any[]>([]);
   const [books, setBooks] = useState<{ id: number; title: string }[]>([]);
   const [total, setTotal] = useState(0);
@@ -54,7 +56,13 @@ export default function AssignmentsTable() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('确认删除此作业吗？学生笔迹和教师批改笔迹都会被删除，且无法恢复。')) return;
+    const confirmed = await confirm({
+      title: '确认删除',
+      message: '确认删除此作业吗？学生笔迹和教师批改笔迹都会被删除，且无法恢复。',
+      confirmText: '确认删除',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+    });
+    if (!confirmed) return;
     try {
       await adminDeleteAssignment(id);
       toast.success('作业已删除');
@@ -66,7 +74,13 @@ export default function AssignmentsTable() {
 
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (!window.confirm(`确认删除选中的 ${selectedIds.length} 个作业吗？相关笔迹都会被删除，且无法恢复。`)) return;
+    const confirmed = await confirm({
+      title: '确认批量删除',
+      message: `确认删除选中的 ${selectedIds.length} 个作业吗？相关笔迹都会被删除，且无法恢复。`,
+      confirmText: '确认删除',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+    });
+    if (!confirmed) return;
     try {
       await adminDeleteAssignmentsBatch(selectedIds);
       toast.success(`已删除 ${selectedIds.length} 个作业`);

@@ -3,6 +3,7 @@ import { FileText, Trash2, Clock, Layers, CheckCircle, Send } from 'lucide-react
 import { getAssignments, deleteAssignment, updateAssignment, type Assignment } from '../api/client';
 import { toast } from 'sonner';
 import { formatAssignmentTitle } from '../utils/assignment';
+import { useConfirm } from './ConfirmDialog';
 
 export interface AssignmentListProps {
   bookId: number;
@@ -13,14 +14,15 @@ export interface AssignmentListProps {
 }
 
 export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh, onCountChange }: AssignmentListProps) {
+  const confirm = useConfirm();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
     setLoading(true);
-    getAssignments(bookId).then(({ assignments }) => {
-      setAssignments(assignments);
-      onCountChange?.(assignments.length);
+    getAssignments(bookId, { pageSize: 200 }).then(({ data }) => {
+      setAssignments(data);
+      onCountChange?.(data.length);
     }).finally(() => setLoading(false));
   };
 
@@ -32,7 +34,13 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     e.stopPropagation();
     if (a.status !== 'draft' && a.status !== 'returned') return;
     const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
-    if (!window.confirm(`确认删除作业「${title}」吗？此操作不可撤销。`)) return;
+    const confirmed = await confirm({
+      title: '确认删除',
+      message: `确认删除作业「${title}」吗？此操作不可撤销。`,
+      confirmText: '确认删除',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+    });
+    if (!confirmed) return;
     try {
       await deleteAssignment(a.id);
       toast.success('作业已删除');
@@ -46,7 +54,13 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     e.stopPropagation();
     if (a.status !== 'draft' && a.status !== 'returned') return;
     const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
-    if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
+    const confirmed = await confirm({
+      title: '确认提交',
+      message: `确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`,
+      confirmText: '确认提交',
+      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+    });
+    if (!confirmed) return;
     try {
       await updateAssignment(a.id, { status: 'submitted' });
       toast.success('作业已提交');

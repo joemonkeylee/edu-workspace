@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
 import { adminRequired } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 router.use(adminRequired);
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string) || 20));
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
@@ -43,22 +44,18 @@ router.get('/', async (req: Request, res: Response) => {
   ]);
 
   res.json({ data, total, page, pageSize, books });
-});
+}));
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
-  try {
-    await prisma.$transaction([
-      prisma.assignmentStroke.deleteMany({ where: { assignmentId: id } }),
-      prisma.assignment.delete({ where: { id } }),
-    ]);
-    res.json({ success: true });
-  } catch {
-    res.status(404).json({ error: '作业不存在' });
-  }
-});
+  await prisma.$transaction([
+    prisma.assignmentStroke.deleteMany({ where: { assignmentId: id } }),
+    prisma.assignment.delete({ where: { id } }),
+  ]);
+  res.json({ success: true });
+}));
 
-router.post('/batch-delete', async (req: Request, res: Response) => {
+router.post('/batch-delete', asyncHandler(async (req: Request, res: Response) => {
   const ids = Array.isArray(req.body?.ids)
     ? req.body.ids.map(Number).filter((id: number) => Number.isInteger(id) && id > 0)
     : [];
@@ -68,6 +65,6 @@ router.post('/batch-delete', async (req: Request, res: Response) => {
     return tx.assignment.deleteMany({ where: { id: { in: ids } } });
   });
   res.json({ success: true, count: result.count });
-});
+}));
 
 export default router;

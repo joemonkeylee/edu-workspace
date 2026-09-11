@@ -28,14 +28,28 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Client-side validation
+    if (!/^\d{11}$/.test(phone)) {
+      setError('请输入 11 位手机号');
+      return;
+    }
+    if (!password || password.length < 4) {
+      setError('密码至少 4 位');
+      return;
+    }
+    if (!captchaText.trim()) {
+      setError('请输入验证码');
+      return;
+    }
+
     setLoading(true);
     try {
       const { user } = await login(phone, password, captchaKey, captchaText);
       setUser(user);
       navigate('/');
     } catch (err: any) {
-      const msg = err.response?.data?.error || 'login failed';
-      setError(msg);
+      setError(err.message || '登录失败，请重试');
       refreshCaptcha();
     } finally {
       setLoading(false);

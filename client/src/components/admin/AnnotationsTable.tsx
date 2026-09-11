@@ -51,11 +51,14 @@ export default function AnnotationsTable() {
     if (!item.contentJson) return '-';
     try {
       const c = typeof item.contentJson === 'string' ? JSON.parse(item.contentJson) : item.contentJson;
-      if (item.type === 'highlight' && c.text) {
+      if (item.type === 'note' && c.text) {
         return <span className="text-gray-700 text-sm line-clamp-2">{c.text}</span>;
       }
-      if (item.type === 'note' && c.note) {
-        return <span className="text-gray-700 text-sm line-clamp-2">{c.note}</span>;
+      if (item.type === 'highlight') {
+        return <span className="text-gray-500 text-xs">高亮区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
+      }
+      if (item.type === 'crop') {
+        return <span className="text-gray-500 text-xs">裁剪区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
       }
       return <span className="text-gray-400 text-xs">{JSON.stringify(c).slice(0, 80)}</span>;
     } catch {

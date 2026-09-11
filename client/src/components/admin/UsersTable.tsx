@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminGetUsers, adminCreateUser, adminUpdateUser, adminResetPassword, adminDeleteUser, adminGetUserDevices, adminKickDevice } from '../../api/client';
 import { toast } from 'sonner';
+import { useConfirm } from '../ConfirmDialog';
 
 interface UserRow {
   id: number;
   phone: string;
   email: string | null;
   isAdmin: boolean;
+  role: string;
   nickName: string;
   avatar: string;
   status: string;
@@ -24,11 +26,13 @@ interface DeviceRow {
 }
 
 export default function UsersTable() {
+  const confirm = useConfirm();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showDevices, setShowDevices] = useState<number | null>(null);
@@ -37,12 +41,12 @@ export default function UsersTable() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminGetUsers({ page, pageSize, search });
-      setUsers(res.users);
+      const res = await adminGetUsers({ page, pageSize, search, role: roleFilter });
+      setUsers(res.data);
       setTotal(res.total);
     } catch { /* ignore */ }
     setLoading(false);
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, roleFilter]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
@@ -67,6 +71,16 @@ export default function UsersTable() {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
           />
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
+          >
+            <option value="all">全部角色</option>
+            <option value="student">学生</option>
+            <option value="teacher">教师</option>
+            <option value="admin">管理员</option>
+          </select>
           <button onClick={fetchUsers} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">搜索</button>
         </div>
         <div className="flex gap-2">
@@ -97,7 +111,13 @@ export default function UsersTable() {
                 <td className="px-4 py-3">{u.email || '-'}</td>
                 <td className="px-4 py-3">{u.nickName || '-'}</td>
                 <td className="px-4 py-3">
-                  <span className={u.isAdmin ? 'text-primary font-medium' : 'text-gray-500'}>{u.isAdmin ? '管理员' : '用户'}</span>
+                  <span className={
+                    u.role === 'admin' ? 'text-primary font-medium' :
+                    u.role === 'teacher' ? 'text-teal-600 font-medium' :
+                    'text-gray-500'
+                  }>
+                    {u.role === 'admin' ? '管理员' : u.role === 'teacher' ? '教师' : '学生'}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <span className={u.status === 'disabled' ? 'text-red-600' : 'text-green-600'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
@@ -109,7 +129,17 @@ export default function UsersTable() {
                     <button onClick={() => fetchDevices(u.id)} className="text-blue-600 hover:underline">设备</button>
                     <EditButton user={u} onUpdated={fetchUsers} />
                     <ResetPasswordButton userId={u.id} />
-                    <button onClick={() => { if (confirm('确认删除该用户？')) { adminDeleteUser(u.id).then(() => { toast.success('用户已删除'); fetchUsers(); }).catch((e: any) => toast.error('删除失败: ' + (e?.message || ''))); } }} className="text-red-600 hover:underline">删除</button>
+                    <button onClick={async () => {
+                      const confirmed = await confirm({
+                        title: '确认删除',
+                        message: '确认删除该用户？',
+                        confirmText: '确认删除',
+                        confirmClass: 'bg-red-600 hover:bg-red-700',
+                      });
+                      if (confirmed) {
+                        adminDeleteUser(u.id).then(() => { toast.success('用户已删除'); fetchUsers(); }).catch((e: any) => toast.error('删除失败: ' + (e?.message || '')));
+                      }
+                    }} className="text-red-600 hover:underline">删除</button>
                   </div>
                 </td>
               </tr>
@@ -150,7 +180,7 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
     phone: user.phone,
     email: user.email || '',
     nickName: user.nickName,
-    isAdmin: user.isAdmin,
+    role: user.role,
     status: user.status,
     maxDevices: user.maxDevices,
   });
@@ -164,9 +194,14 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
       <button onClick={() => setEditing(false)} className="text-gray-500 hover:underline">取消</button>
       <button
         onClick={async () => {
-          await adminUpdateUser(user.id, form);
-          setEditing(false);
-          onUpdated();
+          try {
+            await adminUpdateUser(user.id, { ...form, isAdmin: form.role === 'admin' });
+            toast.success('用户已更新');
+            setEditing(false);
+            onUpdated();
+          } catch (e: any) {
+            toast.error('更新失败: ' + (e?.message || ''));
+          }
         }}
         className="text-green-600 hover:underline"
       >保存</button>
@@ -177,10 +212,14 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
             <Field label="手机号" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
             <Field label="邮箱" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
             <Field label="昵称" value={form.nickName} onChange={(v) => setForm({ ...form, nickName: v })} />
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.isAdmin} onChange={(e) => setForm({ ...form, isAdmin: e.target.checked })} />
-              管理员
-            </label>
+            <div>
+              <label className="text-sm text-gray-500">角色</label>
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-3 py-2 border rounded text-sm">
+                <option value="student">学生</option>
+                <option value="teacher">教师</option>
+                <option value="admin">管理员</option>
+              </select>
+            </div>
             <div>
               <label className="text-sm text-gray-500">状态</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-3 py-2 border rounded text-sm">
@@ -193,7 +232,16 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
               <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="w-full px-3 py-2 border rounded text-sm" />
             </div>
             <button
-              onClick={async () => { await adminUpdateUser(user.id, form); setEditing(false); onUpdated(); }}
+              onClick={async () => {
+                try {
+                  await adminUpdateUser(user.id, { ...form, isAdmin: form.role === 'admin' });
+                  toast.success('用户已更新');
+                  setEditing(false);
+                  onUpdated();
+                } catch (e: any) {
+                  toast.error('更新失败: ' + (e?.message || ''));
+                }
+              }}
               className="w-full py-2 bg-primary text-white rounded text-sm"
             >保存</button>
           </div>
@@ -237,7 +285,7 @@ function ResetPasswordButton({ userId }: { userId: number }) {
 }
 
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ phone: '', password: '', email: '', nickName: '', isAdmin: false, maxDevices: 3 });
+  const [form, setForm] = useState({ phone: '', password: '', email: '', nickName: '', role: 'student', maxDevices: 3 });
   const [error, setError] = useState('');
 
   return (
@@ -249,10 +297,14 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <Field label="密码 *" value={form.password} onChange={(v) => setForm({ ...form, password: v })} type="password" />
           <Field label="邮箱" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
           <Field label="昵称" value={form.nickName} onChange={(v) => setForm({ ...form, nickName: v })} />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.isAdmin} onChange={(e) => setForm({ ...form, isAdmin: e.target.checked })} />
-            管理员
-          </label>
+          <div>
+            <label className="text-sm text-gray-500">角色</label>
+            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-3 py-2 border rounded text-sm">
+              <option value="student">学生</option>
+              <option value="teacher">教师</option>
+              <option value="admin">管理员</option>
+            </select>
+          </div>
           <div>
             <label className="text-sm text-gray-500">最大设备数</label>
             <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="w-full px-3 py-2 border rounded text-sm" />
@@ -261,11 +313,12 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <button
             onClick={async () => {
               try {
-                await adminCreateUser(form);
+                await adminCreateUser({ ...form, isAdmin: form.role === 'admin' });
+                toast.success('用户已创建');
                 onCreated();
                 onClose();
               } catch (err: any) {
-                setError(err.response?.data?.error || 'failed');
+                setError(err.response?.data?.error || '创建失败');
               }
             }}
             className="w-full py-2 bg-primary text-white rounded text-sm"

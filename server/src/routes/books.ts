@@ -126,7 +126,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  res.json({ books: booksWithDpi, total, page, pageSize, options: { subjects, grades, categories } });
+  res.json({ data: booksWithDpi, total, page, pageSize, options: { subjects, grades, categories } });
 }));
 
 router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {

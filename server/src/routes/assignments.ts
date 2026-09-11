@@ -27,27 +27,38 @@ router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Respo
   const bookId = parseInt(req.query.bookId as string);
   if (isNaN(bookId)) return res.status(400).json({ error: 'bookId required' });
 
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const pageSize = Math.min(200, Math.max(1, parseInt(req.query.pageSize as string) || 50));
+
   const userId = req.user?.userId;
   const where: any = { bookId };
   const canViewAll = Boolean(req.user?.isAdmin || req.user?.role === 'teacher');
   if (userId && !canViewAll) where.userId = userId;
 
-  const assignments = await prisma.assignment.findMany({
-    where,
-    select: {
-      id: true, bookId: true, userId: true, title: true, subject: true,
-      status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
-      _count: { select: { strokes: true } },
-      strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const [assignments, total] = await Promise.all([
+    prisma.assignment.findMany({
+      where,
+      select: {
+        id: true, bookId: true, userId: true, title: true, subject: true,
+        status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
+        _count: { select: { strokes: true } },
+        strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.assignment.count({ where }),
+  ]);
   res.json({
-    assignments: assignments.map(a => ({
+    data: assignments.map(a => ({
       ...a,
       pages: a.strokes.map(s => s.pageNumber),
       strokes: undefined,
     })),
+    total,
+    page,
+    pageSize,
   });
 }));
 

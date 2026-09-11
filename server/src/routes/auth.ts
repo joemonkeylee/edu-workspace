@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import svgCaptcha from 'svg-captcha';
 import prisma from '../prisma.js';
+import { authRequired, AuthedRequest } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 import {
   isAuthEnabled,
   signAccessToken,
@@ -170,30 +172,35 @@ router.post('/logout', async (req: Request, res: Response) => {
 
 // ── Me (current user) ─────────────────────────────────────────────
 
-router.get('/me', async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'no token' });
-  }
-  try {
-    const token = authHeader.slice(7);
-    const payload = verifyAccessToken(token) as any;
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user) return res.status(401).json({ error: 'user not found' });
-    res.json({
-      userId: user.id,
-      phone: user.phone,
-      email: user.email,
-      isAdmin: user.isAdmin,
-      role: user.role,
-      nickName: user.nickName,
-      avatar: user.avatar,
-      status: user.status,
-      maxDevices: user.maxDevices,
+router.get('/me', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
+  // Standalone mode: no user, return a virtual admin user
+  if (!req.user) {
+    return res.json({
+      userId: 0,
+      phone: '',
+      email: null,
+      isAdmin: true,
+      role: 'admin',
+      nickName: '本机用户',
+      avatar: '',
+      status: 'normal',
+      maxDevices: 99,
     });
-  } catch {
-    res.status(401).json({ error: 'token invalid' });
   }
-});
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+  if (!user) return res.status(401).json({ error: 'user not found' });
+  res.json({
+    userId: user.id,
+    phone: user.phone,
+    email: user.email,
+    isAdmin: user.isAdmin,
+    role: user.role,
+    nickName: user.nickName,
+    avatar: user.avatar,
+    status: user.status,
+    maxDevices: user.maxDevices,
+  });
+}));
 
 export default router;

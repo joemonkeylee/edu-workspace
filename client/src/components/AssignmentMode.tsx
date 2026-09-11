@@ -8,6 +8,7 @@ import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
 import { toast } from 'sonner';
+import { useConfirm } from './ConfirmDialog';
 
 export interface AssignmentModeProps {
   bookId: number;
@@ -38,6 +39,7 @@ export default function AssignmentMode({
   bookId, bookTitle, canGrade = false, totalPages, storagePath, currentPage, setCurrentPage,
   assignment, onExit, onAssignmentUpdate, pageAssignments, onSwitchAssignment,
 }: AssignmentModeProps) {
+  const confirm = useConfirm();
   const [tool, setTool] = useState<DrawTool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
   const [penWidth, setPenWidth] = useState(2);
@@ -45,6 +47,8 @@ export default function AssignmentMode({
   const [savedStrokes, setSavedStrokes] = useState<Stroke[]>([]);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const [strokesLoaded, setStrokesLoaded] = useState(false);
   const [imgNatural, setImgNatural] = useState({ w: 0, h: 0 });
   const [localRotation, setLocalRotation] = useState(0);
@@ -244,7 +248,7 @@ export default function AssignmentMode({
     if (!onThisPage) {
       onSwitchAssignment(pageAssignments[0]);
     }
-  }, [pageAssignments]);
+  }, [pageAssignments, assignment?.id, onSwitchAssignment]);
 
   // Warn before unloading if there are unsaved strokes
   useEffect(() => {
@@ -274,6 +278,8 @@ export default function AssignmentMode({
       setStrokes(mapped);
       setSavedStrokes(mapped);
       setDirty(false);
+      setCanUndo(false);
+      setCanRedo(false);
       setStrokesLoaded(true);
     });
     return () => { cancelled = true; };
@@ -321,7 +327,7 @@ export default function AssignmentMode({
   }, [calcLocalZoom]);
 
   // Save current page, returns success
-  const saveCurrentPage = useCallback(async (): Promise<boolean> => {
+  const saveCurrentPage = useCallback(async (showToast = false): Promise<boolean> => {
     if (!assignment || isGraded) return true;
     if (!dirty) return true;
     setSaving(true);
@@ -329,9 +335,11 @@ export default function AssignmentMode({
       await saveStrokes(assignment.id, lastSavedPageRef.current, layer, strokes);
       setSavedStrokes(strokes);
       setDirty(false);
+      if (showToast) toast.success('保存成功');
       return true;
-    } catch (err) {
-      console.error('Auto-save failed:', err);
+    } catch (err: any) {
+      console.error('Save failed:', err);
+      toast.error('保存失败: ' + (err?.message || '网络错误'));
       return false;
     } finally {
       setSaving(false);
@@ -354,18 +362,20 @@ export default function AssignmentMode({
             return;
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Save before page change failed:', err);
-      } finally {
+        toast.error('保存失败，无法翻页: ' + (err?.message || '网络错误'));
         setSaving(false);
+        return; // Block page change on save failure
       }
+      setSaving(false);
     }
     lastSavedPageRef.current = newPage;
     setCurrentPage(newPage);
     onAssignmentUpdate();
   }, [assignment, dirty, isGraded, strokes, strokesLoaded, currentPage, layer, setCurrentPage, onExit, onAssignmentUpdate]);
 
-  // On exit: save current page, then exit immediately, then clean up empty assignments async
+  // On exit: save current page first, block exit on save failure
   const handleExit = useCallback(async () => {
     if (assignment && dirty && !isGraded) {
       setSaving(true);
@@ -373,18 +383,20 @@ export default function AssignmentMode({
         await saveStrokes(assignment.id, lastSavedPageRef.current, layer, strokes);
         setSavedStrokes(strokes);
         setDirty(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Save on exit failed:', err);
-      } finally {
+        toast.error('保存失败，无法退出: ' + (err?.message || '网络错误'));
         setSaving(false);
+        return; // Block exit on save failure
       }
+      setSaving(false);
     }
-    // Exit immediately so UI is responsive
+    // Exit after successful save
     onExit();
     // Clean up empty assignments asynchronously after exit
     try {
-      const { assignments } = await getAssignments(bookId);
-      for (const a of assignments) {
+      const { data: allAssignments } = await getAssignments(bookId, { pageSize: 200 });
+      for (const a of allAssignments) {
         if (a.status === 'graded') continue;
         const { strokes: allStrokes } = await getStrokes(a.id);
         if (allStrokes.length === 0) {
@@ -401,11 +413,18 @@ export default function AssignmentMode({
     setStrokes(newStrokes);
     const changed = JSON.stringify(newStrokes) !== JSON.stringify(savedStrokes);
     setDirty(changed);
+    setCanUndo(canvasRef.current?.canUndo() ?? false);
+    setCanRedo(canvasRef.current?.canRedo() ?? false);
   }, [savedStrokes]);
 
   const handleMarkGraded = async () => {
     if (!assignment) return;
-    const confirmed = window.confirm('确认将此作业标记为已批改吗？标记后将不能继续编辑笔迹。');
+    const confirmed = await confirm({
+      title: '确认批改',
+      message: '确认将此作业标记为已批改吗？标记后将不能继续编辑笔迹。',
+      confirmText: '确认批改',
+      confirmClass: 'bg-green-600 hover:bg-green-700',
+    });
     if (!confirmed) return;
     const ok = await saveCurrentPage();
     if (!ok) return;
@@ -421,7 +440,13 @@ export default function AssignmentMode({
   const handleReturn = async () => {
     if (!assignment || !isSubmitted) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
-    if (!window.confirm(`确认打回作业「${title}」吗？\n打回后学生可继续修改，不会保存任何批改笔迹。`)) return;
+    const confirmed = await confirm({
+      title: '确认打回',
+      message: `确认打回作业「${title}」吗？\n打回后学生可继续修改，不会保存任何批改笔迹。`,
+      confirmText: '确认打回',
+      confirmClass: 'bg-amber-600 hover:bg-amber-700',
+    });
+    if (!confirmed) return;
     try {
       await updateAssignment(assignment.id, { status: 'returned' });
       toast.success('作业已打回');
@@ -434,7 +459,13 @@ export default function AssignmentMode({
   const handleSubmit = async () => {
     if (!assignment || !canEdit) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
-    if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
+    const confirmed = await confirm({
+      title: '确认提交',
+      message: `确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`,
+      confirmText: '确认提交',
+      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+    });
+    if (!confirmed) return;
     const ok = await saveCurrentPage();
     if (!ok) return;
     try {
@@ -449,7 +480,13 @@ export default function AssignmentMode({
   const handleDeleteAssignment = async () => {
     if (!assignment || !canEdit) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
-    if (!window.confirm(`确认删除作业「${title}」吗？\n此操作不可撤销，所有页面的笔迹都将被删除。`)) return;
+    const confirmed = await confirm({
+      title: '确认删除',
+      message: `确认删除作业「${title}」吗？\n此操作不可撤销，所有页面的笔迹都将被删除。`,
+      confirmText: '确认删除',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+    });
+    if (!confirmed) return;
     try {
       await deleteAssignment(assignment.id);
       toast.success('作业已删除');
@@ -754,14 +791,16 @@ export default function AssignmentMode({
           {/* Undo / Redo */}
           <button
             onClick={() => canvasRef.current?.undo()}
-            className="p-2 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            disabled={!canUndo || readOnly}
+            className="p-2 rounded transition disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white hover:bg-white/10"
             title="撤销"
           >
             <Undo2 size={18} />
           </button>
           <button
             onClick={() => canvasRef.current?.redo()}
-            className="p-2 rounded text-gray-400 hover:text-white hover:bg-white/10 transition"
+            disabled={!canRedo || readOnly}
+            className="p-2 rounded transition disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-white hover:bg-white/10"
             title="重做"
           >
             <Redo2 size={18} />
@@ -771,9 +810,15 @@ export default function AssignmentMode({
 
           {/* Clear all */}
           <button
-            onClick={() => {
+            onClick={async () => {
               if (strokes.length === 0) return;
-              if (window.confirm('确认清除当前页所有笔迹？')) {
+              const confirmed = await confirm({
+                title: '确认清除',
+                message: '确认清除当前页所有笔迹？',
+                confirmText: '确认清除',
+                confirmClass: 'bg-red-600 hover:bg-red-700',
+              });
+              if (confirmed) {
                 canvasRef.current?.clear();
               }
             }}
@@ -788,7 +833,7 @@ export default function AssignmentMode({
 
           {/* Manual save */}
           <button
-            onClick={saveCurrentPage}
+            onClick={() => saveCurrentPage(true)}
             disabled={!dirty || saving}
             className="p-2 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
             title="保存"

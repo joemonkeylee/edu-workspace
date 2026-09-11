@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import * as api from '../api/client';
@@ -43,6 +43,7 @@ import type { Assignment } from '../api/client';
 import { getAssignments } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
 import { useAuthStore } from '../store/authStore';
+import { toast } from 'sonner';
 
 type FitMode = 'width' | 'page' | null;
 type PageLayout = 'single' | 'double';
@@ -184,11 +185,11 @@ export default function BookViewer() {
   // Load all assignments when refresh counter changes
   useEffect(() => {
     if (!bookId) return;
-    getAssignments(bookId).then(({ assignments }) => {
-      setAllAssignments(assignments);
+    getAssignments(bookId, { pageSize: 200 }).then(({ data }) => {
+      setAllAssignments(data);
       // Sync currentAssignment status if it exists in the refreshed list
       if (currentAssignment) {
-        const updated = assignments.find(a => a.id === currentAssignment.id);
+        const updated = data.find(a => a.id === currentAssignment.id);
         if (updated && updated.status !== currentAssignment.status) {
           setCurrentAssignment(updated);
         }
@@ -409,8 +410,13 @@ export default function BookViewer() {
       formData.append('pageNumber', String(currentPage));
       formData.append('type', data.type);
       formData.append('contentJson', JSON.stringify(data.contentJson));
-      await api.saveAnnotation(formData);
-      await fetchAnnotations(currentBook.id);
+      try {
+        await api.saveAnnotation(formData);
+        await fetchAnnotations(currentBook.id);
+        toast.success('批注已保存');
+      } catch (e: any) {
+        toast.error('批注保存失败: ' + (e?.message || ''));
+      }
     },
     [currentBook, currentPage, fetchAnnotations]
   );
@@ -426,9 +432,14 @@ export default function BookViewer() {
       formData.append('contentJson', JSON.stringify(cropData));
       formData.append('subject', subject);
       formData.append('tags', tags);
-      await api.saveAnnotation(formData);
-      await fetchAnnotations(currentBook.id);
-      setTool('view');
+      try {
+        await api.saveAnnotation(formData);
+        await fetchAnnotations(currentBook.id);
+        setTool('view');
+        toast.success('错题已保存');
+      } catch (e: any) {
+        toast.error('保存失败: ' + (e?.message || ''));
+      }
     },
     [currentBook, currentPage, fetchAnnotations, setTool]
   );
@@ -436,7 +447,7 @@ export default function BookViewer() {
   const handleEnterAssignmentMode = useCallback(async () => {
     if (!currentBook) return;
     try {
-      const { assignments: all } = await getAssignments(bookId);
+      const { data: all } = await getAssignments(bookId, { pageSize: 200 });
       const pageAssignments = all.filter(a => a.pages?.includes(currentPage));
       const ungraded = pageAssignments.filter(a => a.status !== 'graded');
       if (ungraded.length > 0) {
@@ -452,10 +463,11 @@ export default function BookViewer() {
       setRightTab('assignments');
       setAssignmentRefresh(v => v + 1);
       setSearchParams({ assignmentId: String(assignment.id), role: 'student' }, { replace: true });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to enter assignment mode:', err);
+      toast.error('进入做题模式失败: ' + (err?.message || ''));
     }
-  }, [currentBook, bookId, currentPage]);
+  }, [currentBook, bookId, currentPage, setSearchParams]);
 
   const createNewAssignment = useCallback(async () => {
     const d = new Date();
@@ -469,15 +481,50 @@ export default function BookViewer() {
     setSearchParams({ assignmentId: String(assignment.id), role: 'student' }, { replace: true });
   }, [bookId, setSearchParams]);
 
+  // Assignment mode callbacks (memoized for stable references)
+  const handleExitAssignmentMode = useCallback(() => {
+    setSearchParams({}, { replace: true });
+    setCurrentAssignment(null);
+    setAssignmentMode(false);
+    setRightOpen(true);
+  }, [setSearchParams]);
+
+  const handleAssignmentUpdate = useCallback(() => {
+    setAssignmentRefresh(v => v + 1);
+  }, []);
+
+  const handleSwitchAssignment = useCallback((a: Assignment | null) => {
+    if (a) setCurrentAssignment(a);
+  }, []);
+
+  // Memoized page assignments list
+  const pageAssignmentsMemo = useMemo(() => {
+    const filtered = allAssignments.filter(a => a.pages?.includes(currentPage));
+    if (currentAssignment && !filtered.some(a => a.id === currentAssignment.id)) {
+      return [currentAssignment, ...filtered];
+    }
+    return filtered;
+  }, [allAssignments, currentPage, currentAssignment]);
+
   const handleMistakeToggle = async (id: number, current: number) => {
-    await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
-    fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
+    try {
+      await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
+      fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
+      toast.success(current === 0 ? '已标记为已掌握' : '已取消掌握标记');
+    } catch (e: any) {
+      toast.error('操作失败: ' + (e?.message || ''));
+    }
   };
 
   const handleMistakeDelete = async (id: number) => {
-    await api.deleteMistake(id);
-    setMistakeCount((count) => Math.max(0, count - 1));
-    fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
+    try {
+      await api.deleteMistake(id);
+      setMistakeCount((count) => Math.max(0, count - 1));
+      fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
+      toast.success('错题已删除');
+    } catch (e: any) {
+      toast.error('删除失败: ' + (e?.message || ''));
+    }
   };
 
   const loadMistakes = () => {
@@ -1043,10 +1090,14 @@ export default function BookViewer() {
                 取消
               </button>
               <button
-                onClick={() => {
-                  removeAnnotation(deleteAnnId).catch((e: any) => {
+                onClick={async () => {
+                  try {
+                    await removeAnnotation(deleteAnnId);
+                    toast.success('批注已删除');
+                  } catch (e: any) {
                     console.error('removeAnnotation failed:', e);
-                  });
+                    toast.error('删除失败: ' + (e?.message || ''));
+                  }
                   setDeleteAnnId(null);
                   setSelectedAnnotationId(null);
                 }}
@@ -1118,21 +1169,10 @@ export default function BookViewer() {
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
           assignment={currentAssignment}
-          onExit={() => {
-            setSearchParams({}, { replace: true });
-            setCurrentAssignment(null);
-            setAssignmentMode(false);
-            setRightOpen(true);
-          }}
-          onAssignmentUpdate={() => setAssignmentRefresh(v => v + 1)}
-          pageAssignments={(() => {
-            const filtered = allAssignments.filter(a => a.pages?.includes(currentPage));
-            if (currentAssignment && !filtered.some(a => a.id === currentAssignment.id)) {
-              return [currentAssignment, ...filtered];
-            }
-            return filtered;
-          })()}
-          onSwitchAssignment={(a) => { if (a) setCurrentAssignment(a); }}
+          onExit={handleExitAssignmentMode}
+          onAssignmentUpdate={handleAssignmentUpdate}
+          pageAssignments={pageAssignmentsMemo}
+          onSwitchAssignment={handleSwitchAssignment}
         />
       )}
     </div>

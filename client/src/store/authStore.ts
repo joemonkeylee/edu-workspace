@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { initAuth, setAuthExpiredHandler, clearTokens, getAuthStatus, getMe, logout as apiLogout, type LoginUser } from '../api/client';
+import { toast } from 'sonner';
 
 interface AuthState {
   user: LoginUser | null;
@@ -67,5 +68,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setAuthExpired: () => {
     set({ user: null });
+    toast.error('登录已过期，请重新登录');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   },
 }));

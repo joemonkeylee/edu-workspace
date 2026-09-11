@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { FolderOpen, RefreshCw, Save } from 'lucide-react';
 import { getStorageSettings, inspectStorageSettings, openStorageDirectory, updateStorageSettings } from '../../api/client';
+import { useConfirm } from '../ConfirmDialog';
 
 export default function StorageSettings() {
+  const confirm = useConfirm();
   const [path, setPath] = useState('');
   const [matchedBooks, setMatchedBooks] = useState(0);
   const [totalBooks, setTotalBooks] = useState(0);
@@ -37,7 +39,13 @@ export default function StorageSettings() {
 
   const save = async () => {
     if (!path.trim()) return;
-    if (!window.confirm(`确定切换资源目录？\n\n${path}\n\n检测到 ${matchedBooks}/${totalBooks} 本书资源匹配。`)) return;
+    const confirmed = await confirm({
+      title: '确认切换资源目录',
+      message: `确定切换资源目录？\n\n${path}\n\n检测到 ${matchedBooks}/${totalBooks} 本书资源匹配。`,
+      confirmText: '确认切换',
+      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+    });
+    if (!confirmed) return;
     setSaving(true);
     setMessage('');
     try {

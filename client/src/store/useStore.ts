@@ -61,7 +61,7 @@ export const useStore = create<StoreState>((set, get) => ({
     try {
       const res = await api.getBooks(params);
       set({
-        books: res.books,
+        books: res.data,
         total: res.total,
         subjectOptions: res.options.subjects,
         gradeOptions: res.options.grades,

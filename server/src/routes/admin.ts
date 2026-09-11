@@ -9,6 +9,7 @@ import { runWithDynamicConcurrency } from '../utils/concurrency.js';
 import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
 import { execFile } from 'child_process';
 import { adminRequired, AuthedRequest } from '../middleware/auth.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 const maxConcurrency = Math.max(1, os.cpus().length - 1);
@@ -29,33 +30,33 @@ router.post('/scan-pdf/concurrency', (req: Request, res: Response) => {
   res.json({ concurrency: task.value, active: true });
 });
 
-router.get('/storage', async (_req: Request, res: Response) => {
+router.get('/storage', asyncHandler(async (_req: Request, res: Response) => {
   const current = await inspectStorageRoot(getStorageRoot());
   res.json(current);
-});
+}));
 
-router.post('/storage/inspect', async (req: Request, res: Response) => {
+router.post('/storage/inspect', asyncHandler(async (req: Request, res: Response) => {
   const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
   if (!targetPath) return res.status(400).json({ error: '资源目录不能为空' });
   res.json(await inspectStorageRoot(targetPath));
-});
+}));
 
-router.put('/storage', async (req: Request, res: Response) => {
+router.put('/storage', asyncHandler(async (req: Request, res: Response) => {
   const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
   if (!targetPath) return res.status(400).json({ error: '资源目录不能为空' });
   const inspection = await inspectStorageRoot(targetPath);
   if (!inspection.exists) fs.mkdirSync(inspection.path, { recursive: true });
   const storagePath = await setStorageRoot(inspection.path);
   res.json({ path: storagePath, matchedBooks: inspection.matchedBooks, totalBooks: inspection.totalBooks });
-});
+}));
 
 router.post('/storage/open', (req: Request, res: Response) => {
-  const storageRoot = getStorageRoot();
+  const storageRoot = path.resolve(getStorageRoot());
   const targetPath = typeof req.body?.path === 'string' && req.body.path.trim()
     ? path.resolve(req.body.path.trim())
     : storageRoot;
-  // Whitelist: only allow opening paths inside storage root
-  if (!targetPath.startsWith(storageRoot)) {
+  // Whitelist: only allow paths inside storage root
+  if (!targetPath.startsWith(storageRoot + path.sep) && targetPath !== storageRoot) {
     return res.status(403).json({ error: '只能打开资源目录内的路径' });
   }
   fs.mkdirSync(targetPath, { recursive: true });
@@ -78,7 +79,7 @@ interface PdfTask {
 }
 
 // Pre-scan preview: parse a directory and return parsed metadata without importing
-router.post('/scan-pdf/preview', async (req: Request, res: Response) => {
+router.post('/scan-pdf/preview', asyncHandler(async (req: Request, res: Response) => {
   const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
   if (!targetPath || !fs.existsSync(targetPath)) {
     return res.status(400).json({ error: '路径不存在' });
@@ -132,7 +133,7 @@ router.post('/scan-pdf/preview', async (req: Request, res: Response) => {
   });
 
   res.json({ files: results, total: results.length });
-});
+}));
 
 router.get('/scan-pdf', async (req: Request, res: Response) => {
   const targetPath = req.query.targetPath as string;
