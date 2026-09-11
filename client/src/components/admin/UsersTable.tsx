@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminGetUsers, adminCreateUser, adminUpdateUser, adminResetPassword, adminDeleteUser, adminGetUserDevices, adminKickDevice } from '../../api/client';
+import { toast } from 'sonner';
 
 interface UserRow {
   id: number;
@@ -108,7 +109,7 @@ export default function UsersTable() {
                     <button onClick={() => fetchDevices(u.id)} className="text-blue-600 hover:underline">设备</button>
                     <EditButton user={u} onUpdated={fetchUsers} />
                     <ResetPasswordButton userId={u.id} />
-                    <button onClick={() => { if (confirm('确认删除该用户？')) { adminDeleteUser(u.id).then(fetchUsers); } }} className="text-red-600 hover:underline">删除</button>
+                    <button onClick={() => { if (confirm('确认删除该用户？')) { adminDeleteUser(u.id).then(() => { toast.success('用户已删除'); fetchUsers(); }).catch((e: any) => toast.error('删除失败: ' + (e?.message || ''))); } }} className="text-red-600 hover:underline">删除</button>
                   </div>
                 </td>
               </tr>
@@ -216,11 +217,15 @@ function ResetPasswordButton({ userId }: { userId: number }) {
             <input type="password" placeholder="新密码" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border rounded text-sm mb-3" />
             <button
               onClick={async () => {
-                if (!password || password.length < 4) { alert('密码至少4位'); return; }
-                await adminResetPassword(userId, password);
-                setShow(false);
-                setPassword('');
-                alert('密码已重置');
+                if (!password || password.length < 4) { toast.warning('密码至少4位'); return; }
+                try {
+                  await adminResetPassword(userId, password);
+                  setShow(false);
+                  setPassword('');
+                  toast.success('密码已重置');
+                } catch (e: any) {
+                  toast.error('重置失败: ' + (e?.message || ''));
+                }
               }}
               className="w-full py-2 bg-primary text-white rounded text-sm"
             >确认重置</button>

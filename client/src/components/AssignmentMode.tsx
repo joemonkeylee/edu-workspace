@@ -7,6 +7,7 @@ import {
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
+import { toast } from 'sonner';
 
 export interface AssignmentModeProps {
   bookId: number;
@@ -408,16 +409,26 @@ export default function AssignmentMode({
     if (!confirmed) return;
     const ok = await saveCurrentPage();
     if (!ok) return;
-    await updateAssignment(assignment.id, { status: 'graded' });
-    onAssignmentUpdate();
+    try {
+      await updateAssignment(assignment.id, { status: 'graded' });
+      toast.success('作业已批改');
+      onAssignmentUpdate();
+    } catch (e: any) {
+      toast.error('批改失败: ' + (e?.message || ''));
+    }
   };
 
   const handleReturn = async () => {
     if (!assignment || !isSubmitted) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
     if (!window.confirm(`确认打回作业「${title}」吗？\n打回后学生可继续修改，不会保存任何批改笔迹。`)) return;
-    await updateAssignment(assignment.id, { status: 'returned' });
-    onAssignmentUpdate();
+    try {
+      await updateAssignment(assignment.id, { status: 'returned' });
+      toast.success('作业已打回');
+      onAssignmentUpdate();
+    } catch (e: any) {
+      toast.error('打回失败: ' + (e?.message || ''));
+    }
   };
 
   const handleSubmit = async () => {
@@ -426,17 +437,27 @@ export default function AssignmentMode({
     if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
     const ok = await saveCurrentPage();
     if (!ok) return;
-    await updateAssignment(assignment.id, { status: 'submitted' });
-    onAssignmentUpdate();
+    try {
+      await updateAssignment(assignment.id, { status: 'submitted' });
+      toast.success('作业已提交');
+      onAssignmentUpdate();
+    } catch (e: any) {
+      toast.error('提交失败: ' + (e?.message || ''));
+    }
   };
 
   const handleDeleteAssignment = async () => {
     if (!assignment || !canEdit) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
     if (!window.confirm(`确认删除作业「${title}」吗？\n此操作不可撤销，所有页面的笔迹都将被删除。`)) return;
-    await deleteAssignment(assignment.id);
-    onAssignmentUpdate();
-    onExit();
+    try {
+      await deleteAssignment(assignment.id);
+      toast.success('作业已删除');
+      onAssignmentUpdate();
+      onExit();
+    } catch (e: any) {
+      toast.error('删除失败: ' + (e?.message || ''));
+    }
   };
 
   const handleExport = () => {

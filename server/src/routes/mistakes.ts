@@ -4,13 +4,18 @@ import { authRequired, AuthedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', authRequired, async (req: AuthedRequest, res: Response) => {
   const { subject, reviewStatus, bookId, tag } = req.query;
+  const userId = req.user?.userId;
   const where: any = {};
   if (subject) where.subject = subject;
   if (reviewStatus !== undefined) where.reviewStatus = parseInt(reviewStatus as string, 10);
   if (bookId) where.bookId = parseInt(bookId as string, 10);
   if (tag) where.tags = { contains: tag as string };
+  // Data isolation: show only user's mistakes + shared (null userId) when auth enabled
+  if (userId) {
+    where.OR = [{ userId }, { userId: null }];
+  }
 
   const mistakes = await prisma.mistake.findMany({
     where,

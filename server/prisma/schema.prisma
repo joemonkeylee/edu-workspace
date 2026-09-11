@@ -19,6 +19,7 @@ model User {
   email      String?  @unique @db.VarChar(128)
   password   String   @db.VarChar(255)
   isAdmin    Boolean  @default(false)
+  role       String   @default("student") @db.VarChar(20) // student | teacher | admin
   nickName   String   @default("") @db.VarChar(64)
   avatar     String   @default("") @db.VarChar(512)
   status     String   @default("normal") @db.VarChar(20) // normal | disabled
@@ -27,6 +28,9 @@ model User {
   updatedAt  DateTime @updatedAt
 
   refreshTokens RefreshToken[]
+  annotations  Annotation[]
+  mistakes     Mistake[]
+  assignments  Assignment[]
 }
 
 model RefreshToken {
@@ -56,6 +60,7 @@ model Book {
   tocJson     Json
   attributes  Json     @default("{}")
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
   @@index([fileHash])
   annotations Annotation[]
@@ -68,6 +73,7 @@ model Assignment {
   bookId    Int
   book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String   @default("") @db.VarChar(255)
   subject   String   @default("") @db.VarChar(64)
   status    String   @default("draft") @db.VarChar(20) // draft | submitted | graded | returned
@@ -102,6 +108,8 @@ model Annotation {
   id          Int      @id @default(autoincrement())
   bookId      Int
   book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   pageNumber  Int
   type        String
   contentJson Json
@@ -109,6 +117,8 @@ model Annotation {
   createdAt   DateTime @default(now())
 
   mistakes Mistake[]
+
+  @@index([userId])
 }
 
 model Mistake {
@@ -117,6 +127,8 @@ model Mistake {
   annotation   Annotation  @relation(fields: [annotationId], references: [id], onDelete: Cascade)
   bookId       Int
   book         Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId       Int?
+  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
   pageNumber   Int
   imagePath    String
   subject      String
@@ -127,4 +139,5 @@ model Mistake {
   @@index([bookId])
   @@index([annotationId])
   @@index([subject])
+  @@index([userId])
 }

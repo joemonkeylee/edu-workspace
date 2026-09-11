@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Trash2, Clock, Layers, CheckCircle, Send } from 'lucide-react';
 import { getAssignments, deleteAssignment, updateAssignment, type Assignment } from '../api/client';
+import { toast } from 'sonner';
 import { formatAssignmentTitle } from '../utils/assignment';
 
 export interface AssignmentListProps {
@@ -32,8 +33,13 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     if (a.status !== 'draft' && a.status !== 'returned') return;
     const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
     if (!window.confirm(`确认删除作业「${title}」吗？此操作不可撤销。`)) return;
-    await deleteAssignment(a.id);
-    load();
+    try {
+      await deleteAssignment(a.id);
+      toast.success('作业已删除');
+      load();
+    } catch (err: any) {
+      toast.error('删除失败: ' + (err?.message || ''));
+    }
   };
 
   const handleSubmit = async (e: React.MouseEvent, a: Assignment) => {
@@ -41,8 +47,13 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
     if (a.status !== 'draft' && a.status !== 'returned') return;
     const title = formatAssignmentTitle(a.title) || `作业 #${a.id}`;
     if (!window.confirm(`确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`)) return;
-    await updateAssignment(a.id, { status: 'submitted' });
-    load();
+    try {
+      await updateAssignment(a.id, { status: 'submitted' });
+      toast.success('作业已提交');
+      load();
+    } catch (err: any) {
+      toast.error('提交失败: ' + (err?.message || ''));
+    }
   };
 
   const formatTime = (dateStr: string) => {

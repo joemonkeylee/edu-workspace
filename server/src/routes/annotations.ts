@@ -21,6 +21,7 @@ router.post('/', authRequired, upload.single('image'), async (req: AuthedRequest
     return res.status(400).json({ error: '缺少必要参数: bookId, pageNumber, type' });
   }
 
+  const userId = req.user?.userId || null;
   const annotation = await prisma.annotation.create({
     data: {
       bookId: parseInt(bookId, 10),
@@ -28,6 +29,7 @@ router.post('/', authRequired, upload.single('image'), async (req: AuthedRequest
       type,
       contentJson: contentJson ? JSON.parse(contentJson) : {},
       tags: tags || null,
+      userId,
     },
   });
 
@@ -47,6 +49,7 @@ router.post('/', authRequired, upload.single('image'), async (req: AuthedRequest
         imagePath,
         subject: req.body.subject || '未分类',
         tags: tags || null,
+        userId,
       },
     });
     return res.json({ annotation, mistake });
@@ -55,10 +58,15 @@ router.post('/', authRequired, upload.single('image'), async (req: AuthedRequest
   res.json({ annotation });
 });
 
-router.get('/book/:bookId', async (req: Request, res: Response) => {
+router.get('/book/:bookId', authRequired, async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.params.bookId, 10);
+  const userId = req.user?.userId;
+  const where: any = { bookId };
+  if (userId) {
+    where.OR = [{ userId }, { userId: null }];
+  }
   const annotations = await prisma.annotation.findMany({
-    where: { bookId },
+    where,
     orderBy: { pageNumber: 'asc' },
   });
   res.json(annotations);

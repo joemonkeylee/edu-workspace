@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import Home from './pages/Home';
 import BookViewer from './pages/BookViewer';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
+import NotFound from './pages/NotFound';
+import ScrollToTop from './components/ScrollToTop';
 import AdminLayout from './components/admin/AdminLayout';
 import AuthGuard from './components/admin/AuthGuard';
 import PdfScanImport from './components/admin/PdfScanImport';
@@ -24,6 +27,8 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
+      <Toaster position="top-center" richColors />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -32,7 +37,6 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/book/:id" element={<BookViewer />} />
 
-        {/* Admin routes — guarded by AuthGuard for future RBAC */}
         <Route path="/admin" element={<AuthGuard allowedRoles={['admin', 'editor']} />}>
           <Route element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/scan" replace />} />
@@ -47,7 +51,7 @@ export default function App() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

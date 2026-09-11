@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminGetMistakes, adminUpdateMistake, adminDeleteMistake } from '../../api/client';
 import { Search, Trash2, ChevronLeft, ChevronRight, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const PAGE_SIZE = 10;
 
@@ -44,8 +45,13 @@ export default function MistakesTable() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('确认删除此错题？将同时删除关联的图片文件。')) return;
-    await adminDeleteMistake(id);
-    fetch();
+    try {
+      await adminDeleteMistake(id);
+      toast.success('错题已删除');
+      fetch();
+    } catch (e: any) {
+      toast.error('删除失败: ' + (e?.message || '未知错误'));
+    }
   };
 
   const subjects = Array.from(new Set(items.map(i => i.subject).filter(Boolean)));

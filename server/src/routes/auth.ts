@@ -169,7 +169,7 @@ router.post('/logout', async (req: Request, res: Response) => {
 
 // ── Me (current user) ─────────────────────────────────────────────
 
-router.get('/me', (req: Request, res: Response) => {
+router.get('/me', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'no token' });
@@ -177,7 +177,19 @@ router.get('/me', (req: Request, res: Response) => {
   try {
     const token = authHeader.slice(7);
     const payload = verifyAccessToken(token) as any;
-    res.json({ userId: payload.userId, phone: payload.phone, isAdmin: payload.isAdmin });
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) return res.status(401).json({ error: 'user not found' });
+    res.json({
+      userId: user.id,
+      phone: user.phone,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      role: user.role,
+      nickName: user.nickName,
+      avatar: user.avatar,
+      status: user.status,
+      maxDevices: user.maxDevices,
+    });
   } catch {
     res.status(401).json({ error: 'token invalid' });
   }

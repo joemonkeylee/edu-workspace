@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminGetAnnotations, adminDeleteAnnotation } from '../../api/client';
 import { Search, Trash2, ChevronLeft, ChevronRight, Highlighter, FileText } from 'lucide-react';
+import { toast } from 'sonner';
 
 const PAGE_SIZE = 10;
 
@@ -37,8 +38,13 @@ export default function AnnotationsTable() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('确认删除此批注？')) return;
-    await adminDeleteAnnotation(id);
-    fetch();
+    try {
+      await adminDeleteAnnotation(id);
+      toast.success('批注已删除');
+      fetch();
+    } catch (e: any) {
+      toast.error('删除失败: ' + (e?.message || '未知错误'));
+    }
   };
 
   const renderContent = (item: any) => {

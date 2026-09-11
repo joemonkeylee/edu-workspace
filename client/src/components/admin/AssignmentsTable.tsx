@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Trash2, CheckSquare, Square, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments } from '../../api/client';
 import { formatAssignmentTitle } from '../../utils/assignment';
 
@@ -54,15 +55,26 @@ export default function AssignmentsTable() {
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('确认删除此作业吗？学生笔迹和教师批改笔迹都会被删除，且无法恢复。')) return;
-    await adminDeleteAssignment(id);
-    fetchAssignments();
+    try {
+      await adminDeleteAssignment(id);
+      toast.success('作业已删除');
+      fetchAssignments();
+    } catch (e: any) {
+      toast.error('删除失败: ' + (e?.message || ''));
+    }
   };
 
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
     if (!window.confirm(`确认删除选中的 ${selectedIds.length} 个作业吗？相关笔迹都会被删除，且无法恢复。`)) return;
-    await adminDeleteAssignmentsBatch(selectedIds);
-    fetchAssignments();
+    try {
+      await adminDeleteAssignmentsBatch(selectedIds);
+      toast.success(`已删除 ${selectedIds.length} 个作业`);
+      setSelectedIds([]);
+      fetchAssignments();
+    } catch (e: any) {
+      toast.error('批量删除失败: ' + (e?.message || ''));
+    }
   };
 
   return (
