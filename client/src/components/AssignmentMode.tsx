@@ -71,7 +71,7 @@ export default function AssignmentMode({
   const isReturned = assignment?.status === 'returned';
   const canEdit = assignment?.status === 'draft' || isReturned;
   const readOnly = isGraded || (isSubmitted && !canGrade);
-  const layer = 'student';
+  const layer = canGrade ? 'teacher' : 'student';
 
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
   const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
@@ -244,6 +244,17 @@ export default function AssignmentMode({
       onSwitchAssignment(pageAssignments[0]);
     }
   }, [pageAssignments]);
+
+  // Warn before unloading if there are unsaved strokes
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   // Load strokes when page or assignment changes
   useEffect(() => {

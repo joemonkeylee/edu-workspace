@@ -8,10 +8,13 @@ import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSu
 import { runWithDynamicConcurrency } from '../utils/concurrency.js';
 import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
 import { execFile } from 'child_process';
+import { adminRequired, AuthedRequest } from '../middleware/auth.js';
 
 const router = Router();
 const maxConcurrency = Math.max(1, os.cpus().length - 1);
 const scanConcurrency = new Map<string, { value: number }>();
+
+router.use(adminRequired);
 
 router.get('/scan-pdf/capacity', (_req: Request, res: Response) => {
   res.json({ cores: os.cpus().length, maxConcurrency });
@@ -47,9 +50,14 @@ router.put('/storage', async (req: Request, res: Response) => {
 });
 
 router.post('/storage/open', (req: Request, res: Response) => {
+  const storageRoot = getStorageRoot();
   const targetPath = typeof req.body?.path === 'string' && req.body.path.trim()
     ? path.resolve(req.body.path.trim())
-    : getStorageRoot();
+    : storageRoot;
+  // Whitelist: only allow opening paths inside storage root
+  if (!targetPath.startsWith(storageRoot)) {
+    return res.status(403).json({ error: '只能打开资源目录内的路径' });
+  }
   fs.mkdirSync(targetPath, { recursive: true });
   const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
   execFile(command, [targetPath], (error) => {
@@ -370,12 +378,6 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       return res.end();
     }
 
-    // Reset AUTO_INCREMENT to max(id)+1 so re-imports continue from current max
-    const maxIdResult = await prisma.book.aggregate({ _max: { id: true } });
-    const nextAutoInc = (maxIdResult._max.id ?? 0) + 1;
-    await prisma.$executeRawUnsafe(`ALTER TABLE \`Book\` AUTO_INCREMENT = ${nextAutoInc}`);
-    send('log', { message: `自增 ID 重置为 ${nextAutoInc}` });
-
     const pagesToProcess = toProcess.reduce((s, t) => s + t.pages, 0);
     const secPerPage = 0.3 * (dpi / 150);
     send('log', { message: `预计渲染 ${pagesToProcess} 页，并发=${concurrencyState.value}，预计耗时: ${fmtTime(pagesToProcess * secPerPage / concurrencyState.value)}` });
@@ -388,6 +390,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
     await runWithDynamicConcurrency(toProcess, () => concurrencyState.value, async (task: PdfTask, idx: number) => {
       send('log', { message: `[${idx + 1}/${toProcess.length}] 正在处理: ${task.fileName}` });
 
+      let createdBookId: number | null = null;
       try {
         let bookId: number;
         let bookDir: string;
@@ -468,6 +471,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
             });
             bookId = book.id;
             isNew = true;
+            createdBookId = bookId;
             bookDir = getBookRoot(bookId);
             send('log', { message: `  创建书籍记录: ID=${bookId} (阶段=${task.grade || '-'} 学科=${task.subject || '-'})` });
           }
@@ -522,6 +526,15 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         send('log', { message: `  渲染完成，共 ${images.length} 张图片，可用 DPI: ${allDpis.join(', ')}` });
         send('log', { message: `  ✓ 处理完成: ${task.title} (${task.pages}页)` });
       } catch (err: any) {
+        // Rollback: delete newly created book record if render failed
+        if (createdBookId !== null) {
+          try {
+            await prisma.book.delete({ where: { id: createdBookId } });
+            const failedDir = getBookRoot(createdBookId);
+            fs.rmSync(failedDir, { recursive: true, force: true });
+            send('log', { message: `  已回滚: 删除半残书籍记录 ID=${createdBookId}` });
+          } catch { /* book may already be deleted */ }
+        }
         send('log', { message: `  ✗ 处理失败: ${err.message}` });
       }
     });

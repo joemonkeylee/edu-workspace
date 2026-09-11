@@ -58,21 +58,32 @@ export const useStore = create<StoreState>((set, get) => ({
 
   fetchBooks: async (params) => {
     set({ loading: true });
-    const res = await api.getBooks(params);
-    set({
-      books: res.books,
-      total: res.total,
-      subjectOptions: res.options.subjects,
-      gradeOptions: res.options.grades,
-      categoryOptions: res.options.categories,
-      loading: false,
-    });
+    try {
+      const res = await api.getBooks(params);
+      set({
+        books: res.books,
+        total: res.total,
+        subjectOptions: res.options.subjects,
+        gradeOptions: res.options.grades,
+        categoryOptions: res.options.categories,
+      });
+    } catch (e) {
+      console.error('fetchBooks failed:', e);
+    } finally {
+      set({ loading: false });
+    }
   },
 
   fetchBook: async (id: number) => {
     set({ loading: true });
-    const book = await api.getBook(id);
-    set({ currentBook: book, currentPage: 1, loading: false });
+    try {
+      const book = await api.getBook(id);
+      set({ currentBook: book, currentPage: 1 });
+    } catch (e) {
+      console.error('fetchBook failed:', e);
+    } finally {
+      set({ loading: false });
+    }
   },
 
   setCurrentPage: (page: number) => set({ currentPage: page }),
@@ -85,13 +96,21 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   fetchAnnotations: async (bookId: number) => {
-    const annotations = await (await import('../api/client')).default.get(`/annotations/book/${bookId}`).then(r => r.data);
-    set({ annotations });
+    try {
+      const res = await api.default.get(`/annotations/book/${bookId}`);
+      set({ annotations: res.data });
+    } catch (e) {
+      console.error('fetchAnnotations failed:', e);
+    }
   },
 
   fetchMistakes: async (params?: Record<string, any>) => {
-    const mistakes = await api.getMistakes(params);
-    set({ mistakes });
+    try {
+      const mistakes = await api.getMistakes(params);
+      set({ mistakes });
+    } catch (e) {
+      console.error('fetchMistakes failed:', e);
+    }
   },
 
   removeBook: async (id: number) => {

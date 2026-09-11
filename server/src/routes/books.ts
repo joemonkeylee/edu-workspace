@@ -4,6 +4,7 @@ import fs from 'fs';
 import prisma from '../prisma.js';
 import { getBestDpiPath, getAvailableDpisAsync } from '../services/pdfProcessor.js';
 import { getBookRoot, getCropsRoot } from '../services/storage.js';
+import { authRequired, adminRequired, AuthedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -150,7 +151,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   res.json({ ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl });
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', adminRequired, async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
     const bookDir = getBookRoot(id);
@@ -165,7 +166,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', adminRequired, async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const { title, category, grade, subject } = req.body;
   const data: any = {};

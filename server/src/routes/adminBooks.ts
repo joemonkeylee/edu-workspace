@@ -4,8 +4,10 @@ import fs from 'fs';
 import prisma from '../prisma.js';
 import { getAvailableDpis } from '../services/pdfProcessor.js';
 import { getBookRoot, getCropsRoot } from '../services/storage.js';
+import { adminRequired } from '../middleware/auth.js';
 
 const router = Router();
+router.use(adminRequired);
 router.get('/', async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 20;
@@ -67,7 +69,6 @@ router.delete('/all', async (_req: Request, res: Response) => {
     try { fs.rmSync(cropsRoot, { recursive: true, force: true }); } catch { /* files may not exist */ }
 
     await prisma.book.deleteMany({});
-    await prisma.$executeRawUnsafe('ALTER TABLE `Book` AUTO_INCREMENT = 1');
     res.json({ success: true, deleted: books.length });
   } catch (error: any) {
     res.status(500).json({ error: `清空书籍失败: ${error.message}` });
@@ -116,7 +117,6 @@ router.post('/all/stream', async (_req: Request, res: Response) => {
     }
 
     await prisma.book.deleteMany({});
-    await prisma.$executeRawUnsafe('ALTER TABLE `Book` AUTO_INCREMENT = 1');
     send('done', { success: true, deleted: books.length });
   } catch (error: any) {
     send('error', { error: `清空书籍失败: ${error.message}` });
@@ -131,7 +131,6 @@ router.delete('/all', async (_req: Request, res: Response) => {
     try { fs.rmSync(path.dirname(getBookRoot(0)), { recursive: true, force: true }); } catch { /* files may not exist */ }
     try { fs.rmSync(getCropsRoot(), { recursive: true, force: true }); } catch { /* files may not exist */ }
     await prisma.book.deleteMany({});
-    await prisma.$executeRawUnsafe('ALTER TABLE `Book` AUTO_INCREMENT = 1');
     res.json({ success: true, deleted: books.length });
   } catch (error: any) {
     res.status(500).json({ error: `清空书籍失败: ${error.message}` });

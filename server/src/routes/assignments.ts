@@ -16,8 +16,13 @@ router.get('/', authRequired, async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.query.bookId as string);
   if (isNaN(bookId)) return res.status(400).json({ error: 'bookId required' });
 
+  // Filter by userId when auth is enabled (data isolation)
+  const userId = req.user?.userId;
+  const where: any = { bookId };
+  if (userId) where.userId = userId;
+
   const assignments = await prisma.assignment.findMany({
-    where: { bookId },
+    where,
     select: {
       id: true, bookId: true, userId: true, title: true, subject: true,
       status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
@@ -72,28 +77,67 @@ router.post('/', authRequired, async (req: AuthedRequest, res: Response) => {
 
 router.put('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
+
+  // Fetch assignment for ownership check
+  const assignment = await prisma.assignment.findUnique({ where: { id } });
+  if (!assignment) return res.status(404).json({ error: 'not found' });
+
+  // Ownership check: when auth is enabled, only owner or admin can modify
+  const userId = req.user?.userId;
+  const isOwner = !userId || assignment.userId === userId || assignment.userId === 0;
+  const isAdmin = req.user?.isAdmin;
+  if (!isOwner && !isAdmin) {
+    return res.status(403).json({ error: 'no permission to modify this assignment' });
+  }
+
   const data: any = {};
   if (typeof req.body?.title === 'string') data.title = req.body.title;
   if (typeof req.body?.subject === 'string') data.subject = req.body.subject;
+
+  // Status flow: students can only draft→submitted; graded/returned require admin
   if (typeof req.body?.status === 'string' && ['draft', 'submitted', 'graded', 'returned'].includes(req.body.status)) {
-    data.status = req.body.status;
-    if (req.body.status === 'graded') {
-      data.gradedAt = new Date();
-      data.gradedBy = req.user?.userId || null;
+    const newStatus = req.body.status;
+    const isTeacher = isAdmin;
+
+    if (newStatus === 'graded' || newStatus === 'returned') {
+      if (!isTeacher) {
+        return res.status(403).json({ error: 'only teacher/admin can grade or return assignments' });
+      }
+      data.gradedAt = newStatus === 'graded' ? new Date() : null;
+      data.gradedBy = userId || null;
     } else {
+      // draft / submitted — student can set, but only for their own assignment
       data.gradedAt = null;
       data.gradedBy = null;
     }
+    data.status = newStatus;
   }
 
-  const assignment = await prisma.assignment.update({ where: { id }, data });
-  res.json({ assignment });
+  const updated = await prisma.assignment.update({ where: { id }, data });
+  res.json({ assignment: updated });
 });
 
 // ── Delete assignment ─────────────────────────────────────────────
 
 router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id);
+
+  // Ownership check
+  const assignment = await prisma.assignment.findUnique({ where: { id } });
+  if (!assignment) return res.status(404).json({ error: 'not found' });
+
+  const userId = req.user?.userId;
+  const isOwner = !userId || assignment.userId === userId || assignment.userId === 0;
+  const isAdmin = req.user?.isAdmin;
+  if (!isOwner && !isAdmin) {
+    return res.status(403).json({ error: 'no permission to delete this assignment' });
+  }
+
+  // Only draft or returned assignments can be deleted
+  if (assignment.status === 'submitted' || assignment.status === 'graded') {
+    return res.status(403).json({ error: 'cannot delete submitted or graded assignment' });
+  }
+
   await prisma.assignment.delete({ where: { id } }).catch(() => {});
   res.json({ success: true });
 });
@@ -128,14 +172,12 @@ router.post('/:id/strokes', authRequired, async (req: AuthedRequest, res: Respon
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
   if (assignment.status === 'graded') return res.status(403).json({ error: 'assignment is graded, read-only' });
 
-  // Delete existing strokes for this page+layer
-  await prisma.assignmentStroke.deleteMany({
-    where: { assignmentId: id, pageNumber, layer },
-  });
-
-  // Insert new strokes
-  if (strokes.length > 0) {
-    await prisma.assignmentStroke.createMany({
+  // Delete existing + insert new strokes atomically
+  await prisma.$transaction([
+    prisma.assignmentStroke.deleteMany({
+      where: { assignmentId: id, pageNumber, layer },
+    }),
+    ...(strokes.length > 0 ? [prisma.assignmentStroke.createMany({
       data: strokes.map((s: any) => ({
         assignmentId: id,
         pageNumber,
@@ -145,8 +187,8 @@ router.post('/:id/strokes', authRequired, async (req: AuthedRequest, res: Respon
         width: s.width || 2,
         points: s.points || [],
       })),
-    });
-  }
+    })] : []),
+  ]);
 
   res.json({ success: true, count: strokes.length });
 });

@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import prisma from '../prisma.js';
 import { getCropsRoot } from '../services/storage.js';
+import { authRequired, AuthedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
 });
 
-router.post('/', upload.single('image'), async (req: Request, res: Response) => {
+router.post('/', authRequired, upload.single('image'), async (req: AuthedRequest, res: Response) => {
   const { bookId, pageNumber, type, contentJson, tags } = req.body;
 
   if (!bookId || !pageNumber || !type) {
@@ -63,9 +64,27 @@ router.get('/book/:bookId', async (req: Request, res: Response) => {
   res.json(annotations);
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
+    const annotation = await prisma.annotation.findUnique({ where: { id } });
+    if (!annotation) return res.status(404).json({ error: '批注不存在' });
+
+    // Clean up crops files if this is a crop annotation
+    if (annotation.type === 'crop') {
+      const mistakes = await prisma.mistake.findMany({
+        where: { annotationId: id },
+        select: { imagePath: true },
+      });
+      for (const m of mistakes) {
+        if (m.imagePath) {
+          try {
+            fs.rmSync(path.join(getCropsRoot(), path.basename(m.imagePath)), { force: true });
+          } catch { /* file may not exist */ }
+        }
+      }
+    }
+
     await prisma.annotation.delete({ where: { id } });
     res.json({ success: true });
   } catch {

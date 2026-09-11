@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
+import { adminRequired } from '../middleware/auth.js';
 
 const router = Router();
+router.use(adminRequired);
 
 router.get('/', async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
+import { authRequired, AuthedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(mistakes);
 });
 
-router.patch('/:id', async (req: Request, res: Response) => {
+router.patch('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const { reviewStatus, tags, subject } = req.body;
   const data: any = {};
@@ -35,7 +36,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authRequired, async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   try {
     await prisma.mistake.delete({ where: { id } });

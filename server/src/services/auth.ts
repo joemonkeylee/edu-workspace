@@ -38,7 +38,8 @@ export async function getAllAuthSettings() {
 // ── JWT ───────────────────────────────────────────────────────────
 
 export function isAuthEnabled(): boolean {
-  return process.env.AUTH_ENABLED === 'true';
+  // Default to true for safety; only disabled when explicitly set to 'false'
+  return process.env.AUTH_ENABLED !== 'false';
 }
 
 function getAccessTokenExpiry(expiryStr: string): number | undefined {
@@ -62,13 +63,29 @@ export interface JwtPayload {
   isAdmin: boolean;
 }
 
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && isAuthEnabled()) {
+    throw new Error('JWT_SECRET must be set when auth is enabled. Set AUTH_ENABLED=false for standalone mode.');
+  }
+  return secret || 'standalone-dev-secret';
+}
+
+function getJwtRefreshSecret(): string {
+  const secret = process.env.JWT_REFRESH_SECRET;
+  if (!secret && isAuthEnabled()) {
+    throw new Error('JWT_REFRESH_SECRET must be set when auth is enabled.');
+  }
+  return secret || 'standalone-dev-refresh-secret';
+}
+
 export async function signAccessToken(payload: JwtPayload): Promise<string> {
   const expiry = await getSetting('auth.access_token_expiry');
   const options: jwt.SignOptions = {};
   if (expiry && expiry !== '0') {
     options.expiresIn = expiry as any;
   }
-  return jwt.sign(payload, process.env.JWT_SECRET || 'default-secret', options);
+  return jwt.sign(payload, getJwtSecret(), options);
 }
 
 export async function signRefreshToken(payload: JwtPayload): Promise<string> {
@@ -77,15 +94,15 @@ export async function signRefreshToken(payload: JwtPayload): Promise<string> {
   if (expiry && expiry !== '0') {
     options.expiresIn = expiry as any;
   }
-  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET || 'default-refresh-secret', options);
+  return jwt.sign(payload, getJwtRefreshSecret(), options);
 }
 
 export function verifyAccessToken(token: string): JwtPayload {
-  return jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as JwtPayload;
+  return jwt.verify(token, getJwtSecret()) as JwtPayload;
 }
 
 export function verifyRefreshToken(token: string): JwtPayload {
-  return jwt.verify(token, process.env.JWT_REFRESH_SECRET || 'default-refresh-secret') as JwtPayload;
+  return jwt.verify(token, getJwtRefreshSecret()) as JwtPayload;
 }
 
 // ── Refresh token storage (multi-device) ─────────────────────────
