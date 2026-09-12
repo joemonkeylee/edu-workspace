@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import path from 'node:path';
 import prisma from '../prisma.js';
 import { teacherOrAdminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -67,13 +66,6 @@ function detectKeyword(title: string): string | null {
   return null;
 }
 
-function sourceDirectoryKeys(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value
-    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
-    .map((entry) => path.posix.dirname(entry.trim().replaceAll('\\', '/'))))];
-}
-
 interface BookLite {
   id: number;
   title: string;
@@ -82,7 +74,6 @@ interface BookLite {
   role: 'textbook' | 'answer' | null;
   baseTitle: string;
   keyword: string | null;
-  sourceDirs: string[];
 }
 
 // ── Rules: return current matching rules (so frontend can display) ──
@@ -111,17 +102,15 @@ router.get('/rules', asyncHandler(async (_req: Request, res: Response) => {
 
 router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
   const allBooks = await prisma.book.findMany({
-    select: { id: true, title: true, category: true, totalPages: true, attributes: true, sourcePaths: true },
+    select: { id: true, title: true, category: true, totalPages: true, attributes: true },
     orderBy: { title: 'asc' },
   });
-  const allBooksById = new Map(allBooks.map((book) => [book.id, book]));
 
   const books: BookLite[] = allBooks.map((b) => {
     const role = detectRole(b.title);
     const baseTitle = extractBaseTitle(b.title);
     const keyword = detectKeyword(b.title);
-    const sourceDirs = sourceDirectoryKeys(b.sourcePaths);
-    return { id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, role, baseTitle, keyword, sourceDirs };
+    return { id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, role, baseTitle, keyword };
   });
 
   // Group by (category + baseTitle), only groups that have at least one textbook + at least one answer
@@ -148,28 +137,20 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     const answers = group.filter((b) => b.role === 'answer');
     if (textbooks.length === 0 || answers.length === 0) continue;
 
-    // Keep each textbook-answer combination separate so duplicate books can be bound independently.
-    for (const textbook of textbooks) {
-      for (const answer of answers) {
-        const sharedSourceDir = textbook.sourceDirs.some((dir) => answer.sourceDirs.includes(dir));
-        if (!sharedSourceDir) continue;
-        const textbookPair = (allBooksById.get(textbook.id)?.attributes as any)?.pair;
-        const answerPair = (allBooksById.get(answer.id)?.attributes as any)?.pair;
-        const bound = textbookPair?.role === 'textbook'
-          && answerPair?.role === 'answer'
-          && answerPair.with === textbook.id;
+    // Check if all books in group are already bound
+    const allBooksInGroup = allBooks.filter((b) => group.some((g) => g.id === b.id));
+    const attrs = allBooksInGroup.map((b) => (b.attributes as any)?.pair);
+    const bound = attrs.every((a) => a && a.with);
 
-        candidatePairs.push({
-          key: `${key}||${textbook.id}||${answer.id}`,
-          baseTitle: group[0].baseTitle,
-          category: group[0].category,
-          textbooks: [textbook],
-          answers: [answer],
-          hasDuplicate: group.length > 2,
-          bound,
-        });
-      }
-    }
+    candidatePairs.push({
+      key,
+      baseTitle: group[0].baseTitle,
+      category: group[0].category,
+      textbooks,
+      answers,
+      hasDuplicate: group.length > 2,
+      bound,
+    });
   }
 
   // Statistics
