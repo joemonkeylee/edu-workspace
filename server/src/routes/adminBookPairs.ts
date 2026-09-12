@@ -7,10 +7,25 @@ import { runWithConcurrency } from '../utils/concurrency.js';
 const router = Router();
 router.use(teacherOrAdminRequired);
 
-// ── Role keywords for identifying textbook vs answer ───────────────
+// ── Role keywords for identifying textbook (MAIN) vs answer (ANSWER) ──
 
-const TEXTBOOK_KEYWORDS = ['原卷版', '原题版', '学生版', '试题版', '空白', '空白版'];
-const ANSWER_KEYWORDS = ['解析版', '答案版', '答案', '参考答案', '解析', '全解全析', '详解', '教师版', '教师用书'];
+// MAIN = 原卷/练习/题目（供学生作答）
+const TEXTBOOK_KEYWORDS = [
+  // ── 原有 ──
+  '原卷版', '原题版', '学生版', '试题版', '空白', '空白版',
+  // ── 新规则补充 ──
+  '考试版', '试卷版', '挖空版', '填空版', '默写版', '练习版',
+  '汉译英', 'A4', 'A4版',
+];
+
+// ANSWER = 答案/解析/教师（含答案/解析/背记）
+// 注意：ANSWER 侧先遍历，保证同一书名同时出现两侧关键词时优先判 ANSWER
+const ANSWER_KEYWORDS = [
+  // ── 原有 ──
+  '解析版', '答案版', '答案', '参考答案', '解析', '全解全析', '详解', '教师版', '教师用书',
+  // ── 新规则补充 ──
+  '背记版', '英译汉', '答案解析',
+];
 const ALL_VERSION_KEYWORDS = [...TEXTBOOK_KEYWORDS, ...ANSWER_KEYWORDS];
 
 // Wrap in brackets variants
@@ -132,7 +147,7 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     category: string;
     textbooks: BookLite[];
     answers: BookLite[];
-    hasDuplicate: boolean; // a group has >2 books → likely duplicate import
+    hasDuplicate: boolean; // multiple textbooks or answers → ambiguous pairing
     bound: boolean; // already bound (all in pair have attributes.pair)
   }> = [];
 
@@ -153,7 +168,7 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
           category: group[0].category,
           textbooks: [textbook],
           answers: [answer],
-          hasDuplicate: group.length > 2,
+          hasDuplicate: textbooks.length > 1 || answers.length > 1,
           bound: textbookPair?.role === 'textbook'
             && answerPair?.role === 'answer'
             && answerPair.with === textbook.id,
@@ -261,7 +276,7 @@ router.get('/export', asyncHandler(async (req: Request, res: Response) => {
           category: group[0].category,
           textbooks: [textbook],
           answers: [answer],
-          hasDuplicate: group.length > 2,
+          hasDuplicate: textbooks.length > 1 || answers.length > 1,
           bound,
         });
       }
@@ -281,7 +296,7 @@ router.get('/export', asyncHandler(async (req: Request, res: Response) => {
   lines.push('');
 
   for (const c of filtered) {
-    lines.push(`=== ${c.category} | ${c.baseTitle} | ${c.bound ? '已绑定' : '待绑定'}${c.hasDuplicate ? ' | 重复组' : ''} ===`);
+    lines.push(`=== ${c.category} | ${c.baseTitle} | ${c.bound ? '已绑定' : '待绑定'}${c.hasDuplicate ? ' | 多选项' : ''} ===`);
     for (const t of c.textbooks) {
       lines.push(`  [教材] #${t.id} | ${t.title} | ${t.category}`);
     }
