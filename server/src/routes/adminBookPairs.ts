@@ -4,6 +4,47 @@ import { teacherOrAdminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { runWithConcurrency } from '../utils/concurrency.js';
 
+
+// ── Helpers: normalize pair(s) to array, handling old singular format ──
+
+interface PairEntry { with: number; role: 'textbook' | 'answer'; boundAt: string }
+
+function getPairs(attrs: any): PairEntry[] {
+  if (!attrs) return [];
+  if (Array.isArray(attrs.pairs)) return attrs.pairs;
+  if (attrs.pair && typeof attrs.pair === 'object') return [attrs.pair];
+  return [];
+}
+
+function hasPairRole(attrs: any, role: string, withId?: number): boolean {
+  return getPairs(attrs).some((p) => p.role === role && (withId === undefined || p.with === withId));
+}
+
+function setPairEntry(attrs: any, entry: PairEntry): any {
+  // Append-or-update: replace existing entry with same {with, role}, or push new
+  const pairs: PairEntry[] = Array.isArray(attrs.pairs) ? [...attrs.pairs] : [];
+  const idx = pairs.findIndex((p) => p.with === entry.with && p.role === entry.role);
+  if (idx >= 0) pairs[idx] = entry;
+  else pairs.push(entry);
+  // Keep pairs array, remove legacy pair field
+  delete attrs.pair;
+  attrs.pairs = pairs;
+  return attrs;
+}
+
+function removePairEntry(attrs: any, withId: number, role?: string): any {
+  if (!attrs) return attrs;
+  let pairs: PairEntry[] = Array.isArray(attrs.pairs) ? [...attrs.pairs] : [];
+  // Also consume legacy singular pair if present
+  if (!Array.isArray(attrs.pairs) && attrs.pair) {
+    pairs = [attrs.pair];
+    delete attrs.pair;
+  }
+  pairs = pairs.filter((p) => !(p.with === withId && (role === undefined || p.role === role)));
+  attrs.pairs = pairs;
+  return attrs;
+}
+
 const router = Router();
 router.use(teacherOrAdminRequired);
 
@@ -148,7 +189,7 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     textbooks: BookLite[];
     answers: BookLite[];
     hasDuplicate: boolean; // multiple textbooks or answers → ambiguous pairing
-    bound: boolean; // already bound (all in pair have attributes.pair)
+    bound: boolean; // already bound via attributes.pairs (or legacy .pair)
   }> = [];
 
   for (const [key, group] of groupMap) {
@@ -160,8 +201,8 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     // groups remain candidates for manual selection and are never auto-bound here.
     for (const textbook of textbooks) {
       for (const answer of answers) {
-        const textbookPair = (allBooksById.get(textbook.id)?.attributes as any)?.pair;
-        const answerPair = (allBooksById.get(answer.id)?.attributes as any)?.pair;
+        const tbAttrs = allBooksById.get(textbook.id)?.attributes as any;
+        const ansAttrs = allBooksById.get(answer.id)?.attributes as any;
         candidatePairs.push({
           key: `${key}||${textbook.id}||${answer.id}`,
           baseTitle: group[0].baseTitle,
@@ -169,9 +210,8 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
           textbooks: [textbook],
           answers: [answer],
           hasDuplicate: textbooks.length > 1 || answers.length > 1,
-          bound: textbookPair?.role === 'textbook'
-            && answerPair?.role === 'answer'
-            && answerPair.with === textbook.id,
+          bound: hasPairRole(tbAttrs, 'textbook')
+            && getPairs(ansAttrs).some((p) => p.role === 'answer' && p.with === textbook.id),
         });
       }
     }
@@ -352,26 +392,27 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     select: { id: true, title: true, category: true, totalPages: true, attributes: true },
   });
 
-  // Build pair groups: textbook → list of answers
-  // pair structure: { with: <id>, role: 'textbook'|'answer', boundAt: string }
-  const boundBooks = allBooks.filter((b) => {
-    const pair = (b.attributes as any)?.pair;
-    return pair && typeof pair.with === 'number' && typeof pair.role === 'string';
-  });
+  // Build pair groups: textbook → list of answers (supports multi-pair array)
+  const boundBooks = allBooks.filter((b) => getPairs(b.attributes).length > 0);
 
   // Group by the textbook ID (anchor)
   const groupByAnchor = new Map<number, { textbook: any; answers: any[] }>();
   for (const b of boundBooks) {
-    const pair = (b.attributes as any).pair;
-    const anchorId = pair.role === 'textbook' ? b.id : pair.with;
-    if (!groupByAnchor.has(anchorId)) {
-      groupByAnchor.set(anchorId, { textbook: null, answers: [] });
-    }
-    const g = groupByAnchor.get(anchorId)!;
-    if (pair.role === 'textbook') {
-      g.textbook = { id: b.id, title: b.title, category: b.category, totalPages: b.totalPages };
-    } else {
-      g.answers.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages });
+    const pairs = getPairs(b.attributes);
+    for (const pair of pairs) {
+      const anchorId = pair.role === 'textbook' ? b.id : pair.with;
+      if (!groupByAnchor.has(anchorId)) {
+        groupByAnchor.set(anchorId, { textbook: null, answers: [] });
+      }
+      const g = groupByAnchor.get(anchorId)!;
+      if (pair.role === 'textbook') {
+        if (!g.textbook) g.textbook = { id: b.id, title: b.title, category: b.category, totalPages: b.totalPages };
+      } else {
+        // Avoid duplicate answers (same answer bound to same textbook via multiple pair entries)
+        if (!g.answers.some((a: any) => a.id === b.id)) {
+          g.answers.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages });
+        }
+      }
     }
   }
 
@@ -446,8 +487,8 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
     if (roleFilter !== 'all' && roleFilter !== (role ?? 'none')) return;
     if (role !== null) {
       if (pairedIds.has(b.id)) return;
-      const p = (b.attrs as any)?.pair;
-      if (p && p.with) return;
+      const p = getPairs(b.attrs);
+      if (p.length > 0) return;
     }
     rows.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type, role });
   };
@@ -529,8 +570,8 @@ router.get('/orphans/export', asyncHandler(async (req: Request, res: Response) =
     if (role === null && roleFilter !== 'none' && roleFilter !== 'all') return;
     if (role !== null) {
       if (pairedIds.has(b.id)) return;
-      const p = (b.attrs as any)?.pair;
-      if (p && p.with) return;
+      const p = getPairs(b.attrs);
+      if (p.length > 0) return;
     }
     rows.push({ id: b.id, title: b.title, category: b.category, type, role });
   };
@@ -584,15 +625,13 @@ router.post('/bind', asyncHandler(async (req: Request, res: Response) => {
 
   const now = new Date().toISOString();
 
-  // Update textbook
-  const textbookAttrs = (textbook.attributes as any) || {};
-  textbookAttrs.pair = { with: textbook.id, role: 'textbook', boundAt: now };
+  // Update textbook (append-or-update its self-pair entry)
+  const textbookAttrs = setPairEntry((textbook.attributes as any) || {}, { with: textbook.id, role: 'textbook', boundAt: now });
   await prisma.book.update({ where: { id: textbook.id }, data: { attributes: textbookAttrs } });
 
-  // Update each answer
+  // Update each answer (append pair entry; answer can bind multiple textbooks)
   for (const a of answers) {
-    const attrs = (a.attributes as any) || {};
-    attrs.pair = { with: textbook.id, role: 'answer', boundAt: now };
+    const attrs = setPairEntry((a.attributes as any) || {}, { with: textbook.id, role: 'answer', boundAt: now });
     await prisma.book.update({ where: { id: a.id }, data: { attributes: attrs } });
   }
 
@@ -610,31 +649,33 @@ router.post('/unbind', asyncHandler(async (req: Request, res: Response) => {
   const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true, attributes: true } });
   if (!book) return res.status(404).json({ error: 'book not found' });
 
-  const pair = (book.attributes as any)?.pair;
-  if (!pair || !pair.with) {
+  const pairs = getPairs(book.attributes);
+  if (pairs.length === 0) {
     return res.json({ success: true, message: 'no pair to unbind' });
   }
 
-  // If this book is the textbook (anchor), unbind all its answers too
-  // If this book is an answer, just unbind itself
-  if (pair.role === 'textbook') {
-    // Find all books whose pair.with equals this textbook's id (both answers and the textbook itself)
+  // If this book is the textbook (anchor), remove its self-pair AND detach from all answers
+  // If this book is an answer, remove all its pair entries (detach from all textbooks)
+  const isTextbookAnchor = pairs.some((p) => p.role === 'textbook' && p.with === book.id);
+  if (isTextbookAnchor) {
+    // Find all books (answers + self) that reference this textbook id
     const allBooksWithPair = await prisma.book.findMany({
-      where: { attributes: { path: '$.pair.with', equals: book.id } } as any,
       select: { id: true, attributes: true },
     });
     for (const b of allBooksWithPair) {
-      const attrs = (b.attributes as any) || {};
-      const bPair = attrs.pair;
-      if (bPair && bPair.with === book.id) {
-        delete attrs.pair;
+      const bPairs = getPairs(b.attributes);
+      const referencesThisTb = bPairs.some((p) => p.with === book.id);
+      if (referencesThisTb) {
+        let attrs = (b.attributes as any) || {};
+        attrs = removePairEntry(attrs, book.id); // remove ALL entries pointing to this textbook
         await prisma.book.update({ where: { id: b.id }, data: { attributes: attrs } });
       }
     }
   } else {
-    // Unbind just this answer
+    // Unbind just this answer from all textbooks it's bound to
     const attrs = (book.attributes as any) || {};
-    if (attrs.pair) delete attrs.pair;
+    attrs.pairs = [];
+    delete attrs.pair;
     await prisma.book.update({ where: { id: book.id }, data: { attributes: attrs } });
   }
 
@@ -671,13 +712,11 @@ router.post('/bind-batch', asyncHandler(async (req: Request, res: Response) => {
     if (!textbook || answers.length === 0) continue;
 
     const now = new Date().toISOString();
-    const textbookAttrs = { ...((textbook.attributes as Record<string, unknown> | null) || {}) };
-    textbookAttrs.pair = { with: textbook.id, role: 'textbook', boundAt: now };
+    const textbookAttrs = setPairEntry((textbook.attributes as any) || {}, { with: textbook.id, role: 'textbook', boundAt: now });
     updates.set(textbook.id, { attributes: textbookAttrs });
 
     for (const a of answers) {
-      const attrs = { ...((a.attributes as Record<string, unknown> | null) || {}) };
-      attrs.pair = { with: textbook.id, role: 'answer', boundAt: now };
+      const attrs = setPairEntry((a.attributes as any) || {}, { with: textbook.id, role: 'answer', boundAt: now });
       updates.set(a.id, { attributes: attrs });
     }
     boundCount++;
