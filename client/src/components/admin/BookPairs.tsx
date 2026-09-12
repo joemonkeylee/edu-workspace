@@ -13,6 +13,7 @@ import {
 } from '../../api/client';
 import { toast } from 'sonner';
 import { useConfirm } from '../ConfirmDialog';
+import { Loader2 } from 'lucide-react';
 
 type Tab = 'scan' | 'bound' | 'orphans';
 
@@ -227,7 +228,11 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             </div>
             <div>
               <h4 className="font-semibold text-gray-700 mb-1">示例</h4>
-              <p className="text-gray-600 bg-gray-50 rounded p-2 font-mono text-xs">{rules.example}</p>
+              <ul className="space-y-1">
+                {rules.examples.map((ex, i) => (
+                  <li key={i} className="text-gray-600 bg-gray-50 rounded p-2 font-mono text-xs">{ex}</li>
+                ))}
+              </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-700 mb-1">括号匹配模式</h4>
@@ -282,6 +287,7 @@ function ScanTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({ unbound: false, duplicates: false, search: '' });
   const [showRules, setShowRules] = useState(false);
+  const [batchBinding, setBatchBinding] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -326,18 +332,39 @@ function ScanTab() {
   const handleBatchBind = async () => {
     if (selected.size === 0) { toast.warning('请先勾选要配对的书'); return; }
     const pairs: Array<{ textbookId: number; answerIds: number[] }> = [];
+    let alreadyBound = 0;
+    let missingSide = 0;
     for (const c of candidates) {
       if (!selected.has(c.key)) continue;
-      if (c.textbooks.length === 0 || c.answers.length === 0) continue;
+      if (c.bound) { alreadyBound++; continue; }
+      if (c.textbooks.length === 0 || c.answers.length === 0) { missingSide++; continue; }
       pairs.push({ textbookId: c.textbooks[0].id, answerIds: c.answers.map((a) => a.id) });
     }
-    if (pairs.length === 0) { toast.warning('没有可配对的项'); return; }
+    if (pairs.length === 0) {
+      toast.warning(`没有可绑定的项${alreadyBound ? `（${alreadyBound} 组已绑定被跳过）` : ''}`);
+      return;
+    }
+    const confirmed = await confirm({
+      title: '批量绑定确认',
+      message: `确认绑定选中的 ${pairs.length} 组配对？${
+        alreadyBound ? `已绑定 ${alreadyBound} 组将跳过。` : ''
+      }此操作会写入教材与答案的配对关系到 attributes.pair。`,
+      confirmText: '确认批量绑定',
+      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+    });
+    if (!confirmed) return;
+    setBatchBinding(true);
     try {
       const res = await bookPairsBindBatch(pairs);
-      toast.success(`已绑定 ${res.boundCount} 组配对`);
+      const parts = [`已绑定 ${res.boundCount} 组配对`];
+      if (alreadyBound) parts.push(`跳过已绑定 ${alreadyBound} 组`);
+      if (missingSide) parts.push(`跳过缺项 ${missingSide} 组`);
+      toast.success(parts.join('，'));
       fetch();
     } catch (e: any) {
       toast.error('批量绑定失败: ' + (e?.message || ''));
+    } finally {
+      setBatchBinding(false);
     }
   };
 
@@ -404,9 +431,10 @@ function ScanTab() {
           <input type="checkbox" checked={filters.duplicates} onChange={(e) => { setFilters({ ...filters, duplicates: e.target.checked }); setPage(1); }} />
           仅重复组
         </label>
-        <button onClick={fetch} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">刷新</button>
-        <button onClick={handleBatchBind} disabled={selected.size === 0} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50">
-          批量绑定 ({selected.size})
+        <button onClick={fetch} disabled={batchBinding} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">刷新</button>
+        <button onClick={handleBatchBind} disabled={selected.size === 0 || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50">
+          {batchBinding ? <Loader2 size={15} className="animate-spin" /> : null}
+          {batchBinding ? `批量绑定中... (${selected.size})` : `批量绑定 (${selected.size})`}
         </button>
         <button
           onClick={() => setShowRules(true)}
@@ -419,7 +447,12 @@ function ScanTab() {
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
-      <div className="bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
+      <div className="relative bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
+        {batchBinding && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+            <Loader2 className="animate-spin text-primary" size={28} />
+          </div>
+        )}
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600 sticky top-0">

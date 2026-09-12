@@ -246,7 +246,7 @@ export interface PairRules {
   answerKeywords: string[];
   bracketPatterns: Array<{ pattern: string; desc: string }>;
   rule: string;
-  example: string;
+  examples: string[];
 }
 
 export async function bookPairsRules() {
