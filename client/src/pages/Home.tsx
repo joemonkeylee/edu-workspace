@@ -680,7 +680,7 @@ export default function Home() {
         {loading ? (
           viewMode === 'preview' ? (
             <div className="relative flex flex-wrap gap-3">
-              {Array.from({ length: Math.min(pageSize, 16) }).map((_, i) => (
+              {Array.from({ length: pageSize }).map((_, i) => (
                 <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: '3/4', width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
               ))}
               <div className="absolute inset-0 flex items-center justify-center bg-white/50">
