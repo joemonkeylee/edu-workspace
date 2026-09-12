@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
 import { teacherOrAdminRequired } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { runWithConcurrency } from '../utils/concurrency.js';
 
 const router = Router();
 router.use(teacherOrAdminRequired);
@@ -402,26 +403,43 @@ router.post('/bind-batch', asyncHandler(async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'pairs must be a non-empty array' });
   }
 
-  let boundCount = 0;
+  const bookIds = new Set<number>();
   for (const p of pairs) {
     if (!p.textbookId || !Array.isArray(p.answerIds) || p.answerIds.length === 0) continue;
-    const [textbook, answers] = await Promise.all([
-      prisma.book.findUnique({ where: { id: p.textbookId }, select: { id: true, attributes: true } }),
-      prisma.book.findMany({ where: { id: { in: p.answerIds } }, select: { id: true, attributes: true } }),
-    ]);
+    bookIds.add(p.textbookId);
+    for (const answerId of p.answerIds) bookIds.add(answerId);
+  }
+
+  const books = await prisma.book.findMany({
+    where: { id: { in: [...bookIds] } },
+    select: { id: true, attributes: true },
+  });
+  const booksById = new Map(books.map((book) => [book.id, book]));
+  const updates = new Map<number, { attributes: Record<string, unknown> }>();
+  let boundCount = 0;
+
+  for (const p of pairs) {
+    if (!p.textbookId || !Array.isArray(p.answerIds) || p.answerIds.length === 0) continue;
+    const textbook = booksById.get(p.textbookId);
+    const answers = p.answerIds.map((id) => booksById.get(id)).filter((book) => book !== undefined);
     if (!textbook || answers.length === 0) continue;
 
     const now = new Date().toISOString();
-    const textbookAttrs = (textbook.attributes as any) || {};
+    const textbookAttrs = { ...((textbook.attributes as Record<string, unknown> | null) || {}) };
     textbookAttrs.pair = { with: textbook.id, role: 'textbook', boundAt: now };
-    await prisma.book.update({ where: { id: textbook.id }, data: { attributes: textbookAttrs } });
+    updates.set(textbook.id, { attributes: textbookAttrs });
+
     for (const a of answers) {
-      const attrs = (a.attributes as any) || {};
+      const attrs = { ...((a.attributes as Record<string, unknown> | null) || {}) };
       attrs.pair = { with: textbook.id, role: 'answer', boundAt: now };
-      await prisma.book.update({ where: { id: a.id }, data: { attributes: attrs } });
+      updates.set(a.id, { attributes: attrs });
     }
     boundCount++;
   }
+
+  await runWithConcurrency([...updates], 10, ([id, data]) =>
+    prisma.book.update({ where: { id }, data: { attributes: data.attributes as any } })
+  );
 
   res.json({ success: true, boundCount });
 }));
