@@ -630,6 +630,7 @@ export default function Home() {
           {/* Sort controls (draggable, 3-state toggle) */}
           {/* <span className="text-xs text-gray-400 mr-0.5">排序</span> */}
           {sortFields.map((s, idx) => {
+            if (s.field === 'subject' || s.field === 'grade' || s.field === 'category') return null;
             const labels: Record<string, string> = { subject: '学科', grade: '学期', category: '分类', title: '关键字', totalPages: '页数' };
             const hasSort = s.dir !== null;
             const activeSorts = sortFields.filter(sf => sf.dir !== null);
