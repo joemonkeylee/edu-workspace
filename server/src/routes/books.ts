@@ -9,6 +9,90 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 
+// ── Helpers: pair summary (used by list + detail endpoints) ──────────
+
+interface PairEntry { with: number; role: 'textbook' | 'answer'; boundAt: string }
+
+function getPairs(attrs: any): PairEntry[] {
+  if (!attrs) return [];
+  if (Array.isArray(attrs.pairs)) return attrs.pairs;
+  if (attrs.pair && typeof attrs.pair === 'object') return [attrs.pair];
+  return [];
+}
+
+/** True if this book declares itself as a textbook anchor (self-pair with role='textbook'). */
+function isTextbookAnchor(attrs: any, bookId: number): boolean {
+  return getPairs(attrs).some((p) => p.role === 'textbook' && p.with === bookId);
+}
+
+/** True if this book only has outward 'answer' pair entries (it is an answer-side companion). */
+function isAnswerSide(attrs: any, bookId: number): boolean {
+  const pairs = getPairs(attrs);
+  if (pairs.length === 0) return false;
+  return !pairs.some((p) => p.role === 'textbook' && p.with === bookId)
+    && pairs.some((p) => p.role === 'answer');
+}
+
+interface AnswerLite { id: number; title: string }
+
+/**
+ * Build a reverse index across ALL books in the system: textbookAnchorId → list of answer books.
+ * This is needed because the textbook's own attributes only contain its self-anchor marker;
+ * answer-partner references live on the answer side (answer.attrs.pair.with = textbookId).
+ */
+async function buildReversePairIndex(): Promise<Map<number, AnswerLite[]>> {
+  const all = await prisma.book.findMany({
+    select: { id: true, title: true, attributes: true },
+  });
+  const idx = new Map<number, AnswerLite[]>();
+  for (const b of all) {
+    const pairs = getPairs(b.attributes);
+    for (const p of pairs) {
+      if (p.role === 'answer' && p.with !== b.id) {
+        const arr = idx.get(p.with) ?? [];
+        arr.push({ id: b.id, title: b.title });
+        idx.set(p.with, arr);
+      }
+    }
+  }
+  return idx;
+}
+
+interface PairSummary {
+  role: 'textbook' | 'answer' | null;
+  partnerCount: number;
+  partners: Array<{ id: number; title: string }>;
+}
+
+function buildPairSummary(
+  attrs: any,
+  bookId: number,
+  tbToAnswers: Map<number, AnswerLite[]>,
+  idToTitle: Map<number, string>,
+): PairSummary {
+  const pairs = getPairs(attrs);
+  if (pairs.length === 0) return { role: null, partnerCount: 0, partners: [] };
+
+  if (isTextbookAnchor(attrs, bookId)) {
+    const partners = tbToAnswers.get(bookId) ?? [];
+    return { role: 'textbook', partnerCount: partners.length, partners };
+  }
+
+  if (isAnswerSide(attrs, bookId)) {
+    // Collect textbook anchor(s) this answer belongs to (from its own pair entries)
+    const partners: Array<{ id: number; title: string }> = [];
+    const seen = new Set<number>();
+    for (const p of pairs) {
+      if (p.role !== 'answer' || p.with === bookId || seen.has(p.with)) continue;
+      seen.add(p.with);
+      partners.push({ id: p.with, title: idToTitle.get(p.with) ?? `Book #${p.with}` });
+    }
+    return { role: 'answer', partnerCount: partners.length, partners };
+  }
+
+  return { role: null, partnerCount: 0, partners: [] };
+}
+
 router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const category = req.query.category as string;
   const grade = req.query.grade as string;
@@ -57,80 +141,33 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   }
   if (orderBy.length === 0) orderBy.push({ createdAt: 'desc' });
 
-  const skip = (page - 1) * pageSize;
-
-  // Paginated books (without tocJson to keep payload small)
-  const [books, total] = await Promise.all([
-    prisma.book.findMany({
-      where,
-      orderBy,
-      skip,
-      take: pageSize,
-      select: {
-        id: true,
-        title: true,
-        category: true,
-        grade: true,
-        subject: true,
-        coverPage: true,
-        totalPages: true,
-        storagePath: true,
-        createdAt: true,
-      },
-    }),
-    prisma.book.count({ where }),
-  ]);
-
-  // Attach isFavorite and compute availableDpis for the current page
-  const booksWithMeta = await Promise.all(books.map(async (b) => {
-    const bookDir = getBookRoot(b.id);
-    const dpis = await getAvailableDpisAsync(bookDir);
-    return { ...b, isFavorite: favoriteIdSet.has(b.id), availableDpis: dpis };
-  }));
-
-  // Distinct filter options, filtered by all active filters except the one being computed
-  // Subjects: filtered by grade + category + search (excluding subject itself)
-  const subjectWhere: any = {};
-  if (grade && grade !== 'all') subjectWhere.grade = grade;
-  if (category && category !== 'all') subjectWhere.category = category;
-  if (search) subjectWhere.OR = [
-    { title: { contains: search } },
-    { category: { contains: search } },
-    { grade: { contains: search } },
-    { subject: { contains: search } },
-  ];
-  const subjectBooks = await prisma.book.findMany({ where: subjectWhere, select: { subject: true } });
-  const subjects = [...new Set(subjectBooks.map(b => b.subject).filter(Boolean))] as string[];
-
-  // Grades: filtered by subject + category + search (excluding grade itself)
-  const gradeWhere: any = {};
-  if (subject && subject !== 'all') gradeWhere.subject = subject;
-  if (category && category !== 'all') gradeWhere.category = category;
-  if (search) gradeWhere.OR = [
-    { title: { contains: search } },
-    { category: { contains: search } },
-    { grade: { contains: search } },
-    { subject: { contains: search } },
-  ];
-  const gradeBooks = await prisma.book.findMany({ where: gradeWhere, select: { grade: true } });
-  const grades = [...new Set(gradeBooks.map(b => b.grade).filter(Boolean))] as string[];
-
-  // Category options: filtered by subject + grade + search (excluding category itself), with counts
-  const categoryWhere: any = {};
-  if (subject && subject !== 'all') categoryWhere.subject = subject;
-  if (grade && grade !== 'all') categoryWhere.grade = grade;
-  if (search) categoryWhere.OR = [
-    { title: { contains: search } },
-    { category: { contains: search } },
-    { grade: { contains: search } },
-    { subject: { contains: search } },
-  ];
-  const categoryBooks = await prisma.book.findMany({
-    where: categoryWhere,
-    select: { category: true },
+  // 1) Fetch ALL matching books WITH attributes so we can detect pair roles.
+  //    For typical datasets (< 2000 books) in-memory filtering is fine.
+  const allMatching = await prisma.book.findMany({
+    where,
+    orderBy,
+    select: {
+      id: true,
+      title: true,
+      category: true,
+      grade: true,
+      subject: true,
+      coverPage: true,
+      totalPages: true,
+      storagePath: true,
+      createdAt: true,
+      attributes: true,
+    },
   });
+
+  // 2) Filter out answer-side books — home page is textbook-browse perspective.
+  const filtered = allMatching.filter((b) => !isAnswerSide(b.attributes, b.id));
+
+  // 3) Filter options from the cleaned list (counts stay consistent with displayed books)
+  const subjects = [...new Set(filtered.map((b) => b.subject).filter(Boolean))] as string[];
+  const grades = [...new Set(filtered.map((b) => b.grade).filter(Boolean))] as string[];
   const categoryCountMap = new Map<string, number>();
-  for (const b of categoryBooks) {
+  for (const b of filtered) {
     if (b.category) {
       categoryCountMap.set(b.category, (categoryCountMap.get(b.category) || 0) + 1);
     }
@@ -139,6 +176,34 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
     .filter(([, count]) => count > 0)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  // 4) Build reverse pair index once for this request (covers all books in system)
+  const [tbToAnswers, idToTitleMap] = await Promise.all([
+    buildReversePairIndex(),
+    prisma.book.findMany({ select: { id: true, title: true } })
+      .then((all) => new Map(all.map((b) => [b.id, b.title]))),
+  ]);
+
+  // 5) In-memory pagination
+  const total = filtered.length;
+  const start = (page - 1) * pageSize;
+  const pageSlice = filtered.slice(start, start + pageSize);
+
+  // 6) Attach isFavorite, availableDpis, pairSummary — strip raw attributes from response
+  const booksWithMeta = await Promise.all(
+    pageSlice.map(async (b) => {
+      const bookDir = getBookRoot(b.id);
+      const dpis = await getAvailableDpisAsync(bookDir);
+      const pairSummary = buildPairSummary(b.attributes, b.id, tbToAnswers, idToTitleMap);
+      const { attributes, ...rest } = b;
+      return {
+        ...rest,
+        isFavorite: favoriteIdSet.has(b.id),
+        availableDpis: dpis,
+        pairSummary: pairSummary.role ? pairSummary : null,
+      };
+    })
+  );
 
   res.json({ data: booksWithMeta, total, page, pageSize, options: { subjects, grades, categories } });
 }));
@@ -168,7 +233,13 @@ router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
   const pdfUrl = pdfFileName
     ? `/storage/books/${id}/${encodeURIComponent(pdfFileName)}`
     : null;
-  res.json({ data: { ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl } });
+  const [tbToAnswers, idToTitleMap] = await Promise.all([
+    buildReversePairIndex(),
+    prisma.book.findMany({ select: { id: true, title: true } })
+      .then((all) => new Map(all.map((b) => [b.id, b.title]))),
+  ]);
+  const pairSummary = buildPairSummary(book.attributes, id, tbToAnswers, idToTitleMap);
+  res.json({ data: { ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl, pairSummary: pairSummary.role ? pairSummary : null } });
 }));
 
 router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {

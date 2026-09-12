@@ -308,6 +308,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [scanFilter, setScanFilter] = useState<'unbound' | 'duplicates' | null>(null);
   const [filters, setFilters] = useState({ unbound: false, duplicates: false, excludeDuplicates: false, search: '' });
+  const [algorithm, setAlgorithm] = useState<'mode1' | 'mode2' | 'both'>('mode1');
   const [showRules, setShowRules] = useState(false);
   const [batchBinding, setBatchBinding] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
@@ -323,6 +324,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
         duplicates: filters.duplicates,
         excludeDuplicates: filters.excludeDuplicates,
         search: filters.search,
+        method: algorithm,
       });
       setCandidates(res.data);
       setStats(res.stats);
@@ -332,7 +334,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
       toast.error('扫描失败: ' + (e?.message || ''));
     }
     setLoading(false);
-  }, [page, pageSize, filters.unbound, filters.duplicates, filters.excludeDuplicates, filters.search]);
+  }, [page, pageSize, filters.unbound, filters.duplicates, filters.excludeDuplicates, filters.search, algorithm]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -475,6 +477,19 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
       />
 
       <div className="flex items-center gap-3 mb-4 flex-wrap shrink-0">
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          算法:
+          <select
+            value={algorithm}
+            onChange={(e) => { setAlgorithm(e.target.value as any); setPage(1); }}
+            className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
+            title="mode1=关键词匹配(两侧都要有版本词)，mode2=Clean Title补漏(含一侧无版本词的书)，both=合并(零交叉)"
+          >
+            <option value="mode1">关键词匹配</option>
+            <option value="mode2">Clean Title 补漏</option>
+            <option value="both">两者合并</option>
+          </select>
+        </label>
         <input
           type="text"
           placeholder="搜索基础标题或分类"

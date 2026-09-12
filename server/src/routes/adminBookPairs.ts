@@ -56,7 +56,7 @@ const TEXTBOOK_KEYWORDS = [
   '原卷版', '原题版', '学生版', '试题版', '空白', '空白版',
   // ── 新规则补充 ──
   '考试版', '试卷版', '挖空版', '填空版', '默写版', '练习版',
-  '汉译英', 'A4', 'A4版',
+  '汉译英', 'A4', 'A4版', '原版卷', '导练版',
 ];
 
 // ANSWER = 答案/解析/教师（含答案/解析/背记）
@@ -65,7 +65,7 @@ const ANSWER_KEYWORDS = [
   // ── 原有 ──
   '解析版', '答案版', '答案', '参考答案', '解析', '全解全析', '详解', '教师版', '教师用书',
   // ── 新规则补充 ──
-  '背记版', '英译汉', '答案解析',
+  '背记版', '英译汉', '答案解析', '解析卷',
 ];
 const ALL_VERSION_KEYWORDS = [...TEXTBOOK_KEYWORDS, ...ANSWER_KEYWORDS];
 
@@ -122,6 +122,51 @@ function detectKeyword(title: string): string | null {
   return null;
 }
 
+// ── Mode2 helpers ──
+const TEST_RANGE_PATTERN = /【?测试范围[：:][^】\]]*[】\]]?/g;
+const TRAILING_SUFFIX_PATTERN = /[-_\s]*(答案|解析|全解全析|答案解析|详解|参考答案|解析版|答案版|答案在最后|详细解析)(?:[\s_\-].*)?$/;
+
+function extractCleanTitle(title: string): string {
+  let result = title;
+  // 1) Remove bracket segments containing version keywords (same as mode1)
+  for (const re of BRACKET_PATTERNS) {
+    result = result.replace(re, (match, inner) => {
+      return ALL_VERSION_KEYWORDS.some((kw) => inner.includes(kw)) ? '' : match;
+    });
+  }
+  // 2) Remove 测试范围 brackets
+  result = result.replace(TEST_RANGE_PATTERN, '');
+  // 3) Remove trailing -答案 / _解析 etc.
+  result = result.replace(TRAILING_SUFFIX_PATTERN, '');
+  // 4) Remove version keywords as bare suffix (same as mode1)
+  for (const kw of SORTED_VERSION_KEYWORDS) {
+    result = result.split(kw).join('');
+  }
+  // 5) Remove trailing standalone noise numbers
+  result = result.replace(/\s+\d+\s*$/, '');
+  // 6) Normalize: collapse spaces
+  result = result.replace(/\s+/g, '');
+  return result.trim();
+}
+
+const VERSION_MARKERS = [
+  '人教版', '湘教版', '苏科版', '苏教版', '沪科版', '沪教版',
+  '北师大版', '华东师大版', '冀教版', '鲁教版', '鲁科版',
+  '青岛版', '粤人版', '晋教版', '商务星球版', '星球版',
+  '仁爱科普版', '科普仁爱版', '仁爱版', '中图版',
+  '统编版', '通用版',
+  '2024新版', '2025新版',
+];
+
+function extractVersion(title: string): string {
+  for (const v of VERSION_MARKERS) {
+    if (title.includes(v)) return v;
+  }
+  const yearMatch = title.match(/20\d{2}(?:-20\d{2})?(?:学年|版)?/);
+  if (yearMatch) return yearMatch[0];
+  return '';
+}
+
 interface BookLite {
   id: number;
   title: string;
@@ -158,7 +203,18 @@ router.get('/rules', asyncHandler(async (_req: Request, res: Response) => {
 
 // ── Scan: returns candidate pairs by base-title matching ───────────
 
+// ── Scan: returns candidate pairs by base-title matching ───────────
+// Supports two algorithms:
+//   method=mode1  → keyword-based (both sides must have role keyword) — DEFAULT
+//   method=mode2  → Clean Title-based (side-agnostic)
+//                    excludeMode1Covered=true (补漏) skips books already covered by mode1
+//                    excludeMode1Covered=false (全量) shows all mode2 findings, may overlap mode1
+//   method=both   → mode1 + mode2补漏 merged (union, zero overlap)
+
 router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
+  const method = (req.query.method as string) || 'mode1';
+  const excludeMode1Covered = req.query.excludeMode1Covered !== 'false'; // default true for mode2
+
   const allBooks = await prisma.book.findMany({
     select: { id: true, title: true, category: true, grade: true, subject: true, totalPages: true, attributes: true },
     orderBy: { title: 'asc' },
@@ -172,58 +228,127 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     return { id: b.id, title: b.title, category: b.category, grade: b.grade, subject: b.subject, totalPages: b.totalPages, role, baseTitle, keyword };
   });
 
-  // Group by the full book identity. This prevents same-title books from different
-  // grades or subjects from becoming pairing candidates.
-  const groupMap = new Map<string, BookLite[]>();
-  for (const b of books) {
-    if (!b.role) continue; // skip books with no version keyword
-    const key = `${b.category}||${b.grade}||${b.subject}||${b.baseTitle}`;
-    if (!groupMap.has(key)) groupMap.set(key, []);
-    groupMap.get(key)!.push(b);
-  }
+  // ── Mode1: keyword-based matching (both sides must have role keyword) ──
+  function runMode1(): { pairs: any[]; coveredIds: Set<number> } {
+    const groupMap = new Map<string, BookLite[]>();
+    for (const b of books) {
+      if (!b.role) continue;
+      const key = `${b.category}||${b.grade}||${b.subject}||${b.baseTitle}`;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key)!.push(b);
+    }
 
-  const candidatePairs: Array<{
-    key: string;
-    baseTitle: string;
-    category: string;
-    textbooks: BookLite[];
-    answers: BookLite[];
-    hasDuplicate: boolean; // multiple textbooks or answers → ambiguous pairing
-    bound: boolean; // already bound via attributes.pairs (or legacy .pair)
-  }> = [];
+    const pairs: any[] = [];
+    const coveredIds = new Set<number>();
 
-  for (const [key, group] of groupMap) {
-    const textbooks = group.filter((b) => b.role === 'textbook');
-    const answers = group.filter((b) => b.role === 'answer');
-    if (textbooks.length === 0 || answers.length === 0) continue;
+    for (const [key, group] of groupMap) {
+      const textbooks = group.filter((b) => b.role === 'textbook');
+      const answers = group.filter((b) => b.role === 'answer');
+      if (textbooks.length === 0 || answers.length === 0) continue;
 
-    // Keep every textbook-answer candidate as a separate row. Ambiguous duplicate
-    // groups remain candidates for manual selection and are never auto-bound here.
-    for (const textbook of textbooks) {
-      for (const answer of answers) {
-        const tbAttrs = allBooksById.get(textbook.id)?.attributes as any;
-        const ansAttrs = allBooksById.get(answer.id)?.attributes as any;
-        candidatePairs.push({
-          key: `${key}||${textbook.id}||${answer.id}`,
-          baseTitle: group[0].baseTitle,
-          category: group[0].category,
-          textbooks: [textbook],
-          answers: [answer],
-          hasDuplicate: textbooks.length > 1 || answers.length > 1,
-          bound: hasPairRole(tbAttrs, 'textbook')
-            && getPairs(ansAttrs).some((p) => p.role === 'answer' && p.with === textbook.id),
-        });
+      for (const b of group) coveredIds.add(b.id);
+
+      for (const textbook of textbooks) {
+        for (const answer of answers) {
+          const tbAttrs = allBooksById.get(textbook.id)?.attributes as any;
+          const ansAttrs = allBooksById.get(answer.id)?.attributes as any;
+          pairs.push({
+            key: `m1||${key}||${textbook.id}||${answer.id}`,
+            algorithm: 'mode1',
+            baseTitle: group[0].baseTitle,
+            category: group[0].category,
+            textbooks: [textbook],
+            answers: [answer],
+            hasDuplicate: textbooks.length > 1 || answers.length > 1,
+            bound: hasPairRole(tbAttrs, 'textbook')
+              && getPairs(ansAttrs).some((p) => p.role === 'answer' && p.with === textbook.id),
+          });
+        }
       }
     }
+    return { pairs, coveredIds };
   }
 
-  // Statistics
+  // ── Mode2: Clean Title matching (side-agnostic) ──
+  // Groups by category||grade||subject||cleanTitle||version to avoid cross-version mismatches.
+  // Books without role keyword ARE included (that's the whole point of mode2).
+  // Within a group: role=null defaults to MAIN (textbook side).
+  function runMode2(bookFilter?: (b: any) => boolean): any[] {
+    interface BookLite2 extends BookLite { cleanTitle: string; version: string; }
+    const books2: BookLite2[] = books.map((b) => ({
+      ...b,
+      cleanTitle: extractCleanTitle(b.title),
+      version: extractVersion(b.title),
+    }));
+
+    const inputBooks = bookFilter ? books2.filter(bookFilter) : books2;
+
+    const groupMap = new Map<string, BookLite2[]>();
+    for (const b of inputBooks) {
+      if (b.cleanTitle.length < 3) continue;
+      const key = `${b.category}||${b.grade}||${b.subject}||${b.cleanTitle}||${b.version}`;
+      if (!groupMap.has(key)) groupMap.set(key, []);
+      groupMap.get(key)!.push(b);
+    }
+
+    const pairs: any[] = [];
+    for (const [key, group] of groupMap) {
+      if (group.length < 2) continue;
+
+      // role=null defaults to MAIN (textbook), role=answer stays ANSWER
+      const mainBooks = group.filter((b) => b.role !== 'answer');
+      const answerBooks = group.filter((b) => b.role === 'answer');
+
+      if (mainBooks.length === 0 || answerBooks.length === 0) continue;
+
+      for (const main of mainBooks) {
+        for (const ans of answerBooks) {
+          const mainAttrs = allBooksById.get(main.id)?.attributes as any;
+          const ansAttrs = allBooksById.get(ans.id)?.attributes as any;
+          pairs.push({
+            key: `m2||${key}||${main.id}||${ans.id}`,
+            algorithm: 'mode2',
+            baseTitle: main.cleanTitle,
+            category: main.category,
+            textbooks: [main],
+            answers: [ans],
+            hasDuplicate: mainBooks.length > 1 || answerBooks.length > 1,
+            bound: hasPairRole(mainAttrs, 'textbook')
+              && getPairs(ansAttrs).some((p) => p.role === 'answer' && p.with === main.id),
+          });
+        }
+      }
+    }
+    return pairs;
+  }
+
+  // ── Run selected algorithm(s) ──
+  let candidatePairs: any[] = [];
+  let mode1CoveredIds = new Set<number>();
+
+  if (method === 'mode1' || method === 'both') {
+    const r = runMode1();
+    candidatePairs.push(...r.pairs);
+    mode1CoveredIds = r.coveredIds;
+  }
+
+  if (method === 'mode2' || method === 'both') {
+    if (excludeMode1Covered) {
+      const r = runMode1();
+      mode1CoveredIds = r.coveredIds;
+    }
+    const filter = excludeMode1Covered
+      ? ((b: any) => !mode1CoveredIds.has(b.id))
+      : undefined;
+    candidatePairs.push(...runMode2(filter));
+  }
+
+  // ── Statistics ──
   const totalBooks = allBooks.length;
   const booksWithRole = books.filter((b) => b.role !== null);
   const orphanTextbooks: number[] = [];
   const orphanAnswers: number[] = [];
   {
-    // A book with role but no candidate pair found
     const pairedIds = new Set<number>();
     for (const c of candidatePairs) {
       for (const b of [...c.textbooks, ...c.answers]) pairedIds.add(b.id);
@@ -236,7 +361,7 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
-  // Pagination
+  // ── Pagination ──
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const pageSize = Math.max(1, Math.min(1000, parseInt(req.query.pageSize as string) || 20));
   const onlyUnbound = req.query.unbound === 'true' || req.query.unbound === '1';
@@ -259,6 +384,7 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     total,
     page,
     pageSize,
+    algorithm: method,
     stats: {
       totalBooks,
       candidatePairs: candidatePairs.length,
@@ -267,7 +393,8 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
       duplicateGroups: candidatePairs.filter((c) => c.hasDuplicate).length,
       orphanTextbooks: orphanTextbooks.length,
       orphanAnswers: orphanAnswers.length,
-      noVersionKeyword: books.filter((b) => b.role === null).length,
+      noVersionKeyword: books.filter((b) => !b.role).length,
+      mode1CoveredBooks: mode1CoveredIds.size,
     },
   });
 }));

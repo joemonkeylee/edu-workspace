@@ -5,6 +5,12 @@ export interface TocNode {
   ignored?: boolean;
 }
 
+export interface PairSummary {
+  role: 'textbook' | 'answer' | null;
+  partnerCount: number;
+  partners: Array<{ id: number; title: string }>;
+}
+
 export interface Book {
   id: number;
   title: string;
@@ -25,6 +31,7 @@ export interface Book {
   pdfFileName?: string | null;
   pdfUrl?: string | null;
   isFavorite?: boolean;
+  pairSummary?: PairSummary | null;
 }
 
 export interface Annotation {

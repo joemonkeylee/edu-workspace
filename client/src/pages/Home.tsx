@@ -854,6 +854,11 @@ export default function Home() {
                             {book.subject && <span className="bg-emerald-500/90 text-white rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
                             {book.grade && <span className="bg-blue-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
                             {book.category && <span className="bg-violet-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.category}</span>}
+                            {book.pairSummary?.role === 'textbook' && (
+                              <span className="bg-sky-500/90 text-white rounded px-1 py-0.5 text-[9px]" title={`已绑定 ${book.pairSummary.partnerCount} 本答案`}>
+                                📘 教材{book.pairSummary.partnerCount > 0 ? `·+${book.pairSummary.partnerCount}` : ''}
+                              </span>
+                            )}
                           </div>
                         </>
                       )}
@@ -947,6 +952,14 @@ export default function Home() {
                               <Star size={13} className={book.isFavorite ? 'fill-amber-400' : ''} />
                             </button>
                             <span className="block text-xs text-gray-700 truncate" title={book.title}>{book.title}</span>
+                            {book.pairSummary?.role === 'textbook' && (
+                              <span
+                                className="flex-shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] text-sky-700 font-medium"
+                                title={`已绑定 ${book.pairSummary.partnerCount} 本答案`}
+                              >
+                                📘 {book.pairSummary.partnerCount > 0 ? `+${book.pairSummary.partnerCount}` : '教材'}
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>

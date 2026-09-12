@@ -211,7 +211,7 @@ export interface PairStats {
   noVersionKeyword: number;
 }
 
-export async function bookPairsScan(params?: { page?: number; pageSize?: number; unbound?: boolean; duplicates?: boolean; excludeDuplicates?: boolean; search?: string }) {
+export async function bookPairsScan(params?: { page?: number; pageSize?: number; unbound?: boolean; duplicates?: boolean; excludeDuplicates?: boolean; search?: string; method?: 'mode1' | 'mode2' | 'both'; excludeMode1Covered?: boolean }) {
   const { data } = await api.get('/admin/book-pairs/scan', { params });
   return data as { data: BookPairCandidate[]; total: number; page: number; pageSize: number; stats: PairStats };
 }

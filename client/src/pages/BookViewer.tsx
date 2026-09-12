@@ -149,6 +149,7 @@ export default function BookViewer() {
   });
   const [layerDropdownOpen, setLayerDropdownOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [pairOpen, setPairOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
   const [deleteAnnId, setDeleteAnnId] = useState<number | null>(null);
   const skipClearRef = useRef(false); // skip clearing when navigating via annotation click
@@ -619,6 +620,69 @@ export default function BookViewer() {
             <PanelLeft size={18} />
           </button>
           <h1 className="text-sm text-gray-200 truncate" title={currentBook.title}>{currentBook.title}</h1>
+          {currentBook.pairSummary && (
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setPairOpen(!pairOpen)}
+                className={`ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition ${
+                  currentBook.pairSummary.role === 'textbook'
+                    ? 'bg-sky-500/20 text-sky-200 hover:bg-sky-500/30'
+                    : 'bg-teal-500/20 text-teal-200 hover:bg-teal-500/30'
+                }`}
+                title={currentBook.pairSummary.role === 'textbook'
+                  ? `教材 · 已绑定 ${currentBook.pairSummary.partnerCount} 本答案，点击查看`
+                  : '答案书 · 点击跳转到对应教材'}
+              >
+                {currentBook.pairSummary.role === 'textbook' ? (
+                  <>📘 教材{currentBook.pairSummary.partnerCount > 0 ? ` · ${currentBook.pairSummary.partnerCount}` : ''}</>
+                ) : (
+                  <>📗 答案</>
+                )}
+              </button>
+              {pairOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setPairOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1">
+                    {currentBook.pairSummary.role === 'textbook' ? (
+                      currentBook.pairSummary.partners.length > 0 ? (
+                        currentBook.pairSummary.partners.map((p) => (
+                          <a
+                            key={p.id}
+                            href={`/book/${p.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setPairOpen(false)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-200 hover:bg-white/10 transition"
+                          >
+                            <span className="text-teal-400">📗</span>
+                            <span className="truncate">{p.title}</span>
+                          </a>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-xs text-gray-500">暂无答案</div>
+                      )
+                    ) : currentBook.pairSummary.partners.length > 0 ? (
+                      currentBook.pairSummary.partners.map((p) => (
+                        <a
+                          key={p.id}
+                          href={`/book/${p.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setPairOpen(false)}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-200 hover:bg-white/10 transition"
+                        >
+                          <span className="text-sky-400">📘</span>
+                          <span className="truncate">{p.title}</span>
+                        </a>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-xs text-gray-500">所属教材未知</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* === CENTER: page navigation === */}
