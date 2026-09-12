@@ -216,6 +216,11 @@ export async function bookPairsScan(params?: { page?: number; pageSize?: number;
   return data as { data: BookPairCandidate[]; total: number; page: number; pageSize: number; stats: PairStats };
 }
 
+export async function bookPairsExport(params?: { unbound?: boolean; duplicates?: boolean; search?: string }) {
+  const { data } = await api.get('/admin/book-pairs/export', { params, responseType: 'blob' });
+  return data as Blob;
+}
+
 export async function bookPairsList(params?: { page?: number; pageSize?: number; search?: string }) {
   const { data } = await api.get('/admin/book-pairs', { params });
   return data as { data: Array<{ textbook: { id: number; title: string; category: string; totalPages: number }; answers: Array<{ id: number; title: string; category: string; totalPages: number }> }>; total: number; page: number; pageSize: number };

@@ -215,6 +215,112 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
   });
 }));
 
+// ── Export: dump candidate pairs as TXT (id, title, category) ──────
+
+router.get('/export', asyncHandler(async (req: Request, res: Response) => {
+  const allBooks = await prisma.book.findMany({
+    select: { id: true, title: true, category: true, grade: true, subject: true, totalPages: true, attributes: true },
+    orderBy: { title: 'asc' },
+  });
+  const allBooksById = new Map(allBooks.map((book) => [book.id, book]));
+
+  const books: BookLite[] = allBooks.map((b) => {
+    const role = detectRole(b.title);
+    const baseTitle = extractBaseTitle(b.title);
+    const keyword = detectKeyword(b.title);
+    return { id: b.id, title: b.title, category: b.category, grade: b.grade, subject: b.subject, totalPages: b.totalPages, role, baseTitle, keyword };
+  });
+
+  const groupMap = new Map<string, BookLite[]>();
+  for (const b of books) {
+    if (!b.role) continue;
+    const key = `${b.category}||${b.grade}||${b.subject}||${b.baseTitle}`;
+    if (!groupMap.has(key)) groupMap.set(key, []);
+    groupMap.get(key)!.push(b);
+  }
+
+  const onlyUnbound = req.query.unbound === 'true' || req.query.unbound === '1';
+  const onlyDuplicates = req.query.duplicates === 'true' || req.query.duplicates === '1';
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
+
+  const candidatePairs: any[] = [];
+  for (const [key, group] of groupMap) {
+    const textbooks = group.filter((b) => b.role === 'textbook');
+    const answers = group.filter((b) => b.role === 'answer');
+    if (textbooks.length === 0 || answers.length === 0) continue;
+
+    for (const textbook of textbooks) {
+      for (const answer of answers) {
+        const textbookPair = (allBooksById.get(textbook.id)?.attributes as any)?.pair;
+        const answerPair = (allBooksById.get(answer.id)?.attributes as any)?.pair;
+        const bound = textbookPair?.role === 'textbook'
+          && answerPair?.role === 'answer'
+          && answerPair.with === textbook.id;
+        candidatePairs.push({
+          baseTitle: group[0].baseTitle,
+          category: group[0].category,
+          textbooks: [textbook],
+          answers: [answer],
+          hasDuplicate: group.length > 2,
+          bound,
+        });
+      }
+    }
+  }
+
+  let filtered = candidatePairs;
+  if (onlyUnbound) filtered = filtered.filter((c) => !c.bound);
+  if (onlyDuplicates) filtered = filtered.filter((c) => c.hasDuplicate);
+  if (search) filtered = filtered.filter((c) => c.baseTitle.toLowerCase().includes(search) || c.category.toLowerCase().includes(search));
+
+  // Build TXT
+  const lines: string[] = [];
+  lines.push(`# 教材答案配对导出 生成时间: ${new Date().toISOString()}`);
+  lines.push(`# 筛选: ${onlyUnbound ? '仅未绑定 ' : ''}${onlyDuplicates ? '仅重复组 ' : ''}${search ? `搜索="${search}"` : ''}`);
+  lines.push(`# 共 ${filtered.length} 组配对候选`);
+  lines.push('');
+
+  for (const c of filtered) {
+    lines.push(`=== ${c.category} | ${c.baseTitle} | ${c.bound ? '已绑定' : '待绑定'}${c.hasDuplicate ? ' | 重复组' : ''} ===`);
+    for (const t of c.textbooks) {
+      lines.push(`  [教材] #${t.id} | ${t.title} | ${t.category}`);
+    }
+    for (const a of c.answers) {
+      lines.push(`  [答案] #${a.id} | ${a.title} | ${a.category}`);
+    }
+    lines.push('');
+  }
+
+  const orphanTextbooks: BookLite[] = [];
+  const orphanAnswers: BookLite[] = [];
+  const pairedIds = new Set<number>();
+  for (const c of candidatePairs) {
+    for (const b of [...c.textbooks, ...c.answers]) pairedIds.add(b.id);
+  }
+  for (const b of books) {
+    if (!pairedIds.has(b.id)) {
+      if (b.role === 'textbook') orphanTextbooks.push(b);
+      else if (b.role === 'answer') orphanAnswers.push(b);
+    }
+  }
+  const noKeyword = books.filter((b) => b.role === null);
+
+  lines.push('');
+  lines.push('========== 孤儿教材 ==========');
+  for (const b of orphanTextbooks) lines.push(`#${b.id} | ${b.title} | ${b.category}`);
+  lines.push('');
+  lines.push('========== 孤儿答案 ==========');
+  for (const b of orphanAnswers) lines.push(`#${b.id} | ${b.title} | ${b.category}`);
+  lines.push('');
+  lines.push('========== 无版本关键词 ==========');
+  for (const b of noKeyword) lines.push(`#${b.id} | ${b.title} | ${b.category}`);
+
+  const content = lines.join('\n');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="book-pairs-${Date.now()}.txt"`);
+  res.send(content);
+}));
+
 // ── List bound pairs ──────────────────────────────────────────────
 
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
@@ -280,7 +386,7 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
   // Same logic as scan: find books that have role keyword but no candidate pair
   const allBooks = await prisma.book.findMany({
     select: { id: true, title: true, category: true, totalPages: true, attributes: true },
-    orderBy: { title: 'asc' },
+    orderBy: { id: 'asc' },
   });
 
   if (roleFilter === 'none') {

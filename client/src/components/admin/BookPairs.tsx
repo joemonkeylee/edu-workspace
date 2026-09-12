@@ -6,6 +6,7 @@ import {
   bookPairsBind,
   bookPairsUnbind,
   bookPairsBindBatch,
+  bookPairsExport,
   bookPairsRules,
   type BookPairCandidate,
   type PairStats,
@@ -307,6 +308,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'or
   const [showRules, setShowRules] = useState(false);
   const [batchBinding, setBatchBinding] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -387,6 +389,28 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'or
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await bookPairsExport({
+        unbound: filters.unbound || undefined,
+        duplicates: filters.duplicates || undefined,
+        search: filters.search || undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `book-pairs-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('导出成功');
+    } catch (e: any) {
+      toast.error('导出失败: ' + (e?.message || ''));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleSingleBind = async (c: BookPairCandidate) => {
     if (c.textbooks.length === 0 || c.answers.length === 0) {
       toast.warning('教材或答案缺失，无法配对');
@@ -463,6 +487,10 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'or
           仅重复组
         </label>
         <button onClick={fetch} disabled={batchBinding} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">刷新</button>
+        <button onClick={handleExport} disabled={exporting || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">
+          {exporting ? <Loader2 size={14} className="animate-spin" /> : null}
+          {exporting ? '导出中...' : '导出 TXT'}
+        </button>
         <button onClick={handleBatchBind} disabled={selected.size === 0 || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50">
           {batchBinding ? <Loader2 size={15} className="animate-spin" /> : null}
           {batchBinding ? `批量绑定中... (${selected.size})` : `批量绑定 (${selected.size})`}
