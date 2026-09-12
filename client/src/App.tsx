@@ -19,6 +19,8 @@ import StorageSettings from './components/admin/StorageSettings';
 import UsersTable from './components/admin/UsersTable';
 import AuthSettings from './components/admin/AuthSettings';
 import AssignmentsTable from './components/admin/AssignmentsTable';
+import BookPairs from './components/admin/BookPairs';
+import DbBackup from './components/admin/DbBackup';
 import { useAuthStore } from './store/authStore';
 
 export default function App() {
@@ -44,12 +46,14 @@ export default function App() {
             <Route index element={<Navigate to="/admin/books" replace />} />
             <Route path="scan" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><PdfScanImport /></AuthGuard>} />
             <Route path="books" element={<BooksTable />} />
+            <Route path="book-pairs" element={<BookPairs />} />
             <Route path="annotations" element={<AnnotationsTable />} />
             <Route path="mistakes" element={<MistakesTable />} />
             <Route path="assignments" element={<AssignmentsTable />} />
             <Route path="users" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><UsersTable /></AuthGuard>} />
             <Route path="auth-settings" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><AuthSettings /></AuthGuard>} />
             <Route path="storage" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><StorageSettings /></AuthGuard>} />
+            <Route path="db-backup" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><DbBackup /></AuthGuard>} />
           </Route>
         </Route>
 

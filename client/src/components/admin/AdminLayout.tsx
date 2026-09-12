@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle, ClipboardList, FolderCog, Users, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Scan, BookOpen, Highlighter, AlertCircle, ClipboardList, FolderCog, Users, LogOut, ShieldCheck, Link2, Database } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -21,6 +21,7 @@ const MENU_GROUPS: MenuGroup[] = [
     items: [
       { path: '/admin/scan', label: 'PDF 扫描导入', icon: Scan, roles: ['admin'] },
       { path: '/admin/books', label: '书籍资产管理', icon: BookOpen },
+      { path: '/admin/book-pairs', label: '教材答案配对', icon: Link2 },
       { path: '/admin/annotations', label: '批注数据管理', icon: Highlighter },
       { path: '/admin/mistakes', label: '错题本管理', icon: AlertCircle },
       { path: '/admin/assignments', label: '作业管理', icon: ClipboardList },
@@ -32,6 +33,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { path: '/admin/users', label: '用户管理', icon: Users, roles: ['admin'] },
       { path: '/admin/auth-settings', label: '认证设置', icon: ShieldCheck, roles: ['admin'] },
       { path: '/admin/storage', label: '资源目录', icon: FolderCog, roles: ['admin'] },
+      { path: '/admin/db-backup', label: '数据库备份', icon: Database, roles: ['admin'] },
     ],
   },
 ];
@@ -43,12 +45,14 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { user, logout, authEnabled } = useAuthStore();
 
-  // Filter menu groups by user role
-  const userRole = user?.role || (user?.isAdmin ? 'admin' : 'student');
+  // Filter menu groups by user role (in standalone mode, show all items)
+  const userRoles = Array.isArray(user?.roles) && user.roles.length > 0
+    ? user.roles
+    : [user?.role || (user?.isAdmin ? 'admin' : 'student')];
   const filteredMenuGroups = MENU_GROUPS
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !item.roles || item.roles.includes(userRole)),
+      items: group.items.filter((item) => !authEnabled || !item.roles || item.roles.some((r) => userRoles.includes(r))),
     }))
     .filter((group) => group.items.length > 0);
 
@@ -63,8 +67,11 @@ export default function AdminLayout() {
 
   const roleBadge = (() => {
     if (!authEnabled) return '';
-    if (user?.role === 'admin' || user?.isAdmin) return ' (管理员)';
-    if (user?.role === 'teacher') return ' (教师)';
+    const roles = Array.isArray(user?.roles) && user.roles.length > 0
+      ? user.roles
+      : [user?.role || (user?.isAdmin ? 'admin' : 'student')];
+    if (roles.includes('admin')) return ' (管理员)';
+    if (roles.includes('teacher')) return ' (教师)';
     return '';
   })();
 

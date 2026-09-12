@@ -95,6 +95,7 @@ export interface LoginUser {
   email: string | null;
   isAdmin: boolean;
   role: string;
+  roles: string[];
   nickName: string;
   avatar: string;
   status: string;
@@ -126,7 +127,7 @@ export async function getAuthStatus() {
 
 export async function getMe() {
   const { data } = await api.get('/auth/me');
-  return data as { userId: number; phone: string; email: string | null; isAdmin: boolean; role: string; nickName: string; avatar: string; status: string; maxDevices: number };
+  return data as { userId: number; phone: string; email: string | null; isAdmin: boolean; role: string; roles: string[]; nickName: string; avatar: string; status: string; maxDevices: number };
 }
 
 // ── Admin user API ────────────────────────────────────────────────
@@ -174,6 +175,72 @@ export async function adminGetAuthSettings() {
 export async function adminUpdateAuthSettings(body: Record<string, string>) {
   const { data } = await api.put('/admin/users/settings/auth', body);
   return data;
+}
+
+// ── Book Pairs API ────────────────────────────────────────────────
+
+export interface BookPairCandidate {
+  key: string;
+  baseTitle: string;
+  category: string;
+  textbooks: Array<{ id: number; title: string; category: string; totalPages: number }>;
+  answers: Array<{ id: number; title: string; category: string; totalPages: number }>;
+  hasDuplicate: boolean;
+  bound: boolean;
+}
+
+export interface PairStats {
+  totalBooks: number;
+  candidatePairs: number;
+  boundPairs: number;
+  unboundPairs: number;
+  duplicateGroups: number;
+  orphanTextbooks: number;
+  orphanAnswers: number;
+  noVersionKeyword: number;
+}
+
+export async function bookPairsScan(params?: { page?: number; pageSize?: number; unbound?: boolean; duplicates?: boolean; search?: string }) {
+  const { data } = await api.get('/admin/book-pairs/scan', { params });
+  return data as { data: BookPairCandidate[]; total: number; page: number; pageSize: number; stats: PairStats };
+}
+
+export async function bookPairsList(params?: { page?: number; pageSize?: number; search?: string }) {
+  const { data } = await api.get('/admin/book-pairs', { params });
+  return data as { data: Array<{ textbook: { id: number; title: string; category: string; totalPages: number }; answers: Array<{ id: number; title: string; category: string; totalPages: number }> }>; total: number; page: number; pageSize: number };
+}
+
+export async function bookPairsOrphans(params?: { page?: number; pageSize?: number; search?: string; role?: 'textbook' | 'answer' }) {
+  const { data } = await api.get('/admin/book-pairs/orphans', { params });
+  return data as { data: Array<{ id: number; title: string; category: string; totalPages: number; role: string }>; total: number; page: number; pageSize: number };
+}
+
+export async function bookPairsBind(textbookId: number, answerIds: number[]) {
+  const { data } = await api.post('/admin/book-pairs/bind', { textbookId, answerIds });
+  return data;
+}
+
+export async function bookPairsUnbind(bookId: number) {
+  const { data } = await api.post('/admin/book-pairs/unbind', { bookId });
+  return data;
+}
+
+export async function bookPairsBindBatch(pairs: Array<{ textbookId: number; answerIds: number[] }>) {
+  const { data } = await api.post('/admin/book-pairs/bind-batch', { pairs });
+  return data;
+}
+
+export interface PairRules {
+  textbookKeywords: string[];
+  answerKeywords: string[];
+  bracketPatterns: Array<{ pattern: string; desc: string }>;
+  rule: string;
+  example: string;
+}
+
+export async function bookPairsRules() {
+  const { data } = await api.get('/admin/book-pairs/rules');
+  return data.data as PairRules;
 }
 
 export interface BooksResponse {
@@ -508,6 +575,56 @@ export async function getReadingProgress(bookId: number) {
 export async function saveReadingProgress(bookId: number, progress: { pageNumber?: number; pageLayout?: string; fitMode?: string; rotation?: number }) {
   const { data } = await api.put(`/reading-progress/${bookId}`, progress);
   return data.data;
+}
+
+// ── DB Backup API ────────────────────────────────────────────────
+
+export interface DbBackupMeta {
+  filename: string;
+  size: number;
+  createdAt: string;
+  compressed: boolean;
+  type: 'backup' | 'pre-restore';
+}
+
+export async function listDbBackups() {
+  const { data } = await api.get('/admin/db-backups');
+  return data.data as DbBackupMeta[];
+}
+
+export async function createDbBackup(compress = true) {
+  const { data } = await api.post('/admin/db-backups', { compress });
+  return data.data as DbBackupMeta;
+}
+
+export async function uploadDbBackup(file: File, onProgress?: (pct: number) => void) {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await api.post('/admin/db-backups/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => { if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100)); },
+  });
+  return data.data as DbBackupMeta;
+}
+
+export async function downloadDbBackup(filename: string) {
+  const resp = await api.get(`/admin/db-backups/${encodeURIComponent(filename)}/download`, { responseType: 'blob' });
+  const url = URL.createObjectURL(resp.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function deleteDbBackup(filename: string) {
+  const { data } = await api.delete(`/admin/db-backups/${encodeURIComponent(filename)}`);
+  return data;
+}
+
+export async function restoreDbBackup(filename: string) {
+  const { data } = await api.post(`/admin/db-backups/${encodeURIComponent(filename)}/restore`);
+  return data.data as { preRestoreFile?: string };
 }
 
 export default api;

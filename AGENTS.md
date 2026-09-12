@@ -124,6 +124,7 @@ edu-workspace/
 - **Home page is browse-only** — no edit/delete actions for end users
 - **Feature parity first, UI polish second** — when refactoring UI, never change existing functionality
 - **Do NOT start dev servers** — never run `npm run dev` (or any long-running dev script) in `client/` or `server/`. The user manages dev servers themselves. Only run short-lived commands like `npx tsc --noEmit`, `npm run build`, or one-off scripts.
+- **Markdown files location** — all agent-authored markdown docs (plans, specs, design notes, checklists, etc.) MUST be created under the root-level `markdown/` folder (`edu-workspace/markdown/`). Never scatter `.md` files across the repo or place them in `.trae/documents/`. Create the `markdown/` folder if it does not exist.
 
 ### UI / UX Conventions
 
