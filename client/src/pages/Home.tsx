@@ -786,7 +786,7 @@ export default function Home() {
                       className={`absolute right-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full shadow-md transition ${
                         book.isFavorite
                           ? 'bg-amber-400 text-white opacity-100'
-                          : 'bg-white/80 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-amber-50 hover:text-amber-500'
+                          : 'bg-white/80 text-gray-400 hover:bg-amber-50 hover:text-amber-500'
                       }`}
                       title={book.isFavorite ? '取消收藏' : '收藏'}
                     >
