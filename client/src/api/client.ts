@@ -587,13 +587,29 @@ export interface DbBackupMeta {
   type: 'backup' | 'pre-restore';
 }
 
+export interface DbConnection {
+  id: string;
+  name: string;
+  host: string;
+  port: string;
+  user: string;
+  password: string;
+  database: string;
+}
+
+export interface ConnectionConfig {
+  connections: DbConnection[];
+  defaultConnectionId: string | null;
+  hasEnvFallback?: boolean;
+}
+
 export async function listDbBackups() {
   const { data } = await api.get('/admin/db-backups');
   return data.data as DbBackupMeta[];
 }
 
-export async function createDbBackup(compress = true) {
-  const { data } = await api.post('/admin/db-backups', { compress });
+export async function createDbBackup(compress = true, connectionId?: string | null) {
+  const { data } = await api.post('/admin/db-backups', { compress, connectionId: connectionId ?? null });
   return data.data as DbBackupMeta;
 }
 
@@ -622,9 +638,26 @@ export async function deleteDbBackup(filename: string) {
   return data;
 }
 
-export async function restoreDbBackup(filename: string) {
-  const { data } = await api.post(`/admin/db-backups/${encodeURIComponent(filename)}/restore`);
+export async function restoreDbBackup(filename: string, connectionId?: string | null) {
+  const { data } = await api.post(`/admin/db-backups/${encodeURIComponent(filename)}/restore`, { connectionId: connectionId ?? null });
   return data.data as { preRestoreFile?: string };
+}
+
+// ── DB Connection management ────────────────────────────────────
+
+export async function listDbConnections() {
+  const { data } = await api.get('/admin/db-backups/connections/list');
+  return data.data as ConnectionConfig;
+}
+
+export async function saveDbConnections(config: ConnectionConfig) {
+  const { data } = await api.put('/admin/db-backups/connections', config);
+  return data;
+}
+
+export async function testDbConnection(conn: Partial<DbConnection>) {
+  const { data } = await api.post('/admin/db-backups/connections/test', conn);
+  return data.data as { ok: boolean; version?: string; error?: string };
 }
 
 export default api;
