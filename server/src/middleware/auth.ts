@@ -3,7 +3,7 @@ import { isAuthEnabled, verifyAccessToken } from '../services/auth.js';
 import { consumeSseTicket } from '../utils/sseTicket.js';
 
 export interface AuthedRequest extends Request {
-  user?: { userId: number; phone: string; isAdmin: boolean; role: string };
+  user?: { userId: number; phone: string; isAdmin: boolean; role: string; roles: string[] };
 }
 
 function extractToken(req: Request): string | null {
@@ -26,7 +26,7 @@ function extractToken(req: Request): string | null {
  * Returns user info if valid, null if no ticket or invalid.
  * Ticket is consumed (one-time use) on successful validation.
  */
-function trySseTicket(req: Request): { userId: number; phone: string; isAdmin: boolean; role: string } | null {
+function trySseTicket(req: Request): { userId: number; phone: string; isAdmin: boolean; role: string; roles: string[] } | null {
   const ticket = req.query.ticket as string | undefined;
   if (!ticket) return null;
   return consumeSseTicket(ticket);
@@ -73,7 +73,7 @@ export function adminRequired(req: AuthedRequest, res: Response, next: NextFunct
   // Try SSE ticket first (one-time use, URL-safe)
   const ticketUser = trySseTicket(req);
   if (ticketUser) {
-    if (!ticketUser.isAdmin) {
+    if (!ticketUser.roles.includes('admin')) {
       res.status(403).json({ error: 'admin access required' });
       return;
     }
@@ -94,7 +94,7 @@ export function adminRequired(req: AuthedRequest, res: Response, next: NextFunct
   verifyAccessToken(token)
     .then((user) => {
       req.user = user;
-      if (!user.isAdmin) {
+      if (!user.roles.includes('admin')) {
         res.status(403).json({ error: 'admin access required' });
         return;
       }
@@ -113,7 +113,7 @@ export function teacherOrAdminRequired(req: AuthedRequest, res: Response, next: 
   // Try SSE ticket first (one-time use, URL-safe)
   const ticketUser = trySseTicket(req);
   if (ticketUser) {
-    if (!ticketUser.isAdmin && ticketUser.role !== 'teacher') {
+    if (!ticketUser.roles.includes('admin') && !ticketUser.roles.includes('teacher')) {
       res.status(403).json({ error: 'teacher or admin access required' });
       return;
     }
@@ -134,7 +134,7 @@ export function teacherOrAdminRequired(req: AuthedRequest, res: Response, next: 
   verifyAccessToken(token)
     .then((user) => {
       req.user = user;
-      if (!user.isAdmin && user.role !== 'teacher') {
+      if (!user.roles.includes('admin') && !user.roles.includes('teacher')) {
         res.status(403).json({ error: 'teacher or admin access required' });
         return;
       }

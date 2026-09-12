@@ -60,8 +60,9 @@ function parseDurationToMs(str: string): number {
 export interface JwtPayload {
   userId: number;
   phone: string;
-  isAdmin: boolean;
-  role: string;
+  isAdmin: boolean; // DEPRECATED: derived from roles.includes('admin')
+  role: string;    // DEPRECATED: kept for backward compat, equals roles[0]
+  roles: string[]; // ["admin" | "teacher" | "student"]
   tokenVersion: number;
 }
 

@@ -19,7 +19,8 @@ model User {
   email         String?  @unique @db.VarChar(128)
   password      String   @db.VarChar(255)
   isAdmin       Boolean  @default(false)
-  role          String   @default("student") @db.VarChar(20) // student | teacher | admin
+  role          String   @default("student") @db.VarChar(20) // DEPRECATED: use roles instead
+  roles         Json     @default("[]") // ["admin", "teacher", "student"]
   nickName      String   @default("") @db.VarChar(64)
   avatar        String   @default("") @db.VarChar(512)
   status        String   @default("normal") @db.VarChar(20) // normal | disabled

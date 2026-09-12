@@ -27,10 +27,13 @@ export default function AuthGuard({ allowedRoles, children, redirectTo = '/login
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  // Role check
+  // Role check — supports multi-role (user has any of the allowed roles)
   if (allowedRoles && user) {
-    const role = user.isAdmin ? 'admin' : user.role;
-    if (!allowedRoles.includes(role)) {
+    const userRoles = Array.isArray(user.roles) && user.roles.length > 0
+      ? user.roles
+      : [user.role || (user.isAdmin ? 'admin' : 'student')];
+    const hasMatch = userRoles.some((r) => allowedRoles.includes(r));
+    if (!hasMatch) {
       return <Navigate to={redirectTo} replace />;
     }
   }

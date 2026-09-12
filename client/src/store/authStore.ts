@@ -34,13 +34,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Auth is enabled — check if we have a valid token
       try {
         const me = await getMe();
+        const roles = Array.isArray(me.roles) && me.roles.length > 0
+          ? me.roles
+          : [me.role || (me.isAdmin ? 'admin' : 'student')];
         set({
           user: {
             id: me.userId,
             phone: me.phone,
             email: me.email ?? null,
-            isAdmin: me.isAdmin,
-            role: me.role,
+            isAdmin: me.isAdmin || roles.includes('admin'),
+            role: roles[0],
+            roles,
             nickName: me.nickName ?? '',
             avatar: me.avatar ?? '',
             status: me.status ?? 'normal',

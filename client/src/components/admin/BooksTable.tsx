@@ -576,6 +576,13 @@ export default function BooksTable() {
                           {book.subject && <span className="bg-emerald-50 text-emerald-600 rounded px-1.5 py-0.5">{book.subject}</span>}
                           {book.grade && <span className="bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">{book.grade}</span>}
                           {book.category && <span className="bg-violet-50 text-violet-600 rounded px-1.5 py-0.5">{book.category}</span>}
+                          {(() => {
+                            const pair = (book.attributes as any)?.pair;
+                            if (!pair || !pair.with) return null;
+                            if (pair.role === 'textbook') return <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5" title={`教材 → 答案 #${pair.with}`}>教材</span>;
+                            if (pair.role === 'answer') return <span className="bg-teal-50 text-teal-600 rounded px-1.5 py-0.5" title={`答案 ← 教材 #${pair.with}`}>答案</span>;
+                            return null;
+                          })()}
                         </div>
                       </div>
                     )}

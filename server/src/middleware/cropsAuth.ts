@@ -56,7 +56,7 @@ export async function cropsAuthMiddleware(req: Request, res: Response, next: Nex
     return res.status(401).json({ error: 'authentication required' });
   }
 
-  let user: { userId: number; isAdmin: boolean; role: string };
+  let user: { userId: number; isAdmin: boolean; role: string; roles: string[] };
   try {
     user = await verifyAccessToken(token);
   } catch {
@@ -64,7 +64,7 @@ export async function cropsAuthMiddleware(req: Request, res: Response, next: Nex
   }
 
   // Admin and teacher can access all crops
-  if (user.isAdmin || user.role === 'teacher') {
+  if (user.isAdmin || user.roles.includes('teacher')) {
     return next();
   }
 

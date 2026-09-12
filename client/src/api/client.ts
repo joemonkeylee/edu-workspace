@@ -52,8 +52,19 @@ api.interceptors.response.use(
 
     // Normalize error message from server response
     const serverMsg = error.response?.data;
-    if (serverMsg && typeof serverMsg === 'object') {
-      error.message = serverMsg.error || serverMsg.message || error.message;
+    if (serverMsg) {
+      if (serverMsg instanceof Blob) {
+        // Blob responses (e.g. file download) — read text and try to parse JSON error
+        try {
+          const text = await serverMsg.text();
+          const json = JSON.parse(text);
+          error.message = json.error || json.message || error.message;
+        } catch {
+          // not JSON, keep default message
+        }
+      } else if (typeof serverMsg === 'object') {
+        error.message = serverMsg.error || serverMsg.message || error.message;
+      }
     }
 
     if (error.response?.status === 401 && !original._retry && refreshToken) {

@@ -90,7 +90,13 @@ router.post('/login', async (req: Request, res: Response) => {
       }
     }
 
-    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin, role: user.role, tokenVersion: user.tokenVersion };
+    // Normalize roles: ensure array, derive from legacy role field if empty
+    const rawRoles = Array.isArray(user.roles) ? user.roles as unknown[] : [];
+    const userRoles: string[] = rawRoles.length > 0
+      ? rawRoles.filter((r): r is string => typeof r === 'string')
+      : [user.role || (user.isAdmin ? 'admin' : 'student')];
+
+    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin || userRoles.includes('admin'), role: userRoles[0], roles: userRoles, tokenVersion: user.tokenVersion };
     const accessToken = await signAccessToken(payload);
     const refreshToken = await signRefreshToken(payload);
     const refreshExpiry = await getSetting('auth.refresh_token_expiry');
@@ -103,8 +109,9 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         phone: user.phone,
         email: user.email,
-        isAdmin: user.isAdmin,
-        role: user.role,
+        isAdmin: user.isAdmin || userRoles.includes('admin'),
+        role: userRoles[0],
+        roles: userRoles,
         nickName: user.nickName,
         avatar: user.avatar,
         status: user.status,
@@ -140,7 +147,13 @@ router.post('/refresh', async (req: Request, res: Response) => {
       await revokeRefreshToken(refreshToken);
     }
 
-    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin, role: user.role, tokenVersion: user.tokenVersion };
+    // Normalize roles: ensure array, derive from legacy role field if empty
+    const rawRoles = Array.isArray(user.roles) ? user.roles as unknown[] : [];
+    const userRoles: string[] = rawRoles.length > 0
+      ? rawRoles.filter((r): r is string => typeof r === 'string')
+      : [user.role || (user.isAdmin ? 'admin' : 'student')];
+
+    const payload = { userId: user.id, phone: user.phone, isAdmin: user.isAdmin || userRoles.includes('admin'), role: userRoles[0], roles: userRoles, tokenVersion: user.tokenVersion };
     const newAccessToken = await signAccessToken(payload);
     let newRefreshToken = refreshToken;
 
@@ -181,6 +194,7 @@ router.get('/me', authRequired, asyncHandler(async (req: AuthedRequest, res: Res
       email: null,
       isAdmin: true,
       role: 'admin',
+      roles: ['admin', 'teacher', 'student'],
       nickName: '本机用户',
       avatar: '',
       status: 'normal',
@@ -190,12 +204,17 @@ router.get('/me', authRequired, asyncHandler(async (req: AuthedRequest, res: Res
 
   const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
   if (!user) return res.status(401).json({ error: 'user not found' });
+  const rawRoles = Array.isArray(user.roles) ? user.roles as unknown[] : [];
+  const userRoles: string[] = rawRoles.length > 0
+    ? rawRoles.filter((r): r is string => typeof r === 'string')
+    : [user.role || (user.isAdmin ? 'admin' : 'student')];
   res.json({
     userId: user.id,
     phone: user.phone,
     email: user.email,
-    isAdmin: user.isAdmin,
-    role: user.role,
+    isAdmin: user.isAdmin || userRoles.includes('admin'),
+    role: userRoles[0],
+    roles: userRoles,
     nickName: user.nickName,
     avatar: user.avatar,
     status: user.status,

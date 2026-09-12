@@ -29,7 +29,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     prisma.user.findMany({
       where,
       select: {
-        id: true, phone: true, email: true, isAdmin: true, role: true, nickName: true,
+        id: true, phone: true, email: true, isAdmin: true, role: true, roles: true, nickName: true,
         avatar: true, status: true, maxDevices: true, createdAt: true, updatedAt: true,
       },
       orderBy: { id: 'asc' },
@@ -50,7 +50,11 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   for (const dc of deviceCounts) {
     deviceCountMap.set(dc.userId, dc._count.userId);
   }
-  const result = users.map((u) => ({ ...u, deviceCount: deviceCountMap.get(u.id) || 0 }));
+  const result = users.map((u) => ({
+    ...u,
+    roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || (u.isAdmin ? 'admin' : 'student')],
+    deviceCount: deviceCountMap.get(u.id) || 0,
+  }));
 
   res.json({ data: result, total, page, pageSize });
 }));
@@ -63,6 +67,8 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim() : null;
   const isAdmin = !!req.body?.isAdmin;
   const role = typeof req.body?.role === 'string' ? req.body.role : 'student';
+  const rolesInput = Array.isArray(req.body?.roles) ? req.body.roles.filter((r: any) => typeof r === 'string' && ['admin', 'teacher', 'student'].includes(r)) : null;
+  const roles = rolesInput && rolesInput.length > 0 ? rolesInput : [role];
   const nickName = typeof req.body?.nickName === 'string' ? req.body.nickName.trim() : '';
   const maxDevices = Math.max(1, Math.min(10, parseInt(req.body?.maxDevices) || 3));
 
@@ -73,9 +79,9 @@ router.post('/', asyncHandler(async (req: Request, res: Response) => {
 
   const hashed = await hashPassword(password);
   const user = await prisma.user.create({
-    data: { phone, password: hashed, email: email || null, isAdmin, role, nickName, maxDevices },
+    data: { phone, password: hashed, email: email || null, isAdmin: isAdmin || roles.includes('admin'), role: roles[0], roles, nickName, maxDevices },
     select: {
-      id: true, phone: true, email: true, isAdmin: true, role: true, nickName: true,
+      id: true, phone: true, email: true, isAdmin: true, role: true, roles: true, nickName: true,
       avatar: true, status: true, maxDevices: true, createdAt: true,
     },
   });
@@ -97,6 +103,14 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
   else if (req.body?.email === '' || req.body?.email === null) data.email = null;
   if (typeof req.body?.isAdmin === 'boolean') data.isAdmin = req.body.isAdmin;
   if (typeof req.body?.role === 'string') data.role = req.body.role;
+  if (Array.isArray(req.body?.roles)) {
+    const validRoles = req.body.roles.filter((r: any) => typeof r === 'string' && ['admin', 'teacher', 'student'].includes(r));
+    if (validRoles.length > 0) {
+      data.roles = validRoles;
+      data.role = validRoles[0];
+      data.isAdmin = validRoles.includes('admin');
+    }
+  }
   if (typeof req.body?.nickName === 'string') data.nickName = req.body.nickName.trim();
   if (typeof req.body?.status === 'string') data.status = req.body.status;
   if (typeof req.body?.maxDevices === 'number') data.maxDevices = Math.max(1, Math.min(10, req.body.maxDevices));
@@ -115,13 +129,13 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
     where: { id },
     data,
     select: {
-      id: true, phone: true, email: true, isAdmin: true, role: true, nickName: true,
+      id: true, phone: true, email: true, isAdmin: true, role: true, roles: true, nickName: true,
       avatar: true, status: true, maxDevices: true, updatedAt: true,
     },
   });
 
-  // Invalidate all existing tokens if role or status changed
-  if (data.role || data.status || typeof data.isAdmin === 'boolean') {
+  // Invalidate all existing tokens if role/roles or status changed
+  if (data.role || data.roles || data.status || typeof data.isAdmin === 'boolean') {
     await incrementTokenVersion(id);
     await revokeAllUserRefreshTokens(id);
   }

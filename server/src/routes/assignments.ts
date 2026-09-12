@@ -13,12 +13,12 @@ const router = Router();
 
 function canAccessAssignment(req: AuthedRequest, assignment: { userId: number | null }): boolean {
   if (!req.user) return true; // standalone mode: no restrictions
-  if (req.user.isAdmin || req.user.role === 'teacher') return true;
+  if (req.user.isAdmin || req.user.roles.includes('teacher')) return true;
   return assignment.userId === req.user.userId;
 }
 
 function canGradeAssignment(req: AuthedRequest): boolean {
-  return !req.user || req.user.isAdmin || req.user.role === 'teacher';
+  return !req.user || req.user.isAdmin || req.user.roles.includes('teacher');
 }
 
 // ── List assignments for a book ──────────────────────────────────
@@ -32,7 +32,7 @@ router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Respo
 
   const userId = req.user?.userId;
   const where: any = { bookId };
-  const canViewAll = Boolean(req.user?.isAdmin || req.user?.role === 'teacher');
+  const canViewAll = Boolean(req.user?.isAdmin || req.user?.roles.includes('teacher'));
   if (userId && !canViewAll) where.userId = userId;
 
   const [assignments, total] = await Promise.all([
@@ -227,7 +227,7 @@ router.post('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest
   // - Students can only write to 'student' layer (answer layer)
   // - Admins can write to any layer
   if (req.user && !req.user.isAdmin) {
-    const isTeacher = req.user.role === 'teacher';
+    const isTeacher = req.user.roles.includes('teacher');
     if (isTeacher && layer !== 'teacher') {
       return res.status(403).json({ error: 'teachers can only save to teacher layer' });
     }
@@ -268,7 +268,7 @@ router.delete('/:id/strokes/:strokeId', authRequired, asyncHandler(async (req: A
   if (!stroke) return res.status(404).json({ error: 'stroke not found' });
   // Layer permission: teachers can only delete teacher-layer strokes, students only student-layer
   if (req.user && !req.user.isAdmin) {
-    const isTeacher = req.user.role === 'teacher';
+    const isTeacher = req.user.roles.includes('teacher');
     if (isTeacher && stroke.layer !== 'teacher') {
       return res.status(403).json({ error: 'teachers can only delete teacher layer strokes' });
     }

@@ -16,6 +16,7 @@ interface TicketEntry {
   phone: string;
   isAdmin: boolean;
   role: string;
+  roles: string[];
   expiresAt: number;
   used: boolean;
 }
@@ -35,20 +36,21 @@ function cleanup() {
 // Periodic cleanup every 10s
 setInterval(cleanup, 10_000).unref?.();
 
-export function createSseTicket(user: { userId: number; phone: string; isAdmin: boolean; role: string }): string {
+export function createSseTicket(user: { userId: number; phone: string; isAdmin: boolean; role: string; roles: string[] }): string {
   const ticket = crypto.randomBytes(24).toString('hex');
   tickets.set(ticket, {
     userId: user.userId,
     phone: user.phone,
     isAdmin: user.isAdmin,
     role: user.role,
+    roles: user.roles,
     expiresAt: Date.now() + TTL_MS,
     used: false,
   });
   return ticket;
 }
 
-export function consumeSseTicket(ticket: string): { userId: number; phone: string; isAdmin: boolean; role: string } | null {
+export function consumeSseTicket(ticket: string): { userId: number; phone: string; isAdmin: boolean; role: string; roles: string[] } | null {
   const entry = tickets.get(ticket);
   if (!entry) return null;
   if (entry.expiresAt < Date.now()) {
@@ -61,5 +63,5 @@ export function consumeSseTicket(ticket: string): { userId: number; phone: strin
   }
   entry.used = true;
   // Keep the entry until cleanup so we can detect replay attempts
-  return { userId: entry.userId, phone: entry.phone, isAdmin: entry.isAdmin, role: entry.role };
+  return { userId: entry.userId, phone: entry.phone, isAdmin: entry.isAdmin, role: entry.role, roles: entry.roles };
 }

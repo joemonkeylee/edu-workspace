@@ -9,6 +9,7 @@ interface UserRow {
   email: string | null;
   isAdmin: boolean;
   role: string;
+  roles: string[];
   nickName: string;
   avatar: string;
   status: string;
@@ -111,13 +112,17 @@ export default function UsersTable() {
                 <td className="px-4 py-3">{u.email || '-'}</td>
                 <td className="px-4 py-3">{u.nickName || '-'}</td>
                 <td className="px-4 py-3">
-                  <span className={
-                    u.role === 'admin' ? 'text-primary font-medium' :
-                    u.role === 'teacher' ? 'text-teal-600 font-medium' :
-                    'text-gray-500'
-                  }>
-                    {u.role === 'admin' ? '管理员' : u.role === 'teacher' ? '教师' : '学生'}
-                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {(Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role]).map((r) => (
+                      <span key={r} className={
+                        r === 'admin' ? 'px-1.5 py-0.5 text-xs rounded bg-primary/10 text-primary font-medium' :
+                        r === 'teacher' ? 'px-1.5 py-0.5 text-xs rounded bg-teal-50 text-teal-600 font-medium' :
+                        'px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-500'
+                      }>
+                        {r === 'admin' ? '管理员' : r === 'teacher' ? '教师' : '学生'}
+                      </span>
+                    ))}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <span className={u.status === 'disabled' ? 'text-red-600' : 'text-green-600'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
@@ -180,10 +185,17 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
     phone: user.phone,
     email: user.email || '',
     nickName: user.nickName,
-    role: user.role,
+    roles: Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : [user.role || (user.isAdmin ? 'admin' : 'student')],
     status: user.status,
     maxDevices: user.maxDevices,
   });
+  const toggleRole = (r: string) => {
+    setForm((f) => {
+      const has = f.roles.includes(r);
+      const next = has ? f.roles.filter((x) => x !== r) : [...f.roles, r];
+      return { ...f, roles: next.length > 0 ? next : ['student'] };
+    });
+  };
 
   if (!editing) {
     return <button onClick={() => setEditing(true)} className="text-blue-600 hover:underline">编辑</button>;
@@ -195,7 +207,7 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
       <button
         onClick={async () => {
           try {
-            await adminUpdateUser(user.id, { ...form, isAdmin: form.role === 'admin' });
+            await adminUpdateUser(user.id, { ...form, isAdmin: form.roles.includes('admin') });
             toast.success('用户已更新');
             setEditing(false);
             onUpdated();
@@ -213,12 +225,20 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
             <Field label="邮箱" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
             <Field label="昵称" value={form.nickName} onChange={(v) => setForm({ ...form, nickName: v })} />
             <div>
-              <label className="text-sm text-gray-500">角色</label>
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-3 py-2 border rounded text-sm">
-                <option value="student">学生</option>
-                <option value="teacher">教师</option>
-                <option value="admin">管理员</option>
-              </select>
+              <label className="text-sm text-gray-500">角色（可多选）</label>
+              <div className="flex gap-3 mt-1">
+                {(['admin', 'teacher', 'student'] as const).map((r) => (
+                  <label key={r} className="flex items-center gap-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.roles.includes(r)}
+                      onChange={() => toggleRole(r)}
+                      className="rounded"
+                    />
+                    {r === 'admin' ? '管理员' : r === 'teacher' ? '教师' : '学生'}
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
               <label className="text-sm text-gray-500">状态</label>
@@ -234,7 +254,7 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
             <button
               onClick={async () => {
                 try {
-                  await adminUpdateUser(user.id, { ...form, isAdmin: form.role === 'admin' });
+                  await adminUpdateUser(user.id, { ...form, isAdmin: form.roles.includes('admin') });
                   toast.success('用户已更新');
                   setEditing(false);
                   onUpdated();
@@ -285,8 +305,15 @@ function ResetPasswordButton({ userId }: { userId: number }) {
 }
 
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ phone: '', password: '', email: '', nickName: '', role: 'student', maxDevices: 3 });
+  const [form, setForm] = useState({ phone: '', password: '', email: '', nickName: '', roles: ['student'] as string[], maxDevices: 3 });
   const [error, setError] = useState('');
+  const toggleRole = (r: string) => {
+    setForm((f) => {
+      const has = f.roles.includes(r);
+      const next = has ? f.roles.filter((x) => x !== r) : [...f.roles, r];
+      return { ...f, roles: next.length > 0 ? next : ['student'] };
+    });
+  };
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
@@ -298,12 +325,20 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <Field label="邮箱" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
           <Field label="昵称" value={form.nickName} onChange={(v) => setForm({ ...form, nickName: v })} />
           <div>
-            <label className="text-sm text-gray-500">角色</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-3 py-2 border rounded text-sm">
-              <option value="student">学生</option>
-              <option value="teacher">教师</option>
-              <option value="admin">管理员</option>
-            </select>
+            <label className="text-sm text-gray-500">角色（可多选）</label>
+            <div className="flex gap-3 mt-1">
+              {(['admin', 'teacher', 'student'] as const).map((r) => (
+                <label key={r} className="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.roles.includes(r)}
+                    onChange={() => toggleRole(r)}
+                    className="rounded"
+                  />
+                  {r === 'admin' ? '管理员' : r === 'teacher' ? '教师' : '学生'}
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             <label className="text-sm text-gray-500">最大设备数</label>
@@ -313,7 +348,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <button
             onClick={async () => {
               try {
-                await adminCreateUser({ ...form, isAdmin: form.role === 'admin' });
+                await adminCreateUser({ ...form, isAdmin: form.roles.includes('admin') } as any);
                 toast.success('用户已创建');
                 onCreated();
                 onClose();

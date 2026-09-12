@@ -24,7 +24,7 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   if (tag) where.tags = { contains: tag };
 
   // Admin sees all; teacher sees only their own mistakes
-  if (req.user && !req.user.isAdmin && req.user.role === 'teacher') {
+  if (req.user && !req.user.isAdmin && req.user.roles.includes('teacher')) {
     where.userId = req.user.userId;
   }
 
