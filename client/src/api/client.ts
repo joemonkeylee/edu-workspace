@@ -226,9 +226,15 @@ export async function bookPairsList(params?: { page?: number; pageSize?: number;
   return data as { data: Array<{ textbook: { id: number; title: string; category: string; totalPages: number }; answers: Array<{ id: number; title: string; category: string; totalPages: number }> }>; total: number; page: number; pageSize: number };
 }
 
-export async function bookPairsOrphans(params?: { page?: number; pageSize?: number; search?: string; role?: 'textbook' | 'answer' | 'none' }) {
+export async function bookPairsOrphans(params?: { page?: number; pageSize?: number; search?: string; role?: 'textbook' | 'answer' | 'none' | 'all'; sortBy?: string; sortDir?: 'asc' | 'desc' }) {
   const { data } = await api.get('/admin/book-pairs/orphans', { params });
-  return data as { data: Array<{ id: number; title: string; category: string; totalPages: number; role: string }>; total: number; page: number; pageSize: number };
+  return data as { data: Array<{ id: number; title: string; category: string; totalPages: number; type: string; role: string | null }>; total: number; page: number; pageSize: number };
+}
+
+export async function bookPairsOrphansExport(params?: { role?: 'textbook' | 'answer' | 'none' | 'all'; search?: string; ids?: number[] }) {
+  const qs = params?.ids && params.ids.length ? { ...params, ids: params.ids.join(',') } : params;
+  const { data } = await api.get('/admin/book-pairs/orphans/export', { params: qs, responseType: 'blob' });
+  return data as Blob;
 }
 
 export async function bookPairsBind(textbookId: number, answerIds: number[]) {

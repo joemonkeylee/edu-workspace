@@ -3,6 +3,7 @@ import {
   bookPairsScan,
   bookPairsList,
   bookPairsOrphans,
+  bookPairsOrphansExport,
   bookPairsBind,
   bookPairsUnbind,
   bookPairsBindBatch,
@@ -17,14 +18,16 @@ import { useConfirm } from '../ConfirmDialog';
 import { Loader2 } from 'lucide-react';
 
 type Tab = 'scan' | 'bound' | 'orphans';
-type OrphanRole = 'textbook' | 'answer' | 'none';
+type OrphanRole = 'textbook' | 'answer' | 'none' | 'all';
 
 export default function BookPairs() {
   const [tab, setTab] = useState<Tab>('scan');
   const [orphanRole, setOrphanRole] = useState<OrphanRole>('textbook');
 
-  const handleScanFilter = (key: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => {
-    if (key === 'orphanTextbook') {
+  const handleScanFilter = (key: 'unbound' | 'duplicates' | 'bound' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => {
+    if (key === 'bound') {
+      setTab('bound');
+    } else if (key === 'orphanTextbook') {
       setOrphanRole('textbook');
       setTab('orphans');
     } else if (key === 'orphanAnswer') {
@@ -81,7 +84,7 @@ function highlightColor(idx: number) {
 
 // ── Pagination (固定在底部，含每页大小选择) ──────────────────────────
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500, 1000];
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
 
 function Pagination({
   total,
@@ -134,7 +137,7 @@ interface StatBoxConfig {
   value: number;
   color: string;
   desc: string;        // tooltip 说明
-  filterKey?: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion';  // 可筛选/跳转的卡片
+  filterKey?: 'unbound' | 'duplicates' | 'bound' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion';  // 可筛选/跳转的卡片
 }
 
 function StatsCard({
@@ -143,14 +146,14 @@ function StatsCard({
   activeFilter,
 }: {
   stats: PairStats | null;
-  onFilter?: (key: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => void;
-  activeFilter?: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null;
+  onFilter?: (key: 'unbound' | 'duplicates' | 'bound' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => void;
+  activeFilter?: 'unbound' | 'duplicates' | 'bound' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null;
 }) {
   if (!stats) return null;
   const boxes: StatBoxConfig[] = [
     { label: '总书数', value: stats.totalBooks, color: 'text-gray-700', desc: '数据库中所有书籍的总数量（含已配对/未配对/无版本关键词）' },
     { label: '候选配对', value: stats.candidatePairs, color: 'text-blue-600', desc: '按基础标题相等匹配到的教材+答案组合数（含已绑定和待绑定）' },
-    { label: '已绑定', value: stats.boundPairs, color: 'text-green-600', desc: '已确认配对并写入 attributes.pair 的组数' },
+    { label: '已绑定', value: stats.boundPairs, color: 'text-green-600', desc: '已确认配对并写入 attributes.pair 的组数（点击查看已配对列表）', filterKey: 'bound' },
     { label: '待绑定', value: stats.unboundPairs, color: 'text-orange-600', desc: '候选配对中尚未确认绑定的组数（点击切换"仅未绑定"筛选）', filterKey: 'unbound' },
     { label: '重复组 (>2本)', value: stats.duplicateGroups, color: 'text-red-600', desc: '一个基础标题组里超过 2 本书，通常是重复导入（点击筛选）', filterKey: 'duplicates' },
     { label: '孤儿教材', value: stats.orphanTextbooks, color: 'text-amber-600', desc: '有教材关键词但没有匹配到答案的书（点击查看）', filterKey: 'orphanTextbook' },
@@ -294,7 +297,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
 
 // ── Scan Tab ───────────────────────────────────────────────────────
 
-function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => void }) {
+function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bound' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => void }) {
   const confirm = useConfirm();
   const [candidates, setCandidates] = useState<BookPairCandidate[]>([]);
   const [stats, setStats] = useState<PairStats | null>(null);
@@ -706,57 +709,92 @@ function BoundTab() {
 
 // ── Orphans Tab ────────────────────────────────────────────────────
 
+type OrphanRow = { id: number; title: string; category: string; totalPages: number; type: string; role: string | null };
+
 function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r: OrphanRole) => void }) {
-  const [orphans, setOrphans] = useState<Array<{ id: number; title: string; category: string; totalPages: number; role: string }>>([]);
+  const [orphans, setOrphans] = useState<OrphanRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedTextbook, setSelectedTextbook] = useState<number | null>(null);
-  const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set());
+  const [sortBy, setSortBy] = useState('id');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [exporting, setExporting] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await bookPairsOrphans({ page, pageSize, search, role });
+      const res = await bookPairsOrphans({ page, pageSize, search, role, sortBy, sortDir });
       setOrphans(res.data);
       setTotal(res.total);
+      setSelected(new Set());
     } catch (e: any) {
       toast.error('加载失败: ' + (e?.message || ''));
     }
     setLoading(false);
-  }, [page, pageSize, search, role]);
+  }, [page, pageSize, search, role, sortBy, sortDir]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const toggleAnswer = (id: number) => {
-    setSelectedAnswers((prev) => {
+  const toggleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(col);
+      setSortDir('asc');
+    }
+  };
+
+  const toggleRow = (id: number) => {
+    setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
-  const handleManualBind = async () => {
-    if (!selectedTextbook || selectedAnswers.size === 0) {
-      toast.warning('请选择一本教材和至少一本答案');
-      return;
-    }
-    try {
-      await bookPairsBind(selectedTextbook, Array.from(selectedAnswers));
-      toast.success('手动配对成功');
-      setSelectedTextbook(null);
-      setSelectedAnswers(new Set());
-      fetch();
-    } catch (e: any) {
-      toast.error('配对失败: ' + (e?.message || ''));
+  const toggleSelectAll = () => {
+    if (selected.size === orphans.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(orphans.map((o) => o.id)));
     }
   };
 
-  const isNoVersion = role === 'none';
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await bookPairsOrphansExport({
+        role,
+        search: search || undefined,
+        ids: selected.size > 0 ? Array.from(selected) : undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `orphans-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(selected.size > 0 ? `已导出 ${selected.size} 条` : '已导出全部筛选数据');
+    } catch (e: any) {
+      toast.error('导出失败: ' + (e?.message || ''));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const SortHeader = ({ label, col, w = '' }: { label: string; col: string; w?: string }) => (
+    <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100 ${w}`} onClick={() => toggleSort(col)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortBy === col && <span className="text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+      </span>
+    </th>
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -766,6 +804,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
           onChange={(e) => { onRoleChange(e.target.value as OrphanRole); setPage(1); }}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
         >
+          <option value="all">全部</option>
           <option value="textbook">孤儿教材</option>
           <option value="answer">孤儿答案</option>
           <option value="none">无版本关键词</option>
@@ -778,69 +817,59 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
         <button onClick={fetch} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">刷新</button>
-        {!isNoVersion && (
-          <div className="ml-auto flex items-center gap-2 text-sm">
-            {selectedTextbook && <span className="text-blue-600">教材: #{selectedTextbook}</span>}
-            {selectedAnswers.size > 0 && <span className="text-teal-600">答案: {selectedAnswers.size} 本</span>}
-            <button
-              onClick={handleManualBind}
-              disabled={!selectedTextbook || selectedAnswers.size === 0}
-              className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
-            >手动配对</button>
-          </div>
-        )}
+        <button onClick={handleExport} disabled={exporting} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">
+          {exporting ? <Loader2 size={14} className="animate-spin" /> : null}
+          {exporting ? '导出中...' : selected.size > 0 ? `导出选中 (${selected.size})` : '导出全部'}
+        </button>
       </div>
-      {!isNoVersion && (
-        <p className="text-xs text-gray-500 mb-2 shrink-0">
-          使用方式：在「孤儿教材」选一本教材（单选），切到「孤儿答案」勾选答案（可多选），然后点「手动配对」。
-        </p>
-      )}
-      {isNoVersion && (
-        <p className="text-xs text-gray-500 mb-2 shrink-0">
-          这些书的标题不含任何版本关键词（如"原卷版/解析版/答案"等），不参与自动配对。可手动选择教材和答案进行配对。
-        </p>
-      )}
 
       <div className="bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 sticky top-0">
               <tr>
-                {!isNoVersion && <th className="px-3 py-2 text-left w-8">选</th>}
-                <th className="px-3 py-2 text-left">ID</th>
-                <th className="px-3 py-2 text-left">标题</th>
-                <th className="px-3 py-2 text-left">分类</th>
-                <th className="px-3 py-2 text-left">页数</th>
+                <th className="px-3 py-2 text-left w-8">
+                  <input
+                    type="checkbox"
+                    checked={selected.size > 0 && selected.size === orphans.length}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+                <SortHeader label="ID" col="id" w="w-20" />
+                <SortHeader label="标题" col="title" />
+                <SortHeader label="分类" col="category" w="w-28" />
+                <SortHeader label="页数" col="totalPages" w="w-16" />
+                <SortHeader label="类型" col="type" w="w-28" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {orphans.map((o, idx) => {
-                const isTextbookRow = role === 'textbook';
-                const checked = isTextbookRow ? selectedTextbook === o.id : selectedAnswers.has(o.id);
+                const checked = selected.has(o.id);
                 return (
                   <tr key={o.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100`}>
-                    {!isNoVersion && (
-                      <td className="px-3 py-2">
-                        <input
-                          type={isTextbookRow ? 'radio' : 'checkbox'}
-                          name="textbook"
-                          checked={checked}
-                          onChange={() => {
-                            if (isTextbookRow) setSelectedTextbook(o.id);
-                            else toggleAnswer(o.id);
-                          }}
-                        />
-                      </td>
-                    )}
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleRow(o.id)}
+                      />
+                    </td>
                     <td className="px-3 py-2 text-gray-500"><a href={`/book/${o.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{o.id}</a></td>
                     <td className="px-3 py-2">{o.title}</td>
                     <td className="px-3 py-2 text-gray-500">{o.category}</td>
                     <td className="px-3 py-2 text-gray-400">{o.totalPages}</td>
+                    <td className="px-3 py-2">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        o.type === '孤儿教材' ? 'bg-blue-50 text-blue-700' :
+                        o.type === '孤儿答案' ? 'bg-teal-50 text-teal-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>{o.type}</span>
+                    </td>
                   </tr>
                 );
               })}
               {orphans.length === 0 && !loading && (
-                <tr><td colSpan={isNoVersion ? 4 : 5} className="px-3 py-8 text-center text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">暂无数据</td></tr>
               )}
             </tbody>
           </table>
