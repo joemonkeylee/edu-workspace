@@ -801,6 +801,15 @@ export default function Home() {
                     onClick={() => { if (editMode) toggleSelect(book.id); else window.open(`/book/${book.id}`, '_blank'); }}
                   >
                     <BookCover book={book} className={`w-full h-full object-cover ${editMode ? '' : 'transition group-hover:scale-[1.02]'}`} />
+                    {/* 左上角答案角标 */}
+                    {book.pairSummary?.role === 'textbook' && book.pairSummary.partnerCount > 0 && (
+                      <div className="absolute top-0 left-0 z-10 flex items-center gap-0.5 bg-sky-500 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm">
+                        <span>✓</span>
+                        <span>答案</span>
+                        <span className="ml-0.5">{book.pairSummary.partnerCount}</span>
+                        <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-sky-500 border-r-[6px] border-r-transparent border-b-0" />
+                      </div>
+                    )}
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
                       {editMode ? (
                         <>
@@ -854,11 +863,6 @@ export default function Home() {
                             {book.subject && <span className="bg-emerald-500/90 text-white rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
                             {book.grade && <span className="bg-blue-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
                             {book.category && <span className="bg-violet-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.category}</span>}
-                            {book.pairSummary?.role === 'textbook' && (
-                              <span className="bg-sky-500/90 text-white rounded px-1 py-0.5 text-[9px]" title={`已绑定 ${book.pairSummary.partnerCount} 本答案`}>
-                                📘 教材{book.pairSummary.partnerCount > 0 ? `·+${book.pairSummary.partnerCount}` : ''}
-                              </span>
-                            )}
                           </div>
                         </>
                       )}
@@ -952,12 +956,12 @@ export default function Home() {
                               <Star size={13} className={book.isFavorite ? 'fill-amber-400' : ''} />
                             </button>
                             <span className="block text-xs text-gray-700 truncate" title={book.title}>{book.title}</span>
-                            {book.pairSummary?.role === 'textbook' && (
+                            {book.pairSummary?.role === 'textbook' && book.pairSummary.partnerCount > 0 && (
                               <span
-                                className="flex-shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] text-sky-700 font-medium"
+                                className="flex-shrink-0 rounded bg-sky-500 text-white px-1.5 py-0.5 text-[10px] font-medium"
                                 title={`已绑定 ${book.pairSummary.partnerCount} 本答案`}
                               >
-                                📘 {book.pairSummary.partnerCount > 0 ? `+${book.pairSummary.partnerCount}` : '教材'}
+                                ✓ 答案 {book.pairSummary.partnerCount}
                               </span>
                             )}
                           </div>

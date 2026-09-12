@@ -630,13 +630,13 @@ export default function BookViewer() {
                     : 'bg-teal-500/20 text-teal-200 hover:bg-teal-500/30'
                 }`}
                 title={currentBook.pairSummary.role === 'textbook'
-                  ? `教材 · 已绑定 ${currentBook.pairSummary.partnerCount} 本答案，点击查看`
-                  : '答案书 · 点击跳转到对应教材'}
+                  ? `已绑定 ${currentBook.pairSummary.partnerCount} 本答案，点击查看`
+                  : '这是答案书，点击跳转到对应教材'}
               >
                 {currentBook.pairSummary.role === 'textbook' ? (
-                  <>📘 教材{currentBook.pairSummary.partnerCount > 0 ? ` · ${currentBook.pairSummary.partnerCount}` : ''}</>
+                  <>✓ 答案{currentBook.pairSummary.partnerCount > 0 ? ` ${currentBook.pairSummary.partnerCount}` : ''}</>
                 ) : (
-                  <>📗 答案</>
+                  <>✓ 答案书</>
                 )}
               </button>
               {pairOpen && (
@@ -654,8 +654,8 @@ export default function BookViewer() {
                             onClick={() => setPairOpen(false)}
                             className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-200 hover:bg-white/10 transition"
                           >
-                            <span className="text-teal-400">📗</span>
-                            <span className="truncate">{p.title}</span>
+                            <span className="text-teal-400">答案</span>
+                            <span className="truncate flex-1">{p.title}</span>
                           </a>
                         ))
                       ) : (
@@ -671,8 +671,8 @@ export default function BookViewer() {
                           onClick={() => setPairOpen(false)}
                           className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-200 hover:bg-white/10 transition"
                         >
-                          <span className="text-sky-400">📘</span>
-                          <span className="truncate">{p.title}</span>
+                          <span className="text-sky-400">教材</span>
+                          <span className="truncate flex-1">{p.title}</span>
                         </a>
                       ))
                     ) : (
