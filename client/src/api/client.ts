@@ -221,7 +221,7 @@ export async function bookPairsList(params?: { page?: number; pageSize?: number;
   return data as { data: Array<{ textbook: { id: number; title: string; category: string; totalPages: number }; answers: Array<{ id: number; title: string; category: string; totalPages: number }> }>; total: number; page: number; pageSize: number };
 }
 
-export async function bookPairsOrphans(params?: { page?: number; pageSize?: number; search?: string; role?: 'textbook' | 'answer' }) {
+export async function bookPairsOrphans(params?: { page?: number; pageSize?: number; search?: string; role?: 'textbook' | 'answer' | 'none' }) {
   const { data } = await api.get('/admin/book-pairs/orphans', { params });
   return data as { data: Array<{ id: number; title: string; category: string; totalPages: number; role: string }>; total: number; page: number; pageSize: number };
 }

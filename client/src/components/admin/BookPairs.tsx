@@ -16,9 +16,26 @@ import { useConfirm } from '../ConfirmDialog';
 import { Loader2 } from 'lucide-react';
 
 type Tab = 'scan' | 'bound' | 'orphans';
+type OrphanRole = 'textbook' | 'answer' | 'none';
 
 export default function BookPairs() {
   const [tab, setTab] = useState<Tab>('scan');
+  const [orphanRole, setOrphanRole] = useState<OrphanRole>('textbook');
+
+  const handleScanFilter = (key: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => {
+    if (key === 'orphanTextbook') {
+      setOrphanRole('textbook');
+      setTab('orphans');
+    } else if (key === 'orphanAnswer') {
+      setOrphanRole('answer');
+      setTab('orphans');
+    } else if (key === 'noVersion') {
+      setOrphanRole('none');
+      setTab('orphans');
+    } else {
+      setTab('scan');
+    }
+  };
 
   return (
     <div className="p-6 flex flex-col h-full">
@@ -28,9 +45,9 @@ export default function BookPairs() {
         <TabButton active={tab === 'orphans'} onClick={() => setTab('orphans')}>孤儿 (未配对)</TabButton>
       </div>
       <div className="flex-1 overflow-auto">
-        {tab === 'scan' && <ScanTab />}
+        {tab === 'scan' && <ScanTab onFilter={handleScanFilter} />}
         {tab === 'bound' && <BoundTab />}
-        {tab === 'orphans' && <OrphansTab />}
+        {tab === 'orphans' && <OrphansTab role={orphanRole} onRoleChange={setOrphanRole} />}
       </div>
     </div>
   );
@@ -116,7 +133,7 @@ interface StatBoxConfig {
   value: number;
   color: string;
   desc: string;        // tooltip 说明
-  filterKey?: 'unbound' | 'duplicates';  // 可筛选的卡片
+  filterKey?: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion';  // 可筛选/跳转的卡片
 }
 
 function StatsCard({
@@ -125,8 +142,8 @@ function StatsCard({
   activeFilter,
 }: {
   stats: PairStats | null;
-  onFilter?: (key: 'unbound' | 'duplicates' | null) => void;
-  activeFilter?: 'unbound' | 'duplicates' | null;
+  onFilter?: (key: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => void;
+  activeFilter?: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null;
 }) {
   if (!stats) return null;
   const boxes: StatBoxConfig[] = [
@@ -135,9 +152,9 @@ function StatsCard({
     { label: '已绑定', value: stats.boundPairs, color: 'text-green-600', desc: '已确认配对并写入 attributes.pair 的组数' },
     { label: '待绑定', value: stats.unboundPairs, color: 'text-orange-600', desc: '候选配对中尚未确认绑定的组数（点击切换"仅未绑定"筛选）', filterKey: 'unbound' },
     { label: '重复组 (>2本)', value: stats.duplicateGroups, color: 'text-red-600', desc: '一个基础标题组里超过 2 本书，通常是重复导入（点击筛选）', filterKey: 'duplicates' },
-    { label: '孤儿教材', value: stats.orphanTextbooks, color: 'text-amber-600', desc: '有教材关键词但没有匹配到答案的书（去"孤儿"Tab 查看）' },
-    { label: '孤儿答案', value: stats.orphanAnswers, color: 'text-amber-600', desc: '有答案关键词但没有匹配到教材的书（去"孤儿"Tab 查看）' },
-    { label: '无版本关键词', value: stats.noVersionKeyword, color: 'text-gray-400', desc: '标题不含"原卷版/解析版/答案"等关键词，不参与自动配对' },
+    { label: '孤儿教材', value: stats.orphanTextbooks, color: 'text-amber-600', desc: '有教材关键词但没有匹配到答案的书（点击查看）', filterKey: 'orphanTextbook' },
+    { label: '孤儿答案', value: stats.orphanAnswers, color: 'text-amber-600', desc: '有答案关键词但没有匹配到教材的书（点击查看）', filterKey: 'orphanAnswer' },
+    { label: '无版本关键词', value: stats.noVersionKeyword, color: 'text-gray-400', desc: '标题不含"原卷版/解析版/答案"等关键词，不参与自动配对（点击查看）', filterKey: 'noVersion' },
   ];
   return (
     <div className="flex flex-wrap gap-2 mb-4">
@@ -276,7 +293,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
 
 // ── Scan Tab ───────────────────────────────────────────────────────
 
-function ScanTab() {
+function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => void }) {
   const confirm = useConfirm();
   const [candidates, setCandidates] = useState<BookPairCandidate[]>([]);
   const [stats, setStats] = useState<PairStats | null>(null);
@@ -285,6 +302,7 @@ function ScanTab() {
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [scanFilter, setScanFilter] = useState<'unbound' | 'duplicates' | null>(null);
   const [filters, setFilters] = useState({ unbound: false, duplicates: false, search: '' });
   const [showRules, setShowRules] = useState(false);
   const [batchBinding, setBatchBinding] = useState(false);
@@ -411,14 +429,20 @@ function ScanTab() {
     <div className="flex flex-col h-full">
       <StatsCard
         stats={stats}
-        activeFilter={filters.unbound ? 'unbound' : filters.duplicates ? 'duplicates' : null}
+        activeFilter={scanFilter}
         onFilter={(key) => {
-          setFilters({
-            ...filters,
-            unbound: key === 'unbound',
-            duplicates: key === 'duplicates',
-          });
-          setPage(1);
+          if (key === 'unbound' || key === 'duplicates') {
+            setScanFilter(key);
+            setFilters({
+              ...filters,
+              unbound: key === 'unbound',
+              duplicates: key === 'duplicates',
+            });
+            setPage(1);
+          } else {
+            // orphanTextbook / orphanAnswer / noVersion → delegate to parent to switch tab
+            onFilter?.(key);
+          }
         }}
       />
 
@@ -654,8 +678,7 @@ function BoundTab() {
 
 // ── Orphans Tab ────────────────────────────────────────────────────
 
-function OrphansTab() {
-  const [role, setRole] = useState<'textbook' | 'answer'>('textbook');
+function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r: OrphanRole) => void }) {
   const [orphans, setOrphans] = useState<Array<{ id: number; title: string; category: string; totalPages: number; role: string }>>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -705,16 +728,19 @@ function OrphansTab() {
     }
   };
 
+  const isNoVersion = role === 'none';
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 mb-4 flex-wrap shrink-0">
         <select
           value={role}
-          onChange={(e) => { setRole(e.target.value as any); setPage(1); }}
+          onChange={(e) => { onRoleChange(e.target.value as OrphanRole); setPage(1); }}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
         >
           <option value="textbook">孤儿教材</option>
           <option value="answer">孤儿答案</option>
+          <option value="none">无版本关键词</option>
         </select>
         <input
           type="text"
@@ -724,26 +750,35 @@ function OrphansTab() {
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
         <button onClick={fetch} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">刷新</button>
-        <div className="ml-auto flex items-center gap-2 text-sm">
-          {selectedTextbook && <span className="text-blue-600">教材: #{selectedTextbook}</span>}
-          {selectedAnswers.size > 0 && <span className="text-teal-600">答案: {selectedAnswers.size} 本</span>}
-          <button
-            onClick={handleManualBind}
-            disabled={!selectedTextbook || selectedAnswers.size === 0}
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
-          >手动配对</button>
-        </div>
+        {!isNoVersion && (
+          <div className="ml-auto flex items-center gap-2 text-sm">
+            {selectedTextbook && <span className="text-blue-600">教材: #{selectedTextbook}</span>}
+            {selectedAnswers.size > 0 && <span className="text-teal-600">答案: {selectedAnswers.size} 本</span>}
+            <button
+              onClick={handleManualBind}
+              disabled={!selectedTextbook || selectedAnswers.size === 0}
+              className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+            >手动配对</button>
+          </div>
+        )}
       </div>
-      <p className="text-xs text-gray-500 mb-2 shrink-0">
-        使用方式：在「孤儿教材」Tab 选一本教材（单选），切到「孤儿答案」Tab 勾选答案（可多选），然后点「手动配对」。
-      </p>
+      {!isNoVersion && (
+        <p className="text-xs text-gray-500 mb-2 shrink-0">
+          使用方式：在「孤儿教材」选一本教材（单选），切到「孤儿答案」勾选答案（可多选），然后点「手动配对」。
+        </p>
+      )}
+      {isNoVersion && (
+        <p className="text-xs text-gray-500 mb-2 shrink-0">
+          这些书的标题不含任何版本关键词（如"原卷版/解析版/答案"等），不参与自动配对。可手动选择教材和答案进行配对。
+        </p>
+      )}
 
       <div className="bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 sticky top-0">
               <tr>
-                <th className="px-3 py-2 text-left w-8">选</th>
+                {!isNoVersion && <th className="px-3 py-2 text-left w-8">选</th>}
                 <th className="px-3 py-2 text-left">ID</th>
                 <th className="px-3 py-2 text-left">标题</th>
                 <th className="px-3 py-2 text-left">分类</th>
@@ -756,17 +791,19 @@ function OrphansTab() {
                 const checked = isTextbookRow ? selectedTextbook === o.id : selectedAnswers.has(o.id);
                 return (
                   <tr key={o.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100`}>
-                    <td className="px-3 py-2">
-                      <input
-                        type={isTextbookRow ? 'radio' : 'checkbox'}
-                        name="textbook"
-                        checked={checked}
-                        onChange={() => {
-                          if (isTextbookRow) setSelectedTextbook(o.id);
-                          else toggleAnswer(o.id);
-                        }}
-                      />
-                    </td>
+                    {!isNoVersion && (
+                      <td className="px-3 py-2">
+                        <input
+                          type={isTextbookRow ? 'radio' : 'checkbox'}
+                          name="textbook"
+                          checked={checked}
+                          onChange={() => {
+                            if (isTextbookRow) setSelectedTextbook(o.id);
+                            else toggleAnswer(o.id);
+                          }}
+                        />
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-gray-500"><a href={`/book/${o.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{o.id}</a></td>
                     <td className="px-3 py-2">{o.title}</td>
                     <td className="px-3 py-2 text-gray-500">{o.category}</td>
@@ -775,7 +812,7 @@ function OrphansTab() {
                 );
               })}
               {orphans.length === 0 && !loading && (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">暂无孤儿数据</td></tr>
+                <tr><td colSpan={isNoVersion ? 4 : 5} className="px-3 py-8 text-center text-gray-400">暂无数据</td></tr>
               )}
             </tbody>
           </table>

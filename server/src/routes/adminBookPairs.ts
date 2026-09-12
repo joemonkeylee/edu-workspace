@@ -273,13 +273,29 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const pageSize = Math.max(1, Math.min(1000, parseInt(req.query.pageSize as string) || 20));
   const search = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
-  const roleFilter = req.query.role === 'answer' ? 'answer' : 'textbook';
+  const roleFilter = req.query.role === 'answer' ? 'answer'
+    : req.query.role === 'none' ? 'none'
+    : 'textbook';
 
   // Same logic as scan: find books that have role keyword but no candidate pair
   const allBooks = await prisma.book.findMany({
     select: { id: true, title: true, category: true, totalPages: true, attributes: true },
     orderBy: { title: 'asc' },
   });
+
+  if (roleFilter === 'none') {
+    // Books with no version keyword at all
+    let noKeyword = allBooks.filter((b) => detectRole(b.title) === null);
+    if (search) noKeyword = noKeyword.filter((b) => b.title.toLowerCase().includes(search) || b.category.toLowerCase().includes(search));
+    const total = noKeyword.length;
+    const start = (page - 1) * pageSize;
+    const data = noKeyword.slice(start, start + pageSize).map(({ id, title, category, totalPages }) => ({
+      id, title, category, totalPages, role: null,
+    }));
+    res.json({ data, total, page, pageSize });
+    return;
+  }
+
   const books = allBooks.map((b) => ({
     id: b.id,
     title: b.title,
