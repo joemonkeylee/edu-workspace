@@ -380,10 +380,9 @@ router.post('/unbind', asyncHandler(async (req: Request, res: Response) => {
   // If this book is the textbook (anchor), unbind all its answers too
   // If this book is an answer, just unbind itself
   if (pair.role === 'textbook') {
-    // Find all answers bound to this textbook by scanning books with attributes.pair
-    // Prisma JSON filtering on MySQL is limited; use string-contains approach
+    // Find all books whose pair.with equals this textbook's id (both answers and the textbook itself)
     const allBooksWithPair = await prisma.book.findMany({
-      where: { attributes: { string_contains: `"with":${book.id}` } },
+      where: { attributes: { path: '$.pair.with', equals: book.id } } as any,
       select: { id: true, attributes: true },
     });
     for (const b of allBooksWithPair) {
