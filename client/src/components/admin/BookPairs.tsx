@@ -288,6 +288,7 @@ function ScanTab() {
   const [filters, setFilters] = useState({ unbound: false, duplicates: false, search: '' });
   const [showRules, setShowRules] = useState(false);
   const [batchBinding, setBatchBinding] = useState(false);
+  const [actionKey, setActionKey] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -373,12 +374,15 @@ function ScanTab() {
       toast.warning('教材或答案缺失，无法配对');
       return;
     }
+    setActionKey(c.key);
     try {
       await bookPairsBind(c.textbooks[0].id, c.answers.map((a) => a.id));
       toast.success(`已配对: ${c.baseTitle}`);
-      fetch();
+      await fetch();
     } catch (e: any) {
       toast.error('绑定失败: ' + (e?.message || ''));
+    } finally {
+      setActionKey(null);
     }
   };
 
@@ -391,12 +395,15 @@ function ScanTab() {
       confirmClass: 'bg-red-600 hover:bg-red-700',
     });
     if (!confirmed) return;
+    setActionKey(c.key);
     try {
       await bookPairsUnbind(c.textbooks[0].id);
       toast.success(`已解绑: ${c.baseTitle}`);
-      fetch();
+      await fetch();
     } catch (e: any) {
       toast.error('解绑失败: ' + (e?.message || ''));
+    } finally {
+      setActionKey(null);
     }
   };
 
@@ -504,7 +511,9 @@ function ScanTab() {
                   {c.hasDuplicate && <span className="ml-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">重复</span>}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
-                  {c.bound ? (
+                  {actionKey === c.key ? (
+                    <Loader2 size={14} className="animate-spin text-gray-500" />
+                  ) : c.bound ? (
                     <button onClick={() => handleSingleUnbind(c)} className="text-xs text-red-600 hover:underline">解绑</button>
                   ) : (
                     <button onClick={() => handleSingleBind(c)} className="text-xs text-blue-600 hover:underline">绑定</button>
