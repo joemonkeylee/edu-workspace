@@ -9,7 +9,7 @@ router.use(teacherOrAdminRequired);
 // ── Role keywords for identifying textbook vs answer ───────────────
 
 const TEXTBOOK_KEYWORDS = ['原卷版', '原题版', '学生版', '试题版', '空白', '空白版'];
-const ANSWER_KEYWORDS = ['解析版', '答案版', '答案', '参考答案', '解析', '全解全析', '详解'];
+const ANSWER_KEYWORDS = ['解析版', '答案版', '答案', '参考答案', '解析', '全解全析', '详解', '教师版', '教师用书'];
 const ALL_VERSION_KEYWORDS = [...TEXTBOOK_KEYWORDS, ...ANSWER_KEYWORDS];
 
 // Wrap in brackets variants
@@ -21,15 +21,26 @@ const BRACKET_PATTERNS = [
 ];
 
 /**
- * Extract the "base title" by removing bracket segments that contain version keywords.
- * Example: "鲁教版6.5 一次函数的应用（解析版）" → "鲁教版6.5 一次函数的应用"
+ * Extract the "base title" by removing bracket segments that contain version keywords,
+ * and then stripping any version keyword that appears as a suffix (no brackets).
+ * - Bracket case: "鲁教版6.5 一次函数的应用（解析版）" → "鲁教版6.5 一次函数的应用"
+ * - Suffix case:  "七下语法精品讲义学生版" → "七下语法精品讲义"
+ *                "七下语法精品讲义教师版" → "七下语法精品讲义"
+ * Keywords are removed longest-first to avoid "答案" matching inside "答案版".
  */
+const SORTED_VERSION_KEYWORDS = [...ALL_VERSION_KEYWORDS].sort((a, b) => b.length - a.length);
+
 function extractBaseTitle(title: string): string {
   let result = title;
+  // 1) Remove bracket segments whose inner text contains a version keyword.
   for (const re of BRACKET_PATTERNS) {
     result = result.replace(re, (match, inner) => {
       return ALL_VERSION_KEYWORDS.some((kw) => inner.includes(kw)) ? '' : match;
     });
+  }
+  // 2) Remove any version keyword that appears as a substring (handles suffix without brackets).
+  for (const kw of SORTED_VERSION_KEYWORDS) {
+    result = result.split(kw).join('');
   }
   return result.trim();
 }
@@ -77,8 +88,11 @@ router.get('/rules', asyncHandler(async (_req: Request, res: Response) => {
         { pattern: '[...]', desc: 'ASCII 方括号' },
         { pattern: '【...】', desc: 'CJK 方括号' },
       ],
-      rule: '去掉括号内含版本关键词的部分，剩余文本作为"基础标题"；基础标题完全相等 + 同分类的教材与答案候选配对',
-      example: '"鲁教版6.5 一次函数的应用（解析版）" → 基础标题 "鲁教版6.5 一次函数的应用"',
+      rule: '先去掉括号内含版本关键词的部分，再去掉作为后缀（无括号）的版本关键词，剩余文本作为"基础标题"；基础标题完全相等 + 同分类的教材与答案候选配对',
+      examples: [
+        '"鲁教版6.5 一次函数的应用（解析版）" → 基础标题 "鲁教版6.5 一次函数的应用"',
+        '"七下语法精品讲义学生版" / "七下语法精品讲义教师版" → 基础标题 "七下语法精品讲义"',
+      ],
     },
   });
 }));
