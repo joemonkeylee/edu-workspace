@@ -201,11 +201,13 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
   const pageSize = Math.max(1, Math.min(1000, parseInt(req.query.pageSize as string) || 20));
   const onlyUnbound = req.query.unbound === 'true' || req.query.unbound === '1';
   const onlyDuplicates = req.query.duplicates === 'true' || req.query.duplicates === '1';
+  const excludeDuplicates = req.query.excludeDuplicates === 'true' || req.query.excludeDuplicates === '1';
   const search = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
 
   let filtered = candidatePairs;
   if (onlyUnbound) filtered = filtered.filter((c) => !c.bound);
   if (onlyDuplicates) filtered = filtered.filter((c) => c.hasDuplicate);
+  if (excludeDuplicates) filtered = filtered.filter((c) => !c.hasDuplicate);
   if (search) filtered = filtered.filter((c) => c.baseTitle.toLowerCase().includes(search) || c.category.toLowerCase().includes(search));
 
   const total = filtered.length;
@@ -256,6 +258,7 @@ router.get('/export', asyncHandler(async (req: Request, res: Response) => {
 
   const onlyUnbound = req.query.unbound === 'true' || req.query.unbound === '1';
   const onlyDuplicates = req.query.duplicates === 'true' || req.query.duplicates === '1';
+  const excludeDuplicates = req.query.excludeDuplicates === 'true' || req.query.excludeDuplicates === '1';
   const search = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
 
   const candidatePairs: any[] = [];
@@ -286,6 +289,7 @@ router.get('/export', asyncHandler(async (req: Request, res: Response) => {
   let filtered = candidatePairs;
   if (onlyUnbound) filtered = filtered.filter((c) => !c.bound);
   if (onlyDuplicates) filtered = filtered.filter((c) => c.hasDuplicate);
+  if (excludeDuplicates) filtered = filtered.filter((c) => !c.hasDuplicate);
   if (search) filtered = filtered.filter((c) => c.baseTitle.toLowerCase().includes(search) || c.category.toLowerCase().includes(search));
 
   // Build TXT

@@ -307,7 +307,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [scanFilter, setScanFilter] = useState<'unbound' | 'duplicates' | null>(null);
-  const [filters, setFilters] = useState({ unbound: false, duplicates: false, search: '' });
+  const [filters, setFilters] = useState({ unbound: false, duplicates: false, excludeDuplicates: false, search: '' });
   const [showRules, setShowRules] = useState(false);
   const [batchBinding, setBatchBinding] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
@@ -321,6 +321,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
         pageSize,
         unbound: filters.unbound,
         duplicates: filters.duplicates,
+        excludeDuplicates: filters.excludeDuplicates,
         search: filters.search,
       });
       setCandidates(res.data);
@@ -331,7 +332,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
       toast.error('扫描失败: ' + (e?.message || ''));
     }
     setLoading(false);
-  }, [page, pageSize, filters.unbound, filters.duplicates, filters.search]);
+  }, [page, pageSize, filters.unbound, filters.duplicates, filters.excludeDuplicates, filters.search]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -481,13 +482,25 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
           onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
-        <label className="flex items-center gap-1 text-sm text-gray-600">
-          <input type="checkbox" checked={filters.unbound} onChange={(e) => { setFilters({ ...filters, unbound: e.target.checked }); setPage(1); }} />
-          仅未绑定
-        </label>
-        <label className="flex items-center gap-1 text-sm text-gray-600">
-          <input type="checkbox" checked={filters.duplicates} onChange={(e) => { setFilters({ ...filters, duplicates: e.target.checked }); setPage(1); }} />
-          仅多选项
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          筛选:
+          <select
+            value={filters.unbound ? (filters.excludeDuplicates ? 'cleanUnbound' : 'unbound') : filters.duplicates ? 'duplicates' : 'all'}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'all') setFilters({ unbound: false, duplicates: false, excludeDuplicates: false, search: filters.search });
+              else if (v === 'unbound') setFilters({ unbound: true, duplicates: false, excludeDuplicates: false, search: filters.search });
+              else if (v === 'cleanUnbound') setFilters({ unbound: true, duplicates: false, excludeDuplicates: true, search: filters.search });
+              else if (v === 'duplicates') setFilters({ unbound: false, duplicates: true, excludeDuplicates: false, search: filters.search });
+              setPage(1);
+            }}
+            className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
+          >
+            <option value="all">全部</option>
+            <option value="unbound">仅未绑定</option>
+            <option value="cleanUnbound">未绑定（非多选项）</option>
+            <option value="duplicates">仅多选项</option>
+          </select>
         </label>
         <button onClick={fetch} disabled={batchBinding} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">刷新</button>
         <button onClick={handleExport} disabled={exporting || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">
