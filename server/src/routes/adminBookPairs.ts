@@ -377,12 +377,12 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
 
 router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const pageSize = Math.max(1, Math.min(1000, parseInt(req.query.pageSize as string) || 20));
+  const pageSize = Math.max(1, Math.min(5000, parseInt(req.query.pageSize as string) || 20));
   const search = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
   const roleFilter = req.query.role === 'answer' ? 'answer'
     : req.query.role === 'none' ? 'none'
-    : req.query.role === 'all' ? 'all'
-    : 'textbook';
+    : req.query.role === 'textbook' ? 'textbook'
+    : 'all';
   const sortBy = (req.query.sortBy as string) || 'id';
   const sortDir = req.query.sortDir === 'desc' ? -1 : 1;
 
@@ -423,32 +423,20 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
   interface OrphanRow { id: number; title: string; category: string; totalPages: number; type: string; role: 'textbook' | 'answer' | null }
   let rows: OrphanRow[] = [];
 
-  if (roleFilter === 'textbook') {
-    rows = allWithRole
-      .filter((b) => b.role === 'textbook' && !pairedIds.has(b.id))
-      .filter((b) => { const p = (b.attrs as any)?.pair; return !p || !p.with; })
-      .map((b) => ({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type: '孤儿教材', role: 'textbook' }));
-  } else if (roleFilter === 'answer') {
-    rows = allWithRole
-      .filter((b) => b.role === 'answer' && !pairedIds.has(b.id))
-      .filter((b) => { const p = (b.attrs as any)?.pair; return !p || !p.with; })
-      .map((b) => ({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type: '孤儿答案', role: 'answer' }));
-  } else if (roleFilter === 'none') {
-    rows = allWithRole
-      .filter((b) => b.role === null)
-      .map((b) => ({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type: '无版本关键词', role: null }));
-  } else {
-    // all: textbook orphans + answer orphans + no-keyword books
-    for (const b of allWithRole) {
-      if (b.role === null) {
-        rows.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type: '无版本关键词', role: null });
-      } else if (!pairedIds.has(b.id)) {
-        const p = (b.attrs as any)?.pair;
-        if (p && p.with) continue; // already bound
-        if (b.role === 'textbook') rows.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type: '孤儿教材', role: 'textbook' });
-        else rows.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type: '孤儿答案', role: 'answer' });
-      }
+  const pushMatch = (b: typeof allWithRole[0], type: string, role: 'textbook' | 'answer' | null) => {
+    if (roleFilter !== 'all' && roleFilter !== (role ?? 'none')) return;
+    if (role !== null) {
+      if (pairedIds.has(b.id)) return;
+      const p = (b.attrs as any)?.pair;
+      if (p && p.with) return;
     }
+    rows.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type, role });
+  };
+
+  for (const b of allWithRole) {
+    if (b.role === null) pushMatch(b, '无版本关键词', null);
+    else if (b.role === 'textbook') pushMatch(b, '孤儿教材', 'textbook');
+    else pushMatch(b, '孤儿答案', 'answer');
   }
 
   if (search) rows = rows.filter((b) => b.title.toLowerCase().includes(search) || b.category.toLowerCase().includes(search));
@@ -539,7 +527,7 @@ router.get('/orphans/export', asyncHandler(async (req: Request, res: Response) =
 
   rows.sort((a, b) => a.id - b.id);
 
-  const lines = rows.map((r) => `#${r.id} | ${r.title} | ${r.category} | ${r.type}`);
+  const lines = rows.map((r) => `${r.id}  |  ${r.title}`);
   const header = [
     `# 孤儿导出 生成时间: ${new Date().toISOString()}`,
     `# 筛选: role=${roleFilter}${search ? ` 搜索="${search}"` : ''}${selectedIds ? ` 已选 ${selectedIds.size} 条` : ''}`,

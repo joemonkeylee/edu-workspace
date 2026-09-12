@@ -22,7 +22,7 @@ type OrphanRole = 'textbook' | 'answer' | 'none' | 'all';
 
 export default function BookPairs() {
   const [tab, setTab] = useState<Tab>('scan');
-  const [orphanRole, setOrphanRole] = useState<OrphanRole>('textbook');
+  const [orphanRole, setOrphanRole] = useState<OrphanRole>('all');
 
   const handleScanFilter = (key: 'unbound' | 'duplicates' | 'bound' | 'orphanTextbook' | 'orphanAnswer' | 'noVersion' | null) => {
     if (key === 'bound') {
