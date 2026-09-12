@@ -47,6 +47,21 @@ function parseDatabaseUrl(): DbConn {
   };
 }
 
+/**
+ * Resolve the absolute command path for a MySQL CLI tool.
+ * If MYSQL_BIN_DIR env var is set, use absolute path under that dir
+ * (appends .exe on Windows). Otherwise fall back to the bare name
+ * and rely on system PATH lookup.
+ *
+ * Example: MYSQL_BIN_DIR="D:\mysql-8.0.19-winx64\bin"
+ */
+function resolveMysqlCommand(tool: 'mysqldump' | 'mysql'): string {
+  const binDir = process.env.MYSQL_BIN_DIR;
+  if (!binDir) return tool;
+  const exe = process.platform === 'win32' ? `${tool}.exe` : tool;
+  return path.join(binDir, exe);
+}
+
 export function getBackupsRoot(): string {
   return path.join(getStorageRoot(), 'db-backups');
 }
@@ -77,7 +92,11 @@ function buildMysqlArgs(db: DbConn, withDb: boolean): string[] {
 
 function handleSpawnError(err: any, tool: string): Error {
   if (err?.code === 'ENOENT') {
-    return new Error(`${tool} 未找到,请确认 MySQL 客户端已安装且在系统 PATH 中`);
+    const binDir = process.env.MYSQL_BIN_DIR;
+    const hint = binDir
+      ? `MYSQL_BIN_DIR=${binDir} 下未找到 ${tool},请检查路径是否正确`
+      : `未在系统 PATH 找到 ${tool},请在 .env 设置 MYSQL_BIN_DIR 指向 MySQL bin 目录(如 D:\\mysql-8.0.19-winx64\\bin)后重启服务`;
+    return new Error(`${tool} 未找到:${hint}`);
   }
   return err;
 }
@@ -129,7 +148,7 @@ export async function createBackup(opts: { compress?: boolean; tag?: string } = 
   const filePath = path.join(root, filename);
 
   const args = [...buildMysqlArgs(db, false), '--single-transaction', '--routines', '--triggers', '--events', db.database];
-  const dump = spawn('mysqldump', args, { env: process.env });
+  const dump = spawn(resolveMysqlCommand('mysqldump'), args, { env: process.env });
   const out = fs.createWriteStream(filePath);
 
   let stderr = '';
@@ -179,7 +198,7 @@ export async function restoreBackup(filename: string): Promise<{ preRestoreFile:
 
   const db = parseDatabaseUrl();
   const args = buildMysqlArgs(db, true);
-  const mysql = spawn('mysql', args, { env: process.env });
+  const mysql = spawn(resolveMysqlCommand('mysql'), args, { env: process.env });
   const readStream = fs.createReadStream(filePath);
   const isGz = filename.endsWith('.gz');
   const gunzip = isGz ? zlib.createGunzip() : undefined;
