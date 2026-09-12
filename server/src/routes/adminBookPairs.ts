@@ -70,6 +70,8 @@ interface BookLite {
   id: number;
   title: string;
   category: string;
+  grade: string;
+  subject: string;
   totalPages: number;
   role: 'textbook' | 'answer' | null;
   baseTitle: string;
@@ -102,22 +104,24 @@ router.get('/rules', asyncHandler(async (_req: Request, res: Response) => {
 
 router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
   const allBooks = await prisma.book.findMany({
-    select: { id: true, title: true, category: true, totalPages: true, attributes: true },
+    select: { id: true, title: true, category: true, grade: true, subject: true, totalPages: true, attributes: true },
     orderBy: { title: 'asc' },
   });
+  const allBooksById = new Map(allBooks.map((book) => [book.id, book]));
 
   const books: BookLite[] = allBooks.map((b) => {
     const role = detectRole(b.title);
     const baseTitle = extractBaseTitle(b.title);
     const keyword = detectKeyword(b.title);
-    return { id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, role, baseTitle, keyword };
+    return { id: b.id, title: b.title, category: b.category, grade: b.grade, subject: b.subject, totalPages: b.totalPages, role, baseTitle, keyword };
   });
 
-  // Group by (category + baseTitle), only groups that have at least one textbook + at least one answer
+  // Group by the full book identity. This prevents same-title books from different
+  // grades or subjects from becoming pairing candidates.
   const groupMap = new Map<string, BookLite[]>();
   for (const b of books) {
     if (!b.role) continue; // skip books with no version keyword
-    const key = `${b.category}||${b.baseTitle}`;
+    const key = `${b.category}||${b.grade}||${b.subject}||${b.baseTitle}`;
     if (!groupMap.has(key)) groupMap.set(key, []);
     groupMap.get(key)!.push(b);
   }
@@ -137,20 +141,25 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     const answers = group.filter((b) => b.role === 'answer');
     if (textbooks.length === 0 || answers.length === 0) continue;
 
-    // Check if all books in group are already bound
-    const allBooksInGroup = allBooks.filter((b) => group.some((g) => g.id === b.id));
-    const attrs = allBooksInGroup.map((b) => (b.attributes as any)?.pair);
-    const bound = attrs.every((a) => a && a.with);
-
-    candidatePairs.push({
-      key,
-      baseTitle: group[0].baseTitle,
-      category: group[0].category,
-      textbooks,
-      answers,
-      hasDuplicate: group.length > 2,
-      bound,
-    });
+    // Keep every textbook-answer candidate as a separate row. Ambiguous duplicate
+    // groups remain candidates for manual selection and are never auto-bound here.
+    for (const textbook of textbooks) {
+      for (const answer of answers) {
+        const textbookPair = (allBooksById.get(textbook.id)?.attributes as any)?.pair;
+        const answerPair = (allBooksById.get(answer.id)?.attributes as any)?.pair;
+        candidatePairs.push({
+          key: `${key}||${textbook.id}||${answer.id}`,
+          baseTitle: group[0].baseTitle,
+          category: group[0].category,
+          textbooks: [textbook],
+          answers: [answer],
+          hasDuplicate: group.length > 2,
+          bound: textbookPair?.role === 'textbook'
+            && answerPair?.role === 'answer'
+            && answerPair.with === textbook.id,
+        });
+      }
+    }
   }
 
   // Statistics
