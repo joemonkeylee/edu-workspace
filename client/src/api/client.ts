@@ -273,7 +273,7 @@ export interface BooksResponse {
   options: { subjects: string[]; grades: string[]; categories: { name: string; count: number }[] };
 }
 
-export async function getBooks(params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean }) {
+export async function getBooks(params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean; hasPairs?: boolean }) {
   const { data } = await api.get('/books', { params });
   return data as BooksResponse;
 }

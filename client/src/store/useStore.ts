@@ -18,7 +18,7 @@ interface StoreState {
   mistakes: Mistake[];
   loading: boolean;
 
-  fetchBooks: (params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean }) => Promise<void>;
+  fetchBooks: (params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean; hasPairs?: boolean }) => Promise<void>;
   fetchBook: (id: number) => Promise<void>;
   setCurrentPage: (page: number) => void;
   setZoom: (zoom: number) => void;

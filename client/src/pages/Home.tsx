@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
@@ -11,6 +11,7 @@ const STORAGE_KEY = 'edu-home-filters';
 const STORAGE_KEY_VIEW = 'edu-home-view-mode';
 const STORAGE_KEY_LIST_PS = 'edu-home-list-page-size';
 const STORAGE_KEY_FAV = 'edu-home-favorites-only';
+const STORAGE_KEY_PAIRS = 'edu-home-pairs-only';
 
 type ViewMode = 'preview' | 'list';
 
@@ -139,6 +140,9 @@ export default function Home() {
   const loadFavoritesOnly = (): boolean => {
     try { return localStorage.getItem(STORAGE_KEY_FAV) === '1'; } catch { return false; }
   };
+  const loadPairsOnly = (): boolean => {
+    try { return localStorage.getItem(STORAGE_KEY_PAIRS) === '1'; } catch { return false; }
+  };
 
   const saved = useMemo(loadSavedFilters, []);
   const [selectedSubject, setSelectedSubject] = useState(saved.subject);
@@ -147,6 +151,7 @@ export default function Home() {
   const [search, setSearch] = useState(saved.search);
   const [debouncedSearch, setDebouncedSearch] = useState(saved.search);
   const [favoritesOnly, setFavoritesOnly] = useState<boolean>(loadFavoritesOnly);
+  const [pairsOnly, setPairsOnly] = useState<boolean>(loadPairsOnly);
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
   const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[]>(
     saved.sortFields && saved.sortFields.length > 0
@@ -266,8 +271,9 @@ export default function Home() {
       page,
       pageSize: pageSize,
       favoritesOnly,
+      hasPairs: pairsOnly,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly]);
+  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly, pairsOnly]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -487,7 +493,7 @@ export default function Home() {
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
 
-  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory || favoritesOnly);
+  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory || favoritesOnly || pairsOnly);
 
   const resetFilters = () => {
     const reset = () => {
@@ -496,6 +502,7 @@ export default function Home() {
       setSelectedCategory('');
       setSearch('');
       handleFavoritesOnlyChange(false);
+      handlePairsOnlyChange(false);
     };
     if (editMode && hasUnsavedChanges) {
       setPromptAction('filter');
@@ -516,12 +523,17 @@ export default function Home() {
       page: safePage,
       pageSize: pageSize,
       favoritesOnly,
+      hasPairs: pairsOnly,
     });
   };
 
   const handleFavoritesOnlyChange = (v: boolean) => {
     setFavoritesOnly(v);
     try { localStorage.setItem(STORAGE_KEY_FAV, v ? '1' : '0'); } catch { /* ignore */ }
+  };
+  const handlePairsOnlyChange = (v: boolean) => {
+    setPairsOnly(v);
+    try { localStorage.setItem(STORAGE_KEY_PAIRS, v ? '1' : '0'); } catch { /* ignore */ }
   };
 
   const handleToggleFavorite = async (bookId: number) => {
@@ -624,6 +636,28 @@ export default function Home() {
           >
             <Star size={13} className={favoritesOnly ? 'fill-amber-400 text-amber-400' : ''} />
             <span>只看收藏</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !pairsOnly;
+              if (editMode && hasUnsavedChanges) {
+                setPromptAction('filter');
+                setShowSavePrompt(true);
+                (window as any).__pendingFilter = { setter: handlePairsOnlyChange, value: next };
+              } else {
+                handlePairsOnlyChange(next);
+              }
+            }}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${
+              pairsOnly
+                ? 'border-sky-400 bg-sky-50 text-sky-600 hover:bg-sky-100'
+                : 'border-gray-300 bg-white text-gray-600 hover:border-sky-400 hover:text-sky-500'
+            }`}
+            title="只看有答案"
+          >
+            <Check size={13} className={pairsOnly ? 'text-sky-500' : ''} />
+            <span>只看有答案</span>
           </button>
           <div className="flex-1" />
 

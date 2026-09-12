@@ -102,6 +102,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   const page = parseInt(req.query.page as string, 10) || 1;
   const pageSize = parseInt(req.query.pageSize as string, 10) || 16;
   const favoritesOnly = req.query.favoritesOnly === 'true';
+  const hasPairsOnly = req.query.hasPairs === 'true';
 
   // Current user (null in standalone mode → global favorites)
   const userId = req.user?.userId ?? null;
@@ -160,10 +161,26 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
     },
   });
 
-  // 2) Filter out answer-side books — home page is textbook-browse perspective.
-  const filtered = allMatching.filter((b) => !isAnswerSide(b.attributes, b.id));
+  // 2) Build reverse pair index (needed for both hasPairs filter + pairSummary)
+  const [tbToAnswers, idToTitleMap] = await Promise.all([
+    buildReversePairIndex(),
+    prisma.book.findMany({ select: { id: true, title: true } })
+      .then((all) => new Map(all.map((b) => [b.id, b.title]))),
+  ]);
 
-  // 3) Filter options from the cleaned list (counts stay consistent with displayed books)
+  // 3) Filter out answer-side books + optional "has pair partners only"
+  const filtered = allMatching.filter((b) => {
+    if (isAnswerSide(b.attributes, b.id)) return false;
+    if (hasPairsOnly) {
+      // Keep only textbook anchors that have at least one answer partner
+      if (!isTextbookAnchor(b.attributes, b.id)) return false;
+      const partners = tbToAnswers.get(b.id) ?? [];
+      if (partners.length === 0) return false;
+    }
+    return true;
+  });
+
+  // 4) Filter options from the cleaned list (counts stay consistent with displayed books)
   const subjects = [...new Set(filtered.map((b) => b.subject).filter(Boolean))] as string[];
   const grades = [...new Set(filtered.map((b) => b.grade).filter(Boolean))] as string[];
   const categoryCountMap = new Map<string, number>();
@@ -176,13 +193,6 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
     .filter(([, count]) => count > 0)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => a.name.localeCompare(b.name));
-
-  // 4) Build reverse pair index once for this request (covers all books in system)
-  const [tbToAnswers, idToTitleMap] = await Promise.all([
-    buildReversePairIndex(),
-    prisma.book.findMany({ select: { id: true, title: true } })
-      .then((all) => new Map(all.map((b) => [b.id, b.title]))),
-  ]);
 
   // 5) In-memory pagination
   const total = filtered.length;
