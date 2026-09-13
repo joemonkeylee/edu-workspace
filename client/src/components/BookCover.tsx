@@ -37,13 +37,17 @@ export default function BookCover({ book, className, pageNumber, fit = 'cover' }
 
   const onLoad = () => setLoaded(true);
 
+  // contain 模式下图片不会铺满容器，底色要和大多数教材封面的白底接近，
+  // 这样上下/左右留白时视觉上不突兀；cover 模式用蓝色渐变当占位符背景
+  const bgClass = fit === 'contain' ? 'bg-white' : 'bg-gradient-to-br from-blue-600 to-blue-400';
+
   return (
-    <div className={`relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-400 ${className || ''}`}>
+    <div className={`relative overflow-hidden ${bgClass} ${className || ''}`}>
       {/* Placeholder */}
       <div
-        className={`absolute inset-0 flex flex-col items-center justify-center text-white transition-opacity duration-200 ${
+        className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200 ${
           loaded && !showPlaceholder ? 'opacity-0' : 'opacity-100'
-        }`}
+        } ${fit === 'contain' ? 'text-gray-400' : 'text-white'}`}
       >
         <BookOpen size={28} className="mb-1 opacity-80" />
         <div className="text-xs opacity-70 px-2 text-center line-clamp-2 leading-tight">
