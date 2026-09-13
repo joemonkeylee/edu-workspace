@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TocNode } from '../types';
-import { ChevronRight, ChevronDown, FileText, LayoutGrid, List } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, LayoutGrid, List, Video } from 'lucide-react';
+import VideoListPanel from './VideoListPanel';
+
+type TocView = 'thumbs' | 'toc' | 'video';
 
 interface TocTreeProps {
   toc: TocNode[];
@@ -8,10 +11,23 @@ interface TocTreeProps {
   totalPages: number;
   storagePath: string;
   onPageSelect: (page: number) => void;
+  bookId: number;
+  hasVideos: boolean;
+  view: TocView;
+  onViewChange: (v: TocView) => void;
 }
 
-export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect }: TocTreeProps) {
-  const [view, setView] = useState<'toc' | 'thumbs'>('thumbs');
+export default function TocTree({
+  toc,
+  currentPage,
+  totalPages,
+  storagePath,
+  onPageSelect,
+  bookId,
+  hasVideos,
+  view,
+  onViewChange,
+}: TocTreeProps) {
   const visibleToc = filterVisibleToc(toc);
   const scrollRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -39,32 +55,35 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
     }
   }, [currentPage, view]);
 
+  const tabClass = (active: boolean) =>
+    `flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
+      active ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'
+    }`;
+
   return (
     <div className="h-full flex flex-col">
       {/* View tabs + close button on one line */}
       <div className="flex items-center border-b border-black/20 flex-shrink-0">
-        <button
-          onClick={() => setView('thumbs')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-            view === 'thumbs' ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
+        <button onClick={() => onViewChange('thumbs')} className={tabClass(view === 'thumbs')}>
           <LayoutGrid size={14} />
           页码
         </button>
-        <button
-          onClick={() => setView('toc')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-            view === 'toc' ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'
-          }`}
-        >
+        <button onClick={() => onViewChange('toc')} className={tabClass(view === 'toc')}>
           <List size={14} />
           目录
         </button>
+        {hasVideos && (
+          <button onClick={() => onViewChange('video')} className={tabClass(view === 'video')}>
+            <Video size={14} />
+            视频
+          </button>
+        )}
       </div>
 
-      <div className={`flex-1 overflow-auto scrollbar-thin`} ref={scrollRef}>
-        {view === 'toc' ? (
+      <div className={`flex-1 overflow-auto scrollbar-thin ${view === 'video' ? 'flex flex-col' : ''}`} ref={scrollRef}>
+        {view === 'video' ? (
+          <VideoListPanel bookId={bookId} />
+        ) : view === 'toc' ? (
           <div className="py-2">
             {visibleToc.map((node, i) => (
               <TocItem key={i} node={node} depth={0} currentPage={currentPage} onPageSelect={onPageSelect} />

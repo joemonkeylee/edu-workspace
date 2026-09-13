@@ -29,7 +29,6 @@ import {
   Trash2,
   CheckCircle2,
   Circle,
-  Video,
   RotateCw,
   RotateCcw,
   Layers,
@@ -82,13 +81,58 @@ export default function BookViewer() {
 
   const hasVideos = (currentBook?.videoCount || 0) > 0;
 
-  // 带讲解视频的课程书打开时，自动展开右侧栏并默认停在「视频」标签
+  // 左侧栏：可拖拽改变宽度（视频播放器随宽度等比例缩放）
+  const LEFT_MIN = 240; // 默认 w-60 = 240px，作为最小宽度
+  const [leftView, setLeftView] = useState<'thumbs' | 'toc' | 'video'>('thumbs');
+  const [leftWidth, setLeftWidth] = useState(LEFT_MIN);
+  const leftWidthRef = useRef(leftWidth);
+  const draggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startWRef = useRef(0);
+  const maxWRef = useRef(LEFT_MIN); // 拖拽开始时冻结的最大值（= 一页书显示宽度）
+  const initWidthSet = useRef(false); // 是否已按「适应页面后的画布宽度」初始化过
+  const pageFitWidthRef = useRef(LEFT_MIN); // 当前布局下「一页书」的显示宽度
+
+  // 带讲解视频的课程书打开时，自动展开左侧栏并默认停在「视频」标签
   useEffect(() => {
     if (hasVideos) {
-      setRightOpen(true);
-      setRightTab('video');
+      setLeftOpen(true);
+      setLeftView('video');
     }
   }, [bookId, hasVideos]);
+
+  // 拖拽调整左侧栏宽度
+  const onResizeMove = useCallback((e: MouseEvent) => {
+    if (!draggingRef.current) return;
+    const delta = e.clientX - startXRef.current;
+    let w = startWRef.current + delta;
+    w = Math.max(LEFT_MIN, Math.min(maxWRef.current, w));
+    leftWidthRef.current = w;
+    setLeftWidth(w);
+  }, []);
+
+  const onResizeEnd = useCallback(() => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('mousemove', onResizeMove);
+    window.removeEventListener('mouseup', onResizeEnd);
+  }, [onResizeMove]);
+
+  const startResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const aside = e.currentTarget.parentElement as HTMLElement;
+    const rect = aside.getBoundingClientRect();
+    startXRef.current = e.clientX;
+    startWRef.current = rect.width;
+    maxWRef.current = pageFitWidthRef.current; // 冻结最大值，避免拖拽中正反馈抖动
+    draggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onResizeMove);
+    window.addEventListener('mouseup', onResizeEnd);
+  }, [onResizeMove, onResizeEnd]);
 
   // Persisted reading config (per book)
   const STORAGE_KEY = 'edu-readConfig';
@@ -150,7 +194,7 @@ export default function BookViewer() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'video' | 'annotations' | 'mistakes' | 'assignments'>('assignments');
+  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('assignments');
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [layers, setLayers] = useState({
@@ -284,7 +328,7 @@ export default function BookViewer() {
   const isDouble = effectiveLayout === 'double' && currentPage < (currentBook?.totalPages ?? 0);
 
   const calcZoom = useCallback(() => {
-    if (!fitMode || !mainRef.current) return;
+    if (!mainRef.current) return;
     const container = mainRef.current;
     const cw = container.clientWidth - 32;
     const ch = container.clientHeight - 32;
@@ -298,12 +342,31 @@ export default function BookViewer() {
     const natH = isRotated ? imgNatural.w : imgNatural.h;
 
     const availPerPage = (cw - pageGap) / pages;
-    if (fitMode === 'width') {
-      setZoom(availPerPage / natW);
-    } else {
-      const widthZoom = availPerPage / natW;
-      const heightZoom = ch / natH;
-      setZoom(Math.min(widthZoom, heightZoom));
+    const widthZoom = availPerPage / natW;
+    const heightZoom = ch / natH;
+
+    // 「一页书」在「适应页面」下的显示宽度：用作左侧栏最大宽度与初始宽度
+    const pageFitZoom = Math.min(widthZoom, heightZoom);
+    const fitW = natW * pageFitZoom;
+    pageFitWidthRef.current = fitW;
+    if (!draggingRef.current) {
+      if (!initWidthSet.current) {
+        // 首屏按「适应页面后的画布宽度」初始化左侧栏宽度
+        initWidthSet.current = true;
+        leftWidthRef.current = fitW;
+        setLeftWidth(fitW);
+      } else {
+        // 之后仅在布局变化导致上限缩小（如窗口变窄）时，把宽度夹回上限以内
+        setLeftWidth((w) => Math.min(Math.max(LEFT_MIN, w), fitW));
+      }
+    }
+
+    if (fitMode) {
+      if (fitMode === 'width') {
+        setZoom(availPerPage / natW);
+      } else {
+        setZoom(Math.min(widthZoom, heightZoom));
+      }
     }
   }, [fitMode, imgNatural, isDouble, rotation, setZoom]);
 
@@ -973,15 +1036,28 @@ export default function BookViewer() {
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar - TOC */}
+        {/* Left sidebar - TOC / thumbnails / videos */}
         {leftOpen && (
-          <aside className="w-60 bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20">
+          <aside
+            style={{ width: leftWidth }}
+            className="relative bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20"
+          >
             <TocTree
               toc={currentBook.tocJson || []}
               currentPage={currentPage}
               totalPages={totalPages}
               storagePath={currentBook.storagePath || ''}
               onPageSelect={setCurrentPage}
+              bookId={currentBook.id}
+              hasVideos={hasVideos}
+              view={leftView}
+              onViewChange={setLeftView}
+            />
+            {/* 拖拽改变左侧栏宽度的手柄（向右拖动变宽，视频播放器随之等比例放大） */}
+            <div
+              onMouseDown={startResize}
+              title="拖动调整侧栏宽度"
+              className="absolute top-0 right-0 z-10 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-blue-500/50 active:bg-blue-500 transition-colors"
             />
           </aside>
         )}
@@ -1115,18 +1191,6 @@ export default function BookViewer() {
         {rightOpen && (
           <aside className="flex flex-col flex-shrink-0 bg-white border-l border-gray-200 w-72">
             <div className="flex items-center border-b border-gray-200">
-              {hasVideos && (
-                <button
-                  onClick={() => setRightTab('video')}
-                  className={`flex-1 py-2.5 text-sm font-medium transition flex items-center justify-center gap-1 ${
-                    rightTab === 'video' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                  title={`${currentBook.videoCount} 个讲解视频`}
-                >
-                  <Video size={14} />
-                  视频
-                </button>
-              )}
               <button
                 onClick={() => setRightTab('assignments')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
@@ -1154,9 +1218,7 @@ export default function BookViewer() {
             </div>
 
             <div className="flex-1 overflow-auto scrollbar-thin">
-              {rightTab === 'video' ? (
-                <VideoListPanel bookId={currentBook.id} />
-              ) : rightTab === 'mistakes' ? (
+              {rightTab === 'mistakes' ? (
                 <MistakeList
                   mistakes={mistakes}
                   filter={mistakeFilter}
