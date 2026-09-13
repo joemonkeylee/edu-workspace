@@ -405,7 +405,7 @@ export default function PdfScanImport() {
         {showHistory && (
           <div className="fixed inset-0 z-0" onClick={() => setShowHistory(false)} />
         )}
-        <p className="text-xs text-gray-400 mt-1.5">支持递归扫描子目录，自动以一级子目录名作为分类</p>
+        <p className="text-xs text-gray-400 mt-1.5">支持递归扫描子目录，自动取最近的「顺序…」课程目录作为分类</p>
 
         {/* Override selectors */}
         <div className="grid grid-cols-3 gap-4 mt-4">
@@ -436,16 +436,23 @@ export default function PdfScanImport() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">分类（可选）</label>
-            <select
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              分类（可选）
+              <span className="ml-1 font-normal text-xs text-gray-400">可直接输入</span>
+            </label>
+            <input
+              type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              placeholder="自动取课程目录名"
+              list="scan-category-options"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
               disabled={scanning}
-            >
-              <option value="">自动取目录名</option>
-              {categoryOptions.map(c => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
-            </select>
+            />
+            <datalist id="scan-category-options">
+              {categoryOptions.map(c => <option key={c.name} value={c.name}>{c.name}（{c.count}）</option>)}
+            </datalist>
+            <p className="text-xs text-gray-400 mt-1">填写后整批统一用该分类，留空则按「顺序…」课程目录自动推断</p>
           </div>
         </div>
 
