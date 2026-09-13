@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { TocNode } from '../types';
-import { ChevronRight, ChevronDown, FileText, LayoutGrid, List, Video } from 'lucide-react';
-import VideoListPanel from './VideoListPanel';
+import { ChevronRight, ChevronDown, FileText, LayoutGrid, List } from 'lucide-react';
 
 interface TocTreeProps {
   toc: TocNode[];
@@ -9,14 +8,10 @@ interface TocTreeProps {
   totalPages: number;
   storagePath: string;
   onPageSelect: (page: number) => void;
-  /** 有讲解视频时才显示第三个标签 */
-  bookId?: number;
-  videoCount?: number;
 }
 
-export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect, bookId, videoCount = 0 }: TocTreeProps) {
-  const [view, setView] = useState<'toc' | 'thumbs' | 'video'>('thumbs');
-  const hasVideos = videoCount > 0 && Boolean(bookId);
+export default function TocTree({ toc, currentPage, totalPages, storagePath, onPageSelect }: TocTreeProps) {
+  const [view, setView] = useState<'toc' | 'thumbs'>('thumbs');
   const visibleToc = filterVisibleToc(toc);
   const scrollRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -66,25 +61,10 @@ export default function TocTree({ toc, currentPage, totalPages, storagePath, onP
           <List size={14} />
           目录
         </button>
-        {hasVideos && (
-          <button
-            onClick={() => setView('video')}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs transition ${
-              view === 'video' ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'
-            }`}
-            title={`${videoCount} 个讲解视频`}
-          >
-            <Video size={14} />
-            <span className="truncate">视频</span>
-            <span className="text-[10px] text-gray-400">{videoCount}</span>
-          </button>
-        )}
       </div>
 
-      <div className={`flex-1 ${view === 'video' ? 'overflow-hidden' : 'overflow-auto scrollbar-thin'}`} ref={scrollRef}>
-        {view === 'video' ? (
-          <VideoListPanel bookId={bookId!} />
-        ) : view === 'toc' ? (
+      <div className={`flex-1 overflow-auto scrollbar-thin`} ref={scrollRef}>
+        {view === 'toc' ? (
           <div className="py-2">
             {visibleToc.map((node, i) => (
               <TocItem key={i} node={node} depth={0} currentPage={currentPage} onPageSelect={onPageSelect} />

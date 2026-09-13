@@ -6,6 +6,7 @@ import { pageImageUrl, withAuthToken, getReadingProgress, saveReadingProgress } 
 import TocTree from '../components/TocTree';
 import PageCanvas from '../components/PageCanvas';
 import CropTool from '../components/CropTool';
+import VideoListPanel from '../components/VideoListPanel';
 import type { ToolMode } from '../types';
 import {
   ArrowLeft,
@@ -28,6 +29,7 @@ import {
   Trash2,
   CheckCircle2,
   Circle,
+  Video,
   RotateCw,
   RotateCcw,
   Layers,
@@ -77,6 +79,16 @@ export default function BookViewer() {
     removeAnnotation,
     clearCurrent,
   } = useStore();
+
+  const hasVideos = (currentBook?.videoCount || 0) > 0;
+
+  // 带讲解视频的课程书打开时，自动展开右侧栏并默认停在「视频」标签
+  useEffect(() => {
+    if (hasVideos) {
+      setRightOpen(true);
+      setRightTab('video');
+    }
+  }, [bookId, hasVideos]);
 
   // Persisted reading config (per book)
   const STORAGE_KEY = 'edu-readConfig';
@@ -138,7 +150,7 @@ export default function BookViewer() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('assignments');
+  const [rightTab, setRightTab] = useState<'video' | 'annotations' | 'mistakes' | 'assignments'>('assignments');
   const [mistakeFilter, setMistakeFilter] = useState('');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [layers, setLayers] = useState({
@@ -970,8 +982,6 @@ export default function BookViewer() {
               totalPages={totalPages}
               storagePath={currentBook.storagePath || ''}
               onPageSelect={setCurrentPage}
-              bookId={currentBook.id}
-              videoCount={currentBook.videoCount || 0}
             />
           </aside>
         )}
@@ -1105,6 +1115,18 @@ export default function BookViewer() {
         {rightOpen && (
           <aside className="flex flex-col flex-shrink-0 bg-white border-l border-gray-200 w-72">
             <div className="flex items-center border-b border-gray-200">
+              {hasVideos && (
+                <button
+                  onClick={() => setRightTab('video')}
+                  className={`flex-1 py-2.5 text-sm font-medium transition flex items-center justify-center gap-1 ${
+                    rightTab === 'video' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title={`${currentBook.videoCount} 个讲解视频`}
+                >
+                  <Video size={14} />
+                  视频
+                </button>
+              )}
               <button
                 onClick={() => setRightTab('assignments')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
@@ -1132,7 +1154,9 @@ export default function BookViewer() {
             </div>
 
             <div className="flex-1 overflow-auto scrollbar-thin">
-              {rightTab === 'mistakes' ? (
+              {rightTab === 'video' ? (
+                <VideoListPanel bookId={currentBook.id} />
+              ) : rightTab === 'mistakes' ? (
                 <MistakeList
                   mistakes={mistakes}
                   filter={mistakeFilter}

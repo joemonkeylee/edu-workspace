@@ -635,9 +635,6 @@ export default function Home() {
               {kindCounts.course}
             </span>
           </button>
-          {resourceKind === 'course' && (
-            <span className="pb-2 text-xs text-gray-400">PDF 讲义 + 配套讲解视频，打开书后在左侧「视频」标签观看</span>
-          )}
         </div>
 
         {/* Row 1: filters + sort + edit toggle */}
