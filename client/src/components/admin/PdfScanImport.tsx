@@ -49,6 +49,8 @@ const SUBJECT_PRESETS = ['语文', '数学', '英语', '物理', '化学', '生�
 
 const PATH_HISTORY_KEY = 'edu-scan-path-history';
 const MAX_HISTORY = 10;
+/** /admin/scan-pdf/capacity 拿不到时的兜底并发数 */
+const DEFAULT_MAX_CONCURRENCY = 4;
 
 function loadPathHistory(): string[] {
   try {
@@ -74,7 +76,9 @@ export default function PdfScanImport() {
   const [category, setCategory] = useState('');
   const [dpi, setDpi] = useState(300);
   const [concurrency, setConcurrency] = useState(4);
-  const [maxConcurrency, setMaxConcurrency] = useState(1);
+  const [maxConcurrency, setMaxConcurrency] = useState(4);
+  const [cores, setCores] = useState(0);
+  const [capacityError, setCapacityError] = useState('');
   // 用稳定 id 而不是数组下标做 key：日志被截断到 MAX_LOGS 后，下标 key 会让
   // React 把整列的文本都重写一遍，几百条时明显掉帧。
   const [logs, setLogs] = useState<{ id: number; text: string }[]>([]);
@@ -147,12 +151,27 @@ export default function PdfScanImport() {
   }, []);
 
   useEffect(() => {
-    getScanCapacity().then(({ maxConcurrency: max }) => {
-      setMaxConcurrency(max);
-      setConcurrency((current) => Math.min(current, max));
-    }).catch(() => setMaxConcurrency(1));
+    let alive = true;
+    getScanCapacity()
+      .then(({ cores, maxConcurrency: max }) => {
+        if (!alive) return;
+        setCores(cores);
+        setMaxConcurrency(max);
+        setConcurrency((current) => Math.min(current, max));
+        setCapacityError('');
+      })
+      .catch((err) => {
+        // 拿不到建议值也不要把可选范围压到 1 —— 那会让扫描变成串行还看不出原因
+        if (!alive) return;
+        console.warn('[scan] 读取并发上限失败', err);
+        setMaxConcurrency(DEFAULT_MAX_CONCURRENCY);
+        setCapacityError('未能读取并发上限（服务端未响应），已按 4 处理');
+      });
     setPathHistory(loadPathHistory());
     loadVideoRoots();
+    return () => {
+      alive = false;
+    };
   }, [loadVideoRoots]);
 
   const pushPathToHistory = useCallback((p: string) => {
@@ -203,7 +222,9 @@ export default function PdfScanImport() {
       setVideoPlanLinks(res.links);
       setShowReview(false);
       toast.success(`视频关联方案已就绪：${res.pdfs} 个 PDF / ${res.links} 条关联`);
-      startScan();
+      // 把刚刚拿到的 planId 直接传进去：setVideoPlanId 是异步的，
+      // 这里若直接读 videoPlanId 仍是空串，会误判为「还没预解析」而再次弹预处理框，造成死循环。
+      startScan(res.planId);
     } catch (e: any) {
       toast.error('保存视频关联方案失败: ' + (e?.message || ''));
     }
@@ -223,9 +244,11 @@ export default function PdfScanImport() {
     });
   };
 
-  const startScan = () => {
+  const startScan = (submittedPlanId?: string) => {
     // 开了视频关联但还没确认过对应关系的，先走预解析
-    if (withVideo && !videoPlanId) {
+    // submittedPlanId 来自「确认预处理」回调，避免读到还没生效的 videoPlanId 旧值
+    const planId = submittedPlanId ?? videoPlanId;
+    if (withVideo && !planId) {
       toast('开启视频关联后，需要先「预解析」并确认 PDF 与 MP4 的对应关系');
       handlePreview();
       return;
@@ -480,6 +503,7 @@ export default function PdfScanImport() {
           <div>
             <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-2">
               <Layers size={14} /> 并发数
+              {cores > 0 && <span className="font-normal text-xs text-gray-400">{cores} 核，上限 {maxConcurrency}</span>}
             </label>
             <select
               value={concurrency}
@@ -490,6 +514,11 @@ export default function PdfScanImport() {
                 <option key={value} value={value}>{value} 并发</option>
               ))}
             </select>
+            {capacityError && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                <AlertTriangle size={11} /> {capacityError}
+              </p>
+            )}
           </div>
           <div>
             <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-2">
@@ -650,7 +679,7 @@ export default function PdfScanImport() {
             <Eye size={18} /> {previewing ? '解析中...' : '预解析'}
           </button>
           <button
-            onClick={startScan}
+            onClick={() => startScan()}
             disabled={scanning || !targetPath.trim()}
             className="flex items-center gap-2 bg-primary hover:bg-primaryDark disabled:bg-gray-300 text-white px-6 py-2.5 rounded-lg transition text-sm font-medium"
           >
