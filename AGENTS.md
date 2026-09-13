@@ -27,11 +27,29 @@ When `AUTH_ENABLED=true`:
 
 ## Commit Workflow
 
-### When to commit
+### Trigger rules based on conversation markers
+
+The agent inspects the **first line** (opening marker) and **last line** (closing marker) of the user's message for a bare digit `1` or `2`. These markers control the commit/push behavior for the entire current conversation turn:
+
+| Opening / Closing marker | Behavior this turn |
+|---|---|
+| **Neither** `1` nor `2` at start or end | **Do NOT commit**. Only return the proposed commit message in the reply so the user can review it — do NOT execute any `git` command. |
+| `1` at the **start** of user's message | **Immediately commit** the current working tree (all accumulated changes since last commit), then reply with summary. |
+| `1` at the **end** of user's message | After finishing all requested work in this turn, **commit** the resulting working tree, then reply with summary. |
+| `2` at the **start** of user's message | **Immediately commit and push** the current working tree, then reply with summary. |
+| `2` at the **end** of user's message | After finishing all requested work in this turn, **commit and push** the resulting working tree, then reply with summary. |
+
+**Priority notes:**
+- If the user message contains both an opening and a closing marker, the **opening marker** wins — it means "commit/push now, then handle the rest of the request normally".
+- `1`/`2` markers are matched only as **standalone digits** (e.g. `任务做完了 1` at the end counts; `v1.2.1` does not).
+- When no marker is present, the agent still **accumulates** change descriptions and prepares a well-formed commit message — it just stops short of running `git commit`.
+
+### Legacy explicit keywords (still supported)
+
+For backwards compatibility, the following explicit phrases still work anywhere in the message, but the digit markers above take precedence if both appear:
 
 | User says... | Action |
 |---|---|
-| Nothing (default, no mention of commit/push) | **Do NOT commit**. Keep changes in working area. Accumulate change descriptions. |
 | "提交" / "commit" / "git commit" | **Commit** all accumulated changes since last commit with English message, then reply with summary |
 | "commit and push" / "提交并推送" / "push" | **Commit then push** all accumulated changes, then reply with summary |
 | "别提交" / "不提交" / "don't commit" / "先别提交" | Do NOT commit, only reply with change summary |
@@ -39,9 +57,9 @@ When `AUTH_ENABLED=true`:
 
 ### Accumulating changes across non-commit turns
 
-When the user does not ask to commit in multiple consecutive turns, the agent must
+When the user does not ask to commit (either via digit marker or explicit keyword) in multiple consecutive turns, the agent must
 **accumulate** the change descriptions from each turn (do not lose them). When the user
-finally asks to commit or push, produce a **single consolidated commit** that summarizes
+finally uses a `1`/`2` marker or says "commit" / "push", produce a **single consolidated commit** that summarizes
 all the accumulated changes together, rather than committing them one-by-one or discarding
 earlier summaries.
 

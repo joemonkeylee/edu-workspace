@@ -513,6 +513,8 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const pageSize = Math.max(1, Math.min(1000, parseInt(req.query.pageSize as string) || 20));
   const search = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
+  const sortBy = (req.query.sortBy as string) || 'id';
+  const sortDir = req.query.sortDir === 'desc' ? -1 : 1;
 
   // Find books that have attributes.pair
   const allBooks = await prisma.book.findMany({
@@ -551,6 +553,17 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
       g.textbook.category.toLowerCase().includes(s) ||
       g.answers.some((a) => a.title.toLowerCase().includes(s))
     );
+  }
+
+  // Sorting
+  const validSorts = new Set(['id', 'title', 'category', 'totalPages', 'answerCount']);
+  if (validSorts.has(sortBy)) {
+    groups.sort((a: any, b: any) => {
+      const va = sortBy === 'answerCount' ? a.answers.length : a.textbook[sortBy];
+      const vb = sortBy === 'answerCount' ? b.answers.length : b.textbook[sortBy];
+      if (sortBy === 'title' || sortBy === 'category') return (va || '').localeCompare(vb || '', 'zh') * sortDir;
+      return (va - vb) * sortDir;
+    });
   }
 
   const total = groups.length;
@@ -854,6 +867,60 @@ router.post('/bind-batch', asyncHandler(async (req: Request, res: Response) => {
   );
 
   res.json({ success: true, boundCount });
+}));
+
+// ── Batch unbind (unbind multiple textbook anchors at once) ────────
+
+router.post('/unbind-batch', asyncHandler(async (req: Request, res: Response) => {
+  const { bookIds } = req.body as { bookIds?: number[] };
+  if (!Array.isArray(bookIds) || bookIds.length === 0) {
+    return res.status(400).json({ error: 'bookIds must be a non-empty array' });
+  }
+  const numIds = bookIds.map((n) => Number(n)).filter((n) => n > 0);
+
+  // Load ALL books once — we need them to find cross-references
+  const allBooks = await prisma.book.findMany({
+    select: { id: true, attributes: true },
+  });
+
+  // Build a set of textbook anchor IDs (books that have self-pair role=textbook)
+  const targets = new Set<number>();
+  for (const id of numIds) {
+    const book = allBooks.find((b) => b.id === id);
+    if (book && getPairs(book.attributes).some((p) => p.role === 'textbook' && p.with === id)) {
+      targets.add(id);
+    }
+  }
+
+  if (targets.size === 0) {
+    return res.json({ success: true, unboundCount: 0, skipped: bookIds.length });
+  }
+
+  // For every book that references any of these textbook IDs, remove those entries
+  const updates = new Map<number, Record<string, unknown>>();
+  let unboundCount = 0;
+
+  for (const b of allBooks) {
+    const pairs = getPairs(b.attributes);
+    const references = pairs.filter((p) => targets.has(p.with));
+    if (references.length === 0) continue;
+
+    // Remove entries pointing to any target textbook
+    const attrs = (b.attributes as any) || {};
+    let newAttrs = attrs;
+    for (const tId of references.map((r) => r.with)) {
+      newAttrs = removePairEntry(newAttrs, tId);
+    }
+    updates.set(b.id, newAttrs);
+    // Count textbook anchors that were actually in the target list
+    if (targets.has(b.id)) unboundCount++;
+  }
+
+  await runWithConcurrency([...updates], 10, ([id, attrs]) =>
+    prisma.book.update({ where: { id }, data: { attributes: attrs as any } })
+  );
+
+  res.json({ success: true, unboundCount, skipped: numIds.length - unboundCount });
 }));
 
 export default router;

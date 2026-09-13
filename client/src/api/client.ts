@@ -221,7 +221,7 @@ export async function bookPairsExport(params?: { unbound?: boolean; duplicates?:
   return data as Blob;
 }
 
-export async function bookPairsList(params?: { page?: number; pageSize?: number; search?: string }) {
+export async function bookPairsList(params?: { page?: number; pageSize?: number; search?: string; sortBy?: string; sortDir?: 'asc' | 'desc' }) {
   const { data } = await api.get('/admin/book-pairs', { params });
   return data as { data: Array<{ textbook: { id: number; title: string; category: string; totalPages: number }; answers: Array<{ id: number; title: string; category: string; totalPages: number }> }>; total: number; page: number; pageSize: number };
 }
@@ -249,6 +249,11 @@ export async function bookPairsUnbind(bookId: number) {
 
 export async function bookPairsBindBatch(pairs: Array<{ textbookId: number; answerIds: number[] }>) {
   const { data } = await api.post('/admin/book-pairs/bind-batch', { pairs });
+  return data;
+}
+
+export async function bookPairsUnbindBatch(bookIds: number[]) {
+  const { data } = await api.post('/admin/book-pairs/unbind-batch', { bookIds });
   return data;
 }
 

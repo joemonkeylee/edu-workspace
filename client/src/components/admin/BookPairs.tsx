@@ -7,8 +7,10 @@ import {
   bookPairsBind,
   bookPairsUnbind,
   bookPairsBindBatch,
+  bookPairsUnbindBatch,
   bookPairsExport,
   bookPairsRules,
+  adminDeleteBooksBatch,
   type BookPairCandidate,
   type PairStats,
   type PairRules,
@@ -48,10 +50,16 @@ export default function BookPairs() {
         <TabButton active={tab === 'bound'} onClick={() => setTab('bound')}>已配对列表</TabButton>
         <TabButton active={tab === 'orphans'} onClick={() => setTab('orphans')}>孤儿 (未配对)</TabButton>
       </div>
-      <div className="flex-1 overflow-auto">
-        {tab === 'scan' && <ScanTab onFilter={handleScanFilter} />}
-        {tab === 'bound' && <BoundTab />}
-        {tab === 'orphans' && <OrphansTab role={orphanRole} onRoleChange={setOrphanRole} />}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full" style={{ display: tab === 'scan' ? 'flex' : 'none', flexDirection: 'column' }}>
+          <ScanTab onFilter={handleScanFilter} />
+        </div>
+        <div className="h-full" style={{ display: tab === 'bound' ? 'flex' : 'none', flexDirection: 'column' }}>
+          <BoundTab />
+        </div>
+        <div className="h-full" style={{ display: tab === 'orphans' ? 'flex' : 'none', flexDirection: 'column' }}>
+          <OrphansTab role={orphanRole} onRoleChange={setOrphanRole} />
+        </div>
       </div>
     </div>
   );
@@ -635,22 +643,52 @@ function BoundTab() {
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState('id');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [batchUnbinding, setBatchUnbinding] = useState(false);
 
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await bookPairsList({ page, pageSize, search });
+      const res = await bookPairsList({ page, pageSize, search, sortBy, sortDir });
       setGroups(res.data);
       setTotal(res.total);
+      setSelected(new Set());
     } catch (e: any) {
       toast.error('加载失败: ' + (e?.message || ''));
     }
     setLoading(false);
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, sortBy, sortDir]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   const totalPages = Math.ceil(total / pageSize);
+
+  const toggleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(col);
+      setSortDir('asc');
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === groups.length && groups.length > 0) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(groups.map((g) => g.textbook.id)));
+    }
+  };
 
   const handleUnbind = async (textbookId: number, title: string) => {
     const confirmed = await confirm({
@@ -670,6 +708,40 @@ function BoundTab() {
     }
   };
 
+  const handleBatchUnbind = async () => {
+    if (selected.size === 0) { toast.warning('请先勾选要解绑的行'); return; }
+    const titles = groups
+      .filter((g) => selected.has(g.textbook.id))
+      .map((g) => `「${g.textbook.title}」`)
+      .join('、');
+    const confirmed = await confirm({
+      title: '批量解绑确认',
+      message: `确认解绑选中的 ${selected.size} 组？将解绑: ${titles}`,
+      confirmText: '确认批量解绑',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+    });
+    if (!confirmed) return;
+    setBatchUnbinding(true);
+    try {
+      const res = await bookPairsUnbindBatch(Array.from(selected));
+      toast.success(`已解绑 ${res.unboundCount} 组${res.skipped ? `（${res.skipped} 组跳过）` : ''}`);
+      fetch();
+    } catch (e: any) {
+      toast.error('批量解绑失败: ' + (e?.message || ''));
+    } finally {
+      setBatchUnbinding(false);
+    }
+  };
+
+  const SortHeader = ({ label, col, w = '' }: { label: string; col: string; w?: string }) => (
+    <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100 ${w}`} onClick={() => toggleSort(col)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortBy === col && <span className="text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+      </span>
+    </th>
+  );
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 mb-4 flex-wrap shrink-0">
@@ -681,6 +753,14 @@ function BoundTab() {
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
         <button onClick={fetch} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">搜索</button>
+        <button
+          onClick={handleBatchUnbind}
+          disabled={selected.size === 0 || batchUnbinding}
+          className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-50"
+        >
+          {batchUnbinding ? <Loader2 size={14} className="animate-spin" /> : null}
+          {batchUnbinding ? `解绑中...` : `批量解绑 (${selected.size})`}
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
@@ -688,35 +768,57 @@ function BoundTab() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 sticky top-0">
               <tr>
-                <th className="px-3 py-2 text-left">教材</th>
-                <th className="px-3 py-2 text-left">分类</th>
+                <th className="px-3 py-2 text-left w-8">
+                  <input
+                    type="checkbox"
+                    checked={selected.size > 0 && selected.size === groups.length}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+                <SortHeader label="教材" col="title" />
+                <SortHeader label="分类" col="category" w="w-28" />
+                <SortHeader label="页数" col="totalPages" w="w-16" />
+                <SortHeader label="答案数" col="answerCount" w="w-20" />
                 <th className="px-3 py-2 text-left">答案</th>
-                <th className="px-3 py-2 text-left">操作</th>
+                <th className="px-3 py-2 text-left w-16">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {groups.map((g, idx) => (
-                <tr key={g.textbook.id} className={`${idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100`}>
-                  <td className="px-3 py-2">
-                    <div className="font-medium"><a href={`/book/${g.textbook.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{g.textbook.id}</a> {g.textbook.title}</div>
-                    <div className="text-xs text-gray-400">{g.textbook.totalPages} 页</div>
-                  </td>
-                  <td className="px-3 py-2 text-gray-500">{g.textbook.category}</td>
-                  <td className="px-3 py-2">
-                    {g.answers.map((a: any) => (
-                      <div key={a.id} className="text-xs">
-                        <a href={`/book/${a.id}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">#{a.id}</a> {a.title} <span className="text-gray-400">({a.totalPages}p)</span>
-                      </div>
-                    ))}
-                    {g.answers.length === 0 && <span className="text-gray-400 text-xs">无答案</span>}
-                  </td>
-                  <td className="px-3 py-2">
-                    <button onClick={() => handleUnbind(g.textbook.id, g.textbook.title)} className="text-xs text-red-600 hover:underline">解绑</button>
-                  </td>
-                </tr>
-              ))}
+              {groups.map((g, idx) => {
+                const checked = selected.has(g.textbook.id);
+                return (
+                  <tr key={g.textbook.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100`}>
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleSelect(g.textbook.id)}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="font-medium"><a href={`/book/${g.textbook.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{g.textbook.id}</a> {g.textbook.title}</div>
+                    </td>
+                    <td className="px-3 py-2 text-gray-500">{g.textbook.category}</td>
+                    <td className="px-3 py-2 text-gray-400">{g.textbook.totalPages}</td>
+                    <td className="px-3 py-2">
+                      <span className="text-xs text-sky-600 bg-sky-50 px-2 py-0.5 rounded">{g.answers.length}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {g.answers.map((a: any) => (
+                        <div key={a.id} className="text-xs">
+                          <a href={`/book/${a.id}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">#{a.id}</a> {a.title} <span className="text-gray-400">({a.totalPages}p)</span>
+                        </div>
+                      ))}
+                      {g.answers.length === 0 && <span className="text-gray-400 text-xs">无答案</span>}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <button onClick={() => handleUnbind(g.textbook.id, g.textbook.title)} className="text-xs text-red-600 hover:underline">解绑</button>
+                    </td>
+                  </tr>
+                );
+              })}
               {groups.length === 0 && !loading && (
-                <tr><td colSpan={4} className="px-3 py-8 text-center text-gray-400">暂无已配对数据</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">暂无已配对数据</td></tr>
               )}
             </tbody>
           </table>
@@ -740,6 +842,7 @@ function BoundTab() {
 type OrphanRow = { id: number; title: string; category: string; totalPages: number; type: string; role: string | null };
 
 function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r: OrphanRole) => void }) {
+  const confirm = useConfirm();
   const [orphans, setOrphans] = useState<OrphanRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -750,6 +853,8 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState<{ current: number; total: number; title?: string } | null>(null);
 
   const fetch = useCallback(async () => {
     setLoading(true);
@@ -815,6 +920,34 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
     }
   };
 
+  const handleBatchDelete = async () => {
+    if (selected.size === 0) { toast.warning('请先勾选要删除的书'); return; }
+    const ids = Array.from(selected);
+    const confirmed = await confirm({
+      title: '删除确认',
+      message: `确认删除选中的 ${ids.length} 本孤儿书？此操作将同时删除数据库记录和存储文件（页面图片、裁剪），不可恢复。`,
+      confirmText: '确认删除',
+      confirmClass: 'bg-red-600 hover:bg-red-700',
+    });
+    if (!confirmed) return;
+    setDeleting(true);
+    setDeleteProgress({ current: 0, total: ids.length });
+    try {
+      const res = await adminDeleteBooksBatch(ids);
+      setDeleteProgress({ current: res.deleted, total: ids.length });
+      toast.success(`已删除 ${res.deleted} 本（含数据+资源文件）`);
+      setTimeout(() => {
+        setDeleteProgress(null);
+      }, 1200);
+      fetch();
+    } catch (e: any) {
+      toast.error('删除失败: ' + (e?.message || ''));
+      setDeleteProgress(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const SortHeader = ({ label, col, w = '' }: { label: string; col: string; w?: string }) => (
     <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100 ${w}`} onClick={() => toggleSort(col)}>
       <span className="inline-flex items-center gap-1">
@@ -845,9 +978,17 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
           className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
         <button onClick={fetch} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">刷新</button>
-        <button onClick={handleExport} disabled={exporting} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">
+        <button onClick={handleExport} disabled={exporting || deleting} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">
           {exporting ? <Loader2 size={14} className="animate-spin" /> : null}
           {exporting ? '导出中...' : selected.size > 0 ? `导出选中 (${selected.size})` : '导出全部'}
+        </button>
+        <button
+          onClick={handleBatchDelete}
+          disabled={selected.size === 0 || deleting}
+          className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-50"
+        >
+          {deleting ? <Loader2 size={14} className="animate-spin" /> : null}
+          {deleting ? `删除中...` : `批量删除 (${selected.size})`}
         </button>
       </div>
 
@@ -912,6 +1053,27 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
           unit="条"
         />
       </div>
+
+      {/* Progress modal for batch delete */}
+      {deleteProgress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl w-80 p-5 text-center">
+            <div className="mb-3">{deleteProgress.current > 0 && deleteProgress.current >= deleteProgress.total ? (
+              <div className="w-12 h-12 mx-auto bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xl">✓</div>
+            ) : (
+              <Loader2 size={32} className="animate-spin text-red-500 mx-auto" />
+            )}</div>
+            <p className="text-sm text-gray-700">
+              {deleteProgress.current > 0 && deleteProgress.current >= deleteProgress.total
+                ? `删除完成：${deleteProgress.current} / ${deleteProgress.total}`
+                : `正在删除 ${deleteProgress.current} / ${deleteProgress.total}`}
+            </p>
+            {deleteProgress.title && (
+              <p className="text-xs text-gray-400 mt-1 truncate" title={deleteProgress.title}>{deleteProgress.title}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
