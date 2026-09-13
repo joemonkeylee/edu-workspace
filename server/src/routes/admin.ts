@@ -9,6 +9,7 @@ import { runWithDynamicConcurrency } from '../utils/concurrency.js';
 import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
 import { execFile } from 'child_process';
 import { adminRequired, AuthedRequest, getStandaloneUser } from '../middleware/auth.js';
+import { invalidateBookIndexOnWrite } from '../middleware/bookIndex.js';
 import { isAuthEnabled } from '../services/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { createSseTicket } from '../utils/sseTicket.js';
@@ -17,6 +18,8 @@ import type { PdfMatchResult } from '../services/videoMatcher.js';
 import { cleanPdfName, sanitizeFileName } from '../services/nameCleaner.js';
 
 const router = Router();
+// 导入/删除书等写操作后让全局书籍索引失效并后台重建
+router.use(invalidateBookIndexOnWrite);
 const maxConcurrency = Math.max(1, os.cpus().length - 1);
 const scanConcurrency = new Map<string, { value: number }>();
 

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prisma.js';
 import { teacherOrAdminRequired } from '../middleware/auth.js';
+import { invalidateBookIndexOnWrite } from '../middleware/bookIndex.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { runWithConcurrency } from '../utils/concurrency.js';
 
@@ -47,6 +48,8 @@ function removePairEntry(attrs: any, withId: number, role?: string): any {
 
 const router = Router();
 router.use(teacherOrAdminRequired);
+// 配对关系变更会影响「答案页」判定与配对清单，写操作后让索引失效并后台重建
+router.use(invalidateBookIndexOnWrite);
 
 // ── Role keywords for identifying textbook (MAIN) vs answer (ANSWER) ──
 

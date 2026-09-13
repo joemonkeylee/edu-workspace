@@ -11,10 +11,13 @@ import {
   getBookDeletedRoot,
 } from '../services/storage.js';
 import { adminRequired, teacherOrAdminRequired, AuthedRequest } from '../middleware/auth.js';
+import { invalidateBookIndexOnWrite } from '../middleware/bookIndex.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const router = Router();
 router.use(teacherOrAdminRequired);
+// 写操作后让全局书籍索引（答案页集合 / 配对清单 / Tab 计数）失效并后台重建
+router.use(invalidateBookIndexOnWrite);
 
 // ── List active books (soft-deleted excluded by default) ──────────
 
