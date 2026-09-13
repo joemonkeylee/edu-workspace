@@ -8,7 +8,8 @@ import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSu
 import { runWithDynamicConcurrency } from '../utils/concurrency.js';
 import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
 import { execFile } from 'child_process';
-import { adminRequired, AuthedRequest } from '../middleware/auth.js';
+import { adminRequired, AuthedRequest, getStandaloneUser } from '../middleware/auth.js';
+import { isAuthEnabled } from '../services/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { createSseTicket } from '../utils/sseTicket.js';
 import { scanVideos, matchVideosToPdfs, resolveVideoPath, toRelativePath } from '../services/videoMatcher.js';
@@ -104,8 +105,11 @@ async function markBookKind(bookId: number, kind: 'book' | 'course') {
 router.use(adminRequired);
 
 router.post('/scan-pdf/ticket', asyncHandler(async (req: AuthedRequest, res: Response) => {
-  if (!req.user) return res.status(401).json({ error: 'unauthorized' });
-  const ticket = createSseTicket(req.user);
+  // 关闭鉴权（standalone 模式）下免登录，直接签发一份系统管理员票据；
+  // 开启鉴权时仍要求登录态（req.user 存在），否则 401。
+  const user = req.user ?? (isAuthEnabled() ? null : getStandaloneUser());
+  if (!user) return res.status(401).json({ error: 'unauthorized' });
+  const ticket = createSseTicket(user);
   res.json({ data: { ticket } });
 }));
 

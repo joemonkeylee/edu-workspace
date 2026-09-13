@@ -18,6 +18,38 @@ type ViewMode = 'preview' | 'list';
 /** 资源类型视图：all = 全部书籍；course = 视频课程（带讲解视频的课程资源） */
 type ResourceKind = 'all' | 'course';
 
+/** 可排序字段；favoriteAt = 添加收藏时间（按 BookFavorite.createdAt 排序） */
+type SortFieldName = 'subject' | 'grade' | 'category' | 'title' | 'totalPages' | 'favoriteAt';
+type SortFieldDef = { field: SortFieldName; dir: 'asc' | 'desc' | null };
+
+const defaultBookSort = (): SortFieldDef[] => [
+  { field: 'subject', dir: null },
+  { field: 'grade', dir: null },
+  { field: 'category', dir: null },
+  { field: 'title', dir: null },
+  { field: 'totalPages', dir: null },
+  { field: 'favoriteAt', dir: null },
+];
+
+/** 只看收藏时的默认排序：按「添加收藏时间」倒序（最新收藏在前） */
+const defaultFavSort = (): SortFieldDef[] => [
+  { field: 'favoriteAt', dir: 'desc' },
+  { field: 'subject', dir: null },
+  { field: 'grade', dir: null },
+  { field: 'category', dir: null },
+  { field: 'title', dir: null },
+  { field: 'totalPages', dir: null },
+];
+
+const SORT_LABELS: Record<SortFieldName, string> = {
+  subject: '学科',
+  grade: '学期',
+  category: '分类',
+  title: '关键字',
+  totalPages: '页数',
+  favoriteAt: '收藏时间',
+};
+
 function loadResourceKind(): ResourceKind {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_KIND);
@@ -165,16 +197,15 @@ export default function Home() {
   const [favoritesOnly, setFavoritesOnly] = useState<boolean>(loadFavoritesOnly);
   const [pairsOnly, setPairsOnly] = useState<boolean>(loadPairsOnly);
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
-  const [sortFields, setSortFields] = useState<{ field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[]>(
-    saved.sortFields && saved.sortFields.length > 0
-      ? saved.sortFields
-      : [
-          { field: 'subject', dir: null },
-          { field: 'grade', dir: null },
-          { field: 'category', dir: null },
-          { field: 'title', dir: null },
-          { field: 'totalPages', dir: null },
-        ]
+  const savedSort = (saved.sortFields ?? []) as SortFieldDef[];
+  const [sortFields, setSortFields] = useState<SortFieldDef[]>(
+    savedSort.length > 0
+      ? (savedSort.some((s) => s.field === 'favoriteAt')
+          ? savedSort
+          : [...savedSort, { field: 'favoriteAt', dir: null }])
+      : loadFavoritesOnly()
+        ? defaultFavSort()
+        : defaultBookSort()
   );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -186,11 +217,11 @@ export default function Home() {
     return active.map(s => `${s.field}:${s.dir}`).join(',');
   }, [sortFields]);
 
-  const toggleSortDir = (field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages') => {
+  const toggleSortDir = (field: SortFieldName) => {
     setSortFields(prev => prev.map(s => {
       if (s.field === field) {
-        // totalPages defaults to desc on first click (higher page count first)
-        if (field === 'totalPages') {
+        // totalPages / favoriteAt 首次点击默认降序（页数多在前 / 最近收藏在前）
+        if (field === 'totalPages' || field === 'favoriteAt') {
           const next = s.dir === null ? 'desc' : s.dir === 'desc' ? 'asc' : null;
           return { ...s, dir: next };
         }
@@ -215,13 +246,7 @@ export default function Home() {
   };
   const onDragEnd = () => setDragIndex(null);
 
-  const resetSort = () => setSortFields([
-    { field: 'subject', dir: null },
-    { field: 'grade', dir: null },
-    { field: 'category', dir: null },
-    { field: 'title', dir: null },
-    { field: 'totalPages', dir: null },
-  ]);
+  const resetSort = () => setSortFields(favoritesOnly ? defaultFavSort() : defaultBookSort());
   const [pageInput, setPageInput] = useState('1');
   const [rowsPerPage, setRowsPerPage] = useState(2);
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
@@ -558,6 +583,8 @@ export default function Home() {
   const handleFavoritesOnlyChange = (v: boolean) => {
     setFavoritesOnly(v);
     try { localStorage.setItem(STORAGE_KEY_FAV, v ? '1' : '0'); } catch { /* ignore */ }
+    // 进入收藏视图默认按「添加收藏时间」倒序；退出时恢复普通默认排序
+    setSortFields(v ? defaultFavSort() : defaultBookSort());
   };
   const handlePairsOnlyChange = (v: boolean) => {
     setPairsOnly(v);
@@ -581,6 +608,32 @@ export default function Home() {
     handlePromptDiscard();
     applyPendingFilter();
   };
+
+  // 关键字搜索框：普通视图放在筛选区前部；只看收藏时移到行尾（弱化 页/关键字 这类次要筛选）
+  const keywordSearchEl = (
+    <div className="relative w-36">
+      <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onBlur={() => { if (search !== debouncedSearch) setDebouncedSearch(search); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (search !== debouncedSearch) setDebouncedSearch(search); } }}
+        placeholder="关键字..."
+        className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-7 pr-3 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+      />
+      {search && (
+        <button
+          type="button"
+          onClick={() => setSearch('')}
+          className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
+          title="清除"
+        >
+          <X size={10} strokeWidth={3} />
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col bg-surface">
@@ -643,28 +696,7 @@ export default function Home() {
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-18" />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-18" />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
-          <div className="relative w-36">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onBlur={() => { if (search !== debouncedSearch) setDebouncedSearch(search); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (search !== debouncedSearch) setDebouncedSearch(search); } }}
-              placeholder="关键字..."
-              className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-7 pr-3 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
-                title="清除"
-              >
-                <X size={10} strokeWidth={3} />
-              </button>
-            )}
-          </div>
+          {!favoritesOnly && keywordSearchEl}
           <button
             type="button"
             onClick={hasActiveFilters ? resetFilters : refreshBooks}
@@ -727,7 +759,6 @@ export default function Home() {
           {/* <span className="text-xs text-gray-400 mr-0.5">排序</span> */}
           {sortFields.map((s, idx) => {
             if (s.field === 'subject' || s.field === 'grade' || s.field === 'category') return null;
-            const labels: Record<string, string> = { subject: '学科', grade: '学期', category: '分类', title: '关键字', totalPages: '页数' };
             const hasSort = s.dir !== null;
             const activeSorts = sortFields.filter(sf => sf.dir !== null);
             const order = hasSort ? activeSorts.findIndex(sf => sf.field === s.field) + 1 : 0;
@@ -747,7 +778,7 @@ export default function Home() {
                 title={hasSort ? `当前：${s.dir === 'asc' ? '升序' : '降序'}，点击切换` : '点击启用排序'}
               >
                 <GripVertical size={12} className="text-gray-300 pointer-events-none" />
-                <span className={hasSort ? 'font-medium' : '' + ' pointer-events-none'}>{labels[s.field]}</span>
+                <span className={hasSort ? 'font-medium' : '' + ' pointer-events-none'}>{SORT_LABELS[s.field]}</span>
                 <span className="ml-0.5 flex h-5 w-5 items-center justify-center pointer-events-none">
                   {s.dir === null ? (
                     <Minus size={12} />
@@ -772,6 +803,8 @@ export default function Home() {
           >
             <RotateCcw size={13} />
           </button>
+          {/* 只看收藏时，把「关键字」筛选移到行尾（弱化次要筛选，主排序为收藏时间） */}
+          {favoritesOnly && keywordSearchEl}
         </div>
 
         {loading ? (

@@ -111,12 +111,16 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   // Current user (null in standalone mode → global favorites)
   const userId = req.user?.userId ?? null;
 
-  // Resolve favorite book IDs for the current user (used for isFavorite flag + favoritesOnly filter)
+  // Resolve favorite book IDs + added time for the current user
+  // (used for isFavorite flag, favoritesOnly filter, and favorite-time sorting)
   const favoriteRows = await prisma.bookFavorite.findMany({
     where: { userId },
-    select: { bookId: true },
+    select: { bookId: true, createdAt: true },
   });
   const favoriteIdSet = new Set(favoriteRows.map((r) => r.bookId));
+  const favoriteTimeMap = new Map<number, number>(
+    favoriteRows.map((r) => [r.bookId, r.createdAt.getTime()])
+  );
 
   const where: any = { isDeleted: false };
   if (category && category !== 'all') where.category = category;
@@ -136,17 +140,30 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
     where.id = { in: [...favoriteIdSet] };
   }
 
-  // Build orderBy from sort param; fallback to createdAt desc
+  // Build orderBy from sort param. `favoriteAt` is a join (BookFavorite.createdAt)
+  // and is applied in-memory after filtering; book fields go directly to Prisma.
   const orderBy: any[] = [];
+  let favoriteAtSort: 'asc' | 'desc' | null = null;
   if (sort) {
     for (const part of sort.split(',')) {
       const [field, dir] = part.trim().split(':');
+      if (field === 'favoriteAt') {
+        if (dir === 'asc' || dir === 'desc') favoriteAtSort = dir;
+        continue;
+      }
       if (['subject', 'grade', 'category', 'title', 'totalPages'].includes(field) && ['asc', 'desc'].includes(dir)) {
         orderBy.push({ [field]: dir });
       }
     }
   }
-  if (orderBy.length === 0) orderBy.push({ createdAt: 'desc' });
+  if (orderBy.length === 0 && !favoriteAtSort) {
+    // 只看收藏默认按「添加收藏时间」倒序；其它情况按入库时间倒序
+    if (favoritesOnly) {
+      favoriteAtSort = 'desc';
+    } else {
+      orderBy.push({ createdAt: 'desc' });
+    }
+  }
 
   // 1) Fetch ALL matching books WITH attributes so we can detect pair roles.
   //    For typical datasets (< 2000 books) in-memory filtering is fine.
@@ -186,6 +203,15 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
     }
     return true;
   });
+
+  // 按「收藏时间」排序（只看收藏默认即如此，也可由 sort=favoriteAt 显式指定）
+  if (favoriteAtSort) {
+    filtered.sort((a, b) => {
+      const ta = favoriteTimeMap.get(a.id) ?? 0;
+      const tb = favoriteTimeMap.get(b.id) ?? 0;
+      return favoriteAtSort === 'asc' ? ta - tb : tb - ta;
+    });
+  }
 
   // 4) Filter options from the cleaned list (counts stay consistent with displayed books)
   const subjects = [...new Set(filtered.map((b) => b.subject).filter(Boolean))] as string[];
