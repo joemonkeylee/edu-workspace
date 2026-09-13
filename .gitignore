@@ -28,3 +28,6 @@ server/prisma/migrations/
 .idea/
 
 .history
+.trae
+.vscode
+.workbuddy
