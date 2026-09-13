@@ -23,7 +23,7 @@ function loadResourceKind(): ResourceKind {
     const raw = localStorage.getItem(STORAGE_KEY_KIND);
     if (raw === 'all' || raw === 'course') return raw;
   } catch { /* ignore */ }
-  return 'all';
+  return 'course';
 }
 
 function loadViewMode(): ViewMode {
@@ -603,23 +603,8 @@ export default function Home() {
       </header>
 
       <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
-        {/* Row 0: 资源类型切换（全部书籍 / 视频课程） */}
+        {/* Row 0: 资源类型切换（视频课程 / 全部书籍） */}
         <div className="mb-3 flex items-center gap-4 border-b border-gray-300">
-          <button
-            type="button"
-            onClick={() => safeSetResourceKind('all')}
-            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
-              resourceKind === 'all'
-                ? 'border-primary text-primary font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
-            }`}
-          >
-            <BookOpen size={14} />
-            全部书籍
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'all' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
-              {kindCounts.book + kindCounts.course}
-            </span>
-          </button>
           <button
             type="button"
             onClick={() => safeSetResourceKind('course')}
@@ -633,6 +618,21 @@ export default function Home() {
             视频课程
             <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'course' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
               {kindCounts.course}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => safeSetResourceKind('all')}
+            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
+              resourceKind === 'all'
+                ? 'border-primary text-primary font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <BookOpen size={14} />
+            全部书籍
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'all' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+              {kindCounts.book + kindCounts.course}
             </span>
           </button>
         </div>
