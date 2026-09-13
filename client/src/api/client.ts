@@ -279,7 +279,7 @@ export interface BooksResponse {
     subjects: string[];
     grades: string[];
     categories: { name: string; count: number }[];
-    kindCounts?: { book: number; course: number };
+    kindCounts?: { book: number; course: number; exercise: number };
   };
 }
 
@@ -293,7 +293,7 @@ export async function getBooks(params?: {
   pageSize?: number;
   favoritesOnly?: boolean;
   hasPairs?: boolean;
-  kind?: 'book' | 'course';
+  kind?: 'book' | 'course' | 'exercise';
   hasVideo?: boolean;
 }) {
   const { data } = await api.get('/books', { params });

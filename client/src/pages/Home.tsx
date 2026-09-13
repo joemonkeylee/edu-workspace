@@ -143,20 +143,6 @@ function SavePrompt({
   );
 }
 
-/**
- * 「必刷题」占位区域。
- * 题库数据尚未导入，这里先占住位置；导入后把列表/筛选接到此视图即可（见 ResourceKind 的 exercise）。
- */
-function ExercisePlaceholder() {
-  return (
-    <div className="flex min-h-[420px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white/60 text-gray-400">
-      <ListChecks size={48} className="mb-4" />
-      <p className="mb-1 text-sm font-medium text-gray-500">必刷题</p>
-      <p className="text-xs">题库数据尚未导入，导入后将在此展示</p>
-    </div>
-  );
-}
-
 export default function Home() {
   const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, kindCounts, fetchBooks, loading, booksPerRow, setBooksPerRow, toggleFavorite } = useStore();
   const [resourceKind, setResourceKind] = useState<ResourceKind>(loadResourceKind);
@@ -280,12 +266,12 @@ export default function Home() {
     setPageInput('1');
   };
 
-  // 必刷题为预留 Tab：题库数据尚未导入，暂不请求书籍列表（导入后在此接入对应的 kind 参数）
-  const isExercise = resourceKind === 'exercise';
+  // 资源类型 Tab → 服务端 kind 参数：course = 视频课程、exercise = 必刷题，all 表示不过滤
+  const kindParam: 'book' | 'course' | 'exercise' | undefined =
+    resourceKind === 'all' ? undefined : resourceKind;
 
   // Server-side fetch: whenever page or applied filters change
   useEffect(() => {
-    if (isExercise) return;
     fetchBooks({
       category: applied.category || undefined,
       grade: applied.grade || undefined,
@@ -296,7 +282,7 @@ export default function Home() {
       pageSize: pageSize,
       favoritesOnly,
       hasPairs: pairsOnly,
-      kind: resourceKind === 'course' ? 'course' : undefined,
+      kind: kindParam,
     });
   }, [page, applied, sortString, pageSize, favoritesOnly, pairsOnly, resourceKind]);
 
@@ -622,7 +608,7 @@ export default function Home() {
       pageSize: pageSize,
       favoritesOnly,
       hasPairs: pairsOnly,
-      kind: resourceKind === 'course' ? 'course' : undefined,
+      kind: kindParam,
     });
   };
 
@@ -717,7 +703,7 @@ export default function Home() {
         </Link>
       </header>
 
-      <main className={`flex-1 p-6 ${!isExercise && total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
+      <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
         {/* Row 0: 资源类型切换（视频课程 / 必刷题 / 全部书籍） */}
         <div className="mb-3 flex items-center gap-4 border-b border-gray-300">
           <button
@@ -743,12 +729,12 @@ export default function Home() {
                 ? 'border-primary text-primary font-semibold'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
-            title="必刷题（题目数据导入后在此展示）"
+            title="必刷题"
           >
             <ListChecks size={14} />
             必刷题
             <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'exercise' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
-              0
+              {kindCounts.exercise}
             </span>
           </button>
           <button
@@ -763,16 +749,11 @@ export default function Home() {
             <BookOpen size={14} />
             全部书籍
             <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'all' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
-              {kindCounts.book + kindCounts.course}
+              {kindCounts.book + kindCounts.course + kindCounts.exercise}
             </span>
           </button>
         </div>
 
-        {/* 必刷题为预留 Tab：不展示筛选栏与书籍列表，只给一块占位区域 */}
-        {isExercise ? (
-          <ExercisePlaceholder />
-        ) : (
-          <>
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-gray-400 mr-1">筛选</span> */}
@@ -951,10 +932,20 @@ export default function Home() {
           )
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
-            {resourceKind === 'course' ? <Video size={48} className="mb-4" /> : <BookOpen size={48} className="mb-4" />}
-            <p className="mb-2">{resourceKind === 'course' ? '暂无视频课程' : '暂无书籍'}</p>
+            {resourceKind === 'course' ? (
+              <Video size={48} className="mb-4" />
+            ) : resourceKind === 'exercise' ? (
+              <ListChecks size={48} className="mb-4" />
+            ) : (
+              <BookOpen size={48} className="mb-4" />
+            )}
+            <p className="mb-2">{resourceKind === 'course' ? '暂无视频课程' : resourceKind === 'exercise' ? '暂无必刷题' : '暂无书籍'}</p>
             <Link to="/admin" className="text-primary hover:underline">
-              {resourceKind === 'course' ? '前往后台扫描并勾选「解析并关联 MP4」' : '前往后台导入 PDF'}
+              {resourceKind === 'course'
+                ? '前往后台扫描并勾选「解析并关联 MP4」'
+                : resourceKind === 'exercise'
+                  ? '前往后台扫描必刷题 PDF（导入时选资源类型「必刷题」）'
+                  : '前往后台导入 PDF'}
             </Link>
           </div>
         ) : viewMode === 'preview' ? (
@@ -1454,8 +1445,6 @@ export default function Home() {
               </button>
             </div>
           </div>
-        )}
-          </>
         )}
       </main>
 

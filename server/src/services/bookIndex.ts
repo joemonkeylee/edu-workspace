@@ -77,7 +77,7 @@ export interface BookIndex {
   partnerAnchorSet: Set<number>;
   tbToAnswers: Map<number, AnswerLite[]>;
   idToTitle: Map<number, string>;
-  kindCounts: { book: number; course: number };
+  kindCounts: { book: number; course: number; exercise: number };
   totalBooks: number;
 }
 
@@ -91,11 +91,12 @@ async function buildBookIndex(): Promise<BookIndex> {
   const tbToAnswers = new Map<number, AnswerLite[]>();
   const answerSideIds: number[] = [];
   const selfAnchorIds = new Set<number>();
-  const kindCounts = { book: 0, course: 0 };
+  const kindCounts = { book: 0, course: 0, exercise: 0 };
 
   for (const b of rows) {
     idToTitle.set(b.id, b.title);
     if (b.kind === 'course') kindCounts.course += 1;
+    else if (b.kind === 'exercise') kindCounts.exercise += 1;
     else kindCounts.book += 1;
 
     const pairs = getPairs(b.attributes);

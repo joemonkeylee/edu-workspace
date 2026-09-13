@@ -49,7 +49,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   const pageSize = parseInt(req.query.pageSize as string, 10) || 16;
   const favoritesOnly = req.query.favoritesOnly === 'true';
   const hasPairsOnly = req.query.hasPairs === 'true';
-  // 资源类型：book = 普通书籍，course = 带讲解视频的课程资源；不传/all 表示不过滤
+  // 资源类型：book = 普通书籍，course = 带讲解视频的课程资源，exercise = 必刷题；不传/all 表示不过滤
   const kind = req.query.kind as string;
   // 只看当前确实关联了视频的书（换盘后视频缺失的会被排除）
   const hasVideoOnly = req.query.hasVideo === 'true';
@@ -74,7 +74,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   if (category && category !== 'all') where.category = category;
   if (grade && grade !== 'all') where.grade = grade;
   if (subject && subject !== 'all') where.subject = subject;
-  if (kind === 'book' || kind === 'course') where.kind = kind;
+  if (kind === 'book' || kind === 'course' || kind === 'exercise') where.kind = kind;
   if (hasVideoOnly) where.videos = { some: { missing: false } };
   if (search) {
     where.OR = [

@@ -18,8 +18,8 @@ export interface Book {
   grade?: string;
   subject?: string;
   batchId?: string;
-  /** 资源类型：book = 普通书籍；course = 带讲解视频的课程资源 */
-  kind?: 'book' | 'course';
+  /** 资源类型：book = 普通书籍；course = 带讲解视频的课程资源；exercise = 必刷题 */
+  kind?: 'book' | 'course' | 'exercise';
   coverPage?: number;
   totalPages: number;
   storagePath: string;

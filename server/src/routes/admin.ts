@@ -96,8 +96,8 @@ async function applyVideoPlan(
   return count;
 }
 
-/** 把书籍标记为 course / book，失败（书已被删）不影响主流程 */
-async function markBookKind(bookId: number, kind: 'book' | 'course') {
+/** 把书籍标记为 course / exercise / book，失败（书已被删）不影响主流程 */
+async function markBookKind(bookId: number, kind: 'book' | 'course' | 'exercise') {
   try {
     await prisma.book.update({ where: { id: bookId }, data: { kind } });
   } catch {
