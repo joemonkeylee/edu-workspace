@@ -358,16 +358,23 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  // 反向代理（nginx 等）默认会缓冲响应体，SSE 必须显式关掉
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  // Throttled SSE sender: progress every 100ms (smooth), logs batched every 250ms
+  // 日志节流：窗口内合并成一批，但**距上次发送已超过窗口就立刻发**。
+  // 单纯用 setTimeout 会在事件循环被渲染任务占满时攒出一大坨，表现为
+  // 「卡很久 → 突然刷出一屏」。进度仍然 100ms 更新一次。
+  const LOG_FLUSH_MS = 80;
   let pendingLogs: { message: string }[] = [];
   let lastProgress: any = null;
   let logTimer: NodeJS.Timeout | null = null;
   let progressTimer: NodeJS.Timeout | null = null;
+  let lastLogFlush = 0;
 
   const flushLogs = () => {
     logTimer = null;
+    lastLogFlush = Date.now();
     if (pendingLogs.length === 0) return;
     const batch = pendingLogs;
     pendingLogs = [];
@@ -401,8 +408,11 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       }
     } else {
       pendingLogs.push(data);
-      if (!logTimer) {
-        logTimer = setTimeout(flushLogs, 250);
+      const since = Date.now() - lastLogFlush;
+      if (since >= LOG_FLUSH_MS) {
+        flushLogs();
+      } else if (!logTimer) {
+        logTimer = setTimeout(flushLogs, LOG_FLUSH_MS - since);
       }
     }
   };
@@ -687,7 +697,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
             const existingDpis = getAvailableDpis(bookDir);
             if (existingDpis.includes(dpi)) {
               send('log', { message: `  DPI=${dpi} 渲染不完整，重新渲染...` });
-              fs.rmSync(dpiDir, { recursive: true, force: true });
+              await fs.promises.rm(dpiDir, { recursive: true, force: true });
             } else {
               send('log', { message: `  新增 DPI=${dpi} 渲染（已有: ${existingDpis.join(', ') || '无'}）` });
             }
@@ -718,10 +728,13 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
             send('log', { message: `  创建书籍记录: ID=${bookId} (阶段=${task.grade || '-'} 学科=${task.subject || '-'})` });
           }
 
-          fs.mkdirSync(bookDir, { recursive: true });
-          const hasArchivedPdf = fs.readdirSync(bookDir).some((name) => name.toLowerCase().endsWith('.pdf'));
+          // 注意：这里必须异步。同步拷贝一个几十 MB 的 PDF 会把事件循环堵死，
+          // SSE 日志就会「卡很久突然吐一大段」。
+          await fs.promises.mkdir(bookDir, { recursive: true });
+          const archived = await fs.promises.readdir(bookDir);
+          const hasArchivedPdf = archived.some((name) => name.toLowerCase().endsWith('.pdf'));
           if (!hasArchivedPdf) {
-            fs.copyFileSync(task.pdfPath, path.join(bookDir, path.basename(task.cleanFileName || task.fileName)));
+            await fs.promises.copyFile(task.pdfPath, path.join(bookDir, path.basename(task.cleanFileName || task.fileName)));
           }
         }
         const dpiDir = path.join(bookDir, String(dpi));
@@ -781,7 +794,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           try {
             await prisma.book.delete({ where: { id: createdBookId } });
             const failedDir = getBookRoot(createdBookId);
-            fs.rmSync(failedDir, { recursive: true, force: true });
+            await fs.promises.rm(failedDir, { recursive: true, force: true });
             send('log', { message: `  已回滚: 删除半残书籍记录 ID=${createdBookId}` });
           } catch { /* book may already be deleted */ }
         }

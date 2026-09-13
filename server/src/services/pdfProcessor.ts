@@ -55,7 +55,8 @@ export async function getPdfInfo(filePath: string): Promise<PdfInfo> {
 export async function extractOutline(filePath: string, totalPages: number): Promise<TocNode[]> {
   try {
     const pdfjs: any = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    const data = new Uint8Array(fs.readFileSync(filePath));
+    // 异步读取 —— 同步读几十 MB 的 PDF 会堵住事件循环，SSE 日志就会一顿一顿的
+    const data = new Uint8Array(await fs.promises.readFile(filePath));
     const doc = await pdfjs.getDocument({ data, disableFontFace: true, isEvalSupported: false }).promise;
     const outline = await doc.getOutline();
 

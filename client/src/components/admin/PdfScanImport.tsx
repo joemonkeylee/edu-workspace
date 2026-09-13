@@ -75,7 +75,9 @@ export default function PdfScanImport() {
   const [dpi, setDpi] = useState(300);
   const [concurrency, setConcurrency] = useState(4);
   const [maxConcurrency, setMaxConcurrency] = useState(1);
-  const [logs, setLogs] = useState<string[]>([]);
+  // 用稳定 id 而不是数组下标做 key：日志被截断到 MAX_LOGS 后，下标 key 会让
+  // React 把整列的文本都重写一遍，几百条时明显掉帧。
+  const [logs, setLogs] = useState<{ id: number; text: string }[]>([]);
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [scanTaskId, setScanTaskId] = useState('');
@@ -108,14 +110,16 @@ export default function PdfScanImport() {
 
   const logBufferRef = useRef<string[]>([]);
   const logRafRef = useRef<number | null>(null);
+  const logSeqRef = useRef(0);
   const MAX_LOGS = 200;
   const flushLogs = useCallback(() => {
     logRafRef.current = null;
     if (logBufferRef.current.length === 0) return;
     const batch = logBufferRef.current;
     logBufferRef.current = [];
+    const lines = batch.map((text) => ({ id: logSeqRef.current++, text }));
     setLogs((prev) => {
-      const combined = [...prev, ...batch];
+      const combined = [...prev, ...lines];
       return combined.length > MAX_LOGS ? combined.slice(-MAX_LOGS) : combined;
     });
   }, []);
@@ -785,18 +789,18 @@ export default function PdfScanImport() {
         </div>
         <div className="font-mono text-sm p-4 h-80 overflow-auto scrollbar-thin">
           {logs.length === 0 && !scanning && <div className="text-gray-500">等待开始扫描...</div>}
-          {logs.map((log, i) => (
+          {logs.map((log) => (
             <div
-              key={i}
+              key={log.id}
               className={
-                log.startsWith('✓') ? 'text-green-400'
-                  : log.startsWith('✗') ? 'text-red-400'
-                    : log.includes('总进度') ? 'text-blue-400'
-                      : log.includes('预计') || log.includes('耗时') ? 'text-yellow-400'
+                log.text.startsWith('✓') ? 'text-green-400'
+                  : log.text.startsWith('✗') ? 'text-red-400'
+                    : log.text.includes('总进度') ? 'text-blue-400'
+                      : log.text.includes('预计') || log.text.includes('耗时') ? 'text-yellow-400'
                         : 'text-gray-300'
               }
             >
-              {log}
+              {log.text}
             </div>
           ))}
           {scanning && <div className="text-yellow-400 animate-pulse">▌</div>}
