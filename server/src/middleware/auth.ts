@@ -6,6 +6,15 @@ export interface AuthedRequest extends Request {
   user?: { userId: number; phone: string; isAdmin: boolean; role: string; roles: string[] };
 }
 
+/**
+ * 关闭鉴权（AUTH_ENABLED=false / standalone 模式）时，所有请求都以「系统管理员」身份放行。
+ * 这样下游读 req.user 的代码（如扫描 SSE 凭证签发）在关闭鉴权时也能正常工作，
+ * 否则 adminRequired 直接 next() 会导致 req.user 为 undefined，ticket 等接口误报 401。
+ */
+function getStandaloneUser(): AuthedRequest['user'] {
+  return { userId: 0, phone: 'standalone', isAdmin: true, role: 'admin', roles: ['admin'] };
+}
+
 function extractToken(req: Request): string | null {
   // Try Authorization header first
   const authHeader = req.headers.authorization;
@@ -34,6 +43,7 @@ function trySseTicket(req: Request): { userId: number; phone: string; isAdmin: b
 
 export function authRequired(req: AuthedRequest, res: Response, next: NextFunction): void {
   if (!isAuthEnabled()) {
+    req.user = getStandaloneUser();
     return next();
   }
 
@@ -67,6 +77,7 @@ export function authRequired(req: AuthedRequest, res: Response, next: NextFuncti
 
 export function adminRequired(req: AuthedRequest, res: Response, next: NextFunction): void {
   if (!isAuthEnabled()) {
+    req.user = getStandaloneUser();
     return next();
   }
 
@@ -107,6 +118,7 @@ export function adminRequired(req: AuthedRequest, res: Response, next: NextFunct
 
 export function teacherOrAdminRequired(req: AuthedRequest, res: Response, next: NextFunction): void {
   if (!isAuthEnabled()) {
+    req.user = getStandaloneUser();
     return next();
   }
 
