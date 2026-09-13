@@ -86,13 +86,14 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   }
   // 答案页书籍不进列表；判断依据来自缓存索引，因此这里可以交给数据库过滤 / 分页，
   // 不必再把全表 attributes 拉回来在内存里筛（这是过去慢的主因）
-  const idFilter: { in?: number[]; notIn: number[] } = { notIn: index.answerSideIds };
-  if (favoritesOnly) idFilter.in = [...favoriteIdSet];
+  let idFilter: { in?: number[]; notIn?: number[] };
   if (hasPairsOnly) {
-    // 只保留「有答案配对」的教材
-    idFilter.in = idFilter.in
-      ? idFilter.in.filter((id) => index.partnerAnchorSet.has(id))
-      : index.partnerAnchorIds;
+    // 「只看有答案配对」= 只留教材锚点。锚点必然不是答案页，所以不必再叠加 notIn（SQL 更短）
+    const anchors = index.partnerAnchorIds;
+    idFilter = { in: favoritesOnly ? anchors.filter((id) => favoriteIdSet.has(id)) : anchors };
+  } else {
+    idFilter = { notIn: index.answerSideIds };
+    if (favoritesOnly) idFilter.in = [...favoriteIdSet];
   }
   where.id = idFilter;
 
@@ -187,10 +188,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   const pageBooks = pageIds.map((id) => byId.get(id)!).filter(Boolean);
 
   // Attach isFavorite, availableDpis, pairSummary, videoCount — strip raw attributes from response
-  const [videoCountMap, videoProgressMap] = await Promise.all([
-    buildVideoCountMap(pageIds),
-    buildVideoProgressMap(pageIds, req.user),
-  ]);
+  const videoMeta = await buildBookVideoMeta(pageIds, req.user);
   const booksWithMeta = await Promise.all(
     pageBooks.map(async (b) => {
       const bookDir = getBookRoot(b.id);
@@ -202,8 +200,8 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
         isFavorite: favoriteIdSet.has(b.id),
         availableDpis: dpis,
         pairSummary: pairSummary.role ? pairSummary : null,
-        videoCount: videoCountMap.get(b.id) || 0,
-        videoProgress: videoProgressMap.get(b.id) || null,
+        videoCount: videoMeta.counts.get(b.id) || 0,
+        videoProgress: videoMeta.progress.get(b.id) || null,
       };
     })
   );
@@ -211,17 +209,6 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   // 全库资源类型计数 —— Tab 角标，不受当前筛选影响，随索引缓存
   res.json({ data: booksWithMeta, total, page, pageSize, options: { subjects, grades, categories, kindCounts: index.kindCounts } });
 }));
-
-/** 批量统计可用（未缺失）讲解视频数量 */
-async function buildVideoCountMap(bookIds: number[]): Promise<Map<number, number>> {
-  if (bookIds.length === 0) return new Map();
-  const rows = await prisma.bookVideo.groupBy({
-    by: ['bookId'],
-    where: { bookId: { in: bookIds }, missing: false },
-    _count: { _all: true },
-  });
-  return new Map(rows.map((r) => [r.bookId, r._count._all]));
-}
 
 export interface BookVideoProgress {
   total: number;
@@ -233,16 +220,25 @@ export interface BookVideoProgress {
   percent: number;
 }
 
+interface BookVideoMeta {
+  /** 可用（未缺失）讲解视频数量 */
+  counts: Map<number, number>;
+  progress: Map<number, BookVideoProgress>;
+}
+
 /**
- * 每本书的学习进度 = 它关联的多个视频的进度聚合（同一个视频被多本书引用时进度共享）。
- * 以视频为单位算出完成度，再对书内视频取均值。
+ * 一次拿到「每本书的可用视频数」与「学习进度」。
+ *
+ * 这两样以前各查一遍 bookVideo（同样的 where、同样的 id 列表），现在共用一次查询；
+ * 进度 = 该书关联的多个视频的完成度均值（同一个视频被多本书引用时进度共享）。
  */
-async function buildVideoProgressMap(
+async function buildBookVideoMeta(
   bookIds: number[],
   user?: AuthedRequest['user'],
-): Promise<Map<number, BookVideoProgress>> {
-  const out = new Map<number, BookVideoProgress>();
-  if (bookIds.length === 0) return out;
+): Promise<BookVideoMeta> {
+  const counts = new Map<number, number>();
+  const progress = new Map<number, BookVideoProgress>();
+  if (bookIds.length === 0) return { counts, progress };
 
   const rows = await prisma.bookVideo.findMany({
     where: { bookId: { in: bookIds }, missing: false },
@@ -250,11 +246,11 @@ async function buildVideoProgressMap(
   });
   const progressMap = await loadProgressMap(rows.map((r) => r.relPath), user);
 
-  const acc = new Map<number, { total: number; done: number; watched: number; frac: number }>();
+  const acc = new Map<number, { done: number; watched: number; frac: number }>();
   for (const row of rows) {
-    const entry = acc.get(row.bookId) ?? { total: 0, done: 0, watched: 0, frac: 0 };
+    counts.set(row.bookId, (counts.get(row.bookId) ?? 0) + 1);
+    const entry = acc.get(row.bookId) ?? { done: 0, watched: 0, frac: 0 };
     const p = progressMap.get(row.relPath) ?? null;
-    entry.total += 1;
     entry.frac += progressFraction(p);
     if (p?.completed) entry.done += 1;
     else if (p?.watched) entry.watched += 1;
@@ -262,14 +258,15 @@ async function buildVideoProgressMap(
   }
 
   for (const [bookId, entry] of acc) {
-    out.set(bookId, {
-      total: entry.total,
+    const total = counts.get(bookId) ?? 0;
+    progress.set(bookId, {
+      total,
       done: entry.done,
       watched: entry.watched,
-      percent: entry.total > 0 ? Math.round((entry.frac / entry.total) * 100) : 0,
+      percent: total > 0 ? Math.round((entry.frac / total) * 100) : 0,
     });
   }
-  return out;
+  return { counts, progress };
 }
 
 // 某本书的讲解视频列表（供阅读器左侧「视频」标签使用），附带学习进度与「手动完成」就绪状态
@@ -323,8 +320,8 @@ router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
     ? `/storage/books/${id}/${encodeURIComponent(pdfFileName)}`
     : null;
   const pairSummary = buildPairSummary(book.attributes, id, await getBookIndex());
-  const videoCountMap = await buildVideoCountMap([id]);
-  res.json({ data: { ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl, pairSummary: pairSummary.role ? pairSummary : null, videoCount: videoCountMap.get(id) || 0 } });
+  const videoCount = (await buildBookVideoMeta([id])).counts.get(id) || 0;
+  res.json({ data: { ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl, pairSummary: pairSummary.role ? pairSummary : null, videoCount } });
 }));
 
 router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {
