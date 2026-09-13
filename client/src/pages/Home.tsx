@@ -1,50 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import {
+  loadKindFilters,
+  saveKindFilters,
+  loadResourceKind,
+  saveResourceKind,
+  defaultBookSort,
+  defaultFavSort,
+  type KindFilterState,
+  type ResourceKind,
+  type SortFieldDef,
+  type SortFieldName,
+} from '../store/homeFilters';
 import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
 
 const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
-const STORAGE_KEY = 'edu-home-filters';
 const STORAGE_KEY_VIEW = 'edu-home-view-mode';
 const STORAGE_KEY_LIST_PS = 'edu-home-list-page-size';
-const STORAGE_KEY_FAV = 'edu-home-favorites-only';
-const STORAGE_KEY_PAIRS = 'edu-home-pairs-only';
-const STORAGE_KEY_KIND = 'edu-home-resource-kind';
 
 type ViewMode = 'preview' | 'list';
-/**
- * 资源类型视图：
- * - all = 全部书籍
- * - course = 视频课程（带讲解视频的课程资源）
- * - exercise = 必刷题（题目数据尚未导入，当前仅预留 Tab 位置，导入后在此接入列表）
- */
-type ResourceKind = 'all' | 'course' | 'exercise';
-
-/** 可排序字段；favoriteAt = 添加收藏时间（按 BookFavorite.createdAt 排序） */
-type SortFieldName = 'subject' | 'grade' | 'category' | 'title' | 'totalPages' | 'favoriteAt';
-type SortFieldDef = { field: SortFieldName; dir: 'asc' | 'desc' | null };
-
-const defaultBookSort = (): SortFieldDef[] => [
-  { field: 'subject', dir: null },
-  { field: 'grade', dir: null },
-  { field: 'category', dir: null },
-  { field: 'title', dir: null },
-  { field: 'totalPages', dir: null },
-  { field: 'favoriteAt', dir: null },
-];
-
-/** 只看收藏时的默认排序：按「添加收藏时间」倒序（最新收藏在前） */
-const defaultFavSort = (): SortFieldDef[] => [
-  { field: 'favoriteAt', dir: 'desc' },
-  { field: 'subject', dir: null },
-  { field: 'grade', dir: null },
-  { field: 'category', dir: null },
-  { field: 'title', dir: null },
-  { field: 'totalPages', dir: null },
-];
 
 const SORT_LABELS: Record<SortFieldName, string> = {
   subject: '学科',
@@ -54,14 +32,6 @@ const SORT_LABELS: Record<SortFieldName, string> = {
   totalPages: '页数',
   favoriteAt: '收藏时间',
 };
-
-function loadResourceKind(): ResourceKind {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_KIND);
-    if (raw === 'all' || raw === 'course' || raw === 'exercise') return raw;
-  } catch { /* ignore */ }
-  return 'course';
-}
 
 function loadViewMode(): ViewMode {
   try {
@@ -88,22 +58,6 @@ const APP_ENV_CLASS = APP_ENV === 'PROD'
 
 const SUBJECT_ORDER = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '科学', '道法'];
 const GRADE_ORDER = ['七上', '七下', '八上', '八下', '九上', '九下'];
-
-interface SavedFilters {
-  subject: string;
-  grade: string;
-  category: string;
-  search: string;
-  sortFields: { field: 'subject' | 'grade' | 'category' | 'title' | 'totalPages'; dir: 'asc' | 'desc' | null }[];
-}
-
-function loadSavedFilters(): SavedFilters {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as SavedFilters;
-  } catch { /* ignore */ }
-  return { subject: '', grade: '', category: '', search: '', sortFields: [] };
-}
 
 function ClearableSelect({
   value,
@@ -199,42 +153,24 @@ function ExercisePlaceholder() {
 export default function Home() {
   const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, kindCounts, fetchBooks, loading, booksPerRow, setBooksPerRow, toggleFavorite } = useStore();
   const [resourceKind, setResourceKind] = useState<ResourceKind>(loadResourceKind);
+  // 三个 Tab 各有一套筛选/排序/关键字：初始值取自当前 Tab 的那一套
+  const initial = useMemo(() => loadKindFilters(loadResourceKind()), []);
+  // 当前这套状态归属哪个 Tab（写回 localStorage 时的 key）
+  const kindRef = useRef<ResourceKind>(resourceKind);
 
-  const loadFavoritesOnly = (): boolean => {
-    try { return localStorage.getItem(STORAGE_KEY_FAV) === '1'; } catch { return false; }
-  };
-  const loadPairsOnly = (): boolean => {
-    try { return localStorage.getItem(STORAGE_KEY_PAIRS) === '1'; } catch { return false; }
-  };
-
-  const saved = useMemo(loadSavedFilters, []);
-  const [selectedSubject, setSelectedSubject] = useState(saved.subject);
-  const [selectedGrade, setSelectedGrade] = useState(saved.grade);
-  const [selectedCategory, setSelectedCategory] = useState(saved.category);
-  const [search, setSearch] = useState(saved.search);
+  const [selectedSubject, setSelectedSubject] = useState(initial.subject);
+  const [selectedGrade, setSelectedGrade] = useState(initial.grade);
+  const [selectedCategory, setSelectedCategory] = useState(initial.category);
+  const [search, setSearch] = useState(initial.search);
   // 已生效的筛选条件：下拉/输入只改「草稿」，点「搜索」或回车才同步到这里并发起请求，
   // 避免每改一次下拉或每敲一个字都打一次接口
-  const [applied, setApplied] = useState({
-    subject: saved.subject,
-    grade: saved.grade,
-    category: saved.category,
-    search: saved.search,
-  });
-  const [favoritesOnly, setFavoritesOnly] = useState<boolean>(loadFavoritesOnly);
-  const [pairsOnly, setPairsOnly] = useState<boolean>(loadPairsOnly);
+  const [applied, setApplied] = useState({ ...initial.applied });
+  const [favoritesOnly, setFavoritesOnly] = useState<boolean>(initial.favoritesOnly);
+  const [pairsOnly, setPairsOnly] = useState<boolean>(initial.pairsOnly);
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
-  const savedSort = (saved.sortFields ?? []) as SortFieldDef[];
-  const [sortFields, setSortFields] = useState<SortFieldDef[]>(
-    savedSort.length > 0
-      ? (savedSort.some((s) => s.field === 'favoriteAt')
-          ? savedSort
-          : [...savedSort, { field: 'favoriteAt', dir: null }])
-      : loadFavoritesOnly()
-        ? defaultFavSort()
-        : defaultBookSort()
-  );
+  const [sortFields, setSortFields] = useState<SortFieldDef[]>(initial.sortFields);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initial.page);
 
   // Build sort string from sortFields (only active ones, in order)
   const sortString = useMemo(() => {
@@ -273,7 +209,7 @@ export default function Home() {
   const onDragEnd = () => setDragIndex(null);
 
   const resetSort = () => setSortFields(favoritesOnly ? defaultFavSort() : defaultBookSort());
-  const [pageInput, setPageInput] = useState('1');
+  const [pageInput, setPageInput] = useState(String(initial.page));
   const [rowsPerPage, setRowsPerPage] = useState(2);
   const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
   const [listPageSize, setListPageSize] = useState(loadListPageSize);
@@ -357,27 +293,51 @@ export default function Home() {
     });
   }, [page, applied, sortString, pageSize, favoritesOnly, pairsOnly, resourceKind]);
 
+  // 把当前这套状态持续写回「当前 Tab」的槽位（切 Tab 时由 applyKindState 换槽）
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    saveKindFilters(kindRef.current, {
       subject: selectedSubject,
       grade: selectedGrade,
       category: selectedCategory,
       search,
+      applied,
       sortFields,
-    }));
-  }, [selectedSubject, selectedGrade, selectedCategory, search, sortFields]);
+      favoritesOnly,
+      pairsOnly,
+      page,
+    });
+  }, [selectedSubject, selectedGrade, selectedCategory, search, applied, sortFields, favoritesOnly, pairsOnly, page]);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY_KIND, resourceKind); } catch { /* ignore */ }
+    saveResourceKind(resourceKind);
   }, [resourceKind]);
 
   const hasUnsavedChanges = draftEdits.size > 0 || pendingDeletes.size > 0;
 
-  // Reset to page 1 when applied filters change
+  // 条件变化时回到第 1 页；但「切换 Tab 换槽」和「首次挂载」不算条件变化，
+  // 否则会覆盖掉该 Tab 记忆的页码。
+  // 这里比较「上一次的值」而不是用一个"已挂载"开关：StrictMode 下 effect 会双跑，
+  // 开关式的守卫会在第二次跑时误判成"条件变了"。
+  const restoringKindRef = useRef(false);
+  const prevFiltersRef = useRef({ applied, sortString, pageSize, favoritesOnly });
   useEffect(() => {
+    const prev = prevFiltersRef.current;
+    const changed =
+      prev.applied !== applied ||
+      prev.sortString !== sortString ||
+      prev.pageSize !== pageSize ||
+      prev.favoritesOnly !== favoritesOnly;
+    prevFiltersRef.current = { applied, sortString, pageSize, favoritesOnly };
+    if (!changed) return;
+    if (restoringKindRef.current) return;
     setPage(1);
     setPageInput('1');
-  }, [applied, sortString, pageSize, favoritesOnly, resourceKind]);
+  }, [applied, sortString, pageSize, favoritesOnly]);
+
+  // 换槽标记只对紧随其后的那次判定有效（本次渲染结束后即清掉）
+  useEffect(() => {
+    restoringKindRef.current = false;
+  });
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -578,14 +538,48 @@ export default function Home() {
   const safeSetSubject = handleFilterChange(setSelectedSubject);
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
+
+  /** 把某个 Tab 记忆的那套筛选/排序/关键字载入当前界面 */
+  const applyKindState = (state: KindFilterState) => {
+    restoringKindRef.current = true;
+    setSelectedSubject(state.subject);
+    setSelectedGrade(state.grade);
+    setSelectedCategory(state.category);
+    setSearch(state.search);
+    setApplied({ ...state.applied });
+    setSortFields(state.sortFields.length > 0 ? state.sortFields : defaultBookSort());
+    setFavoritesOnly(state.favoritesOnly);
+    setPairsOnly(state.pairsOnly);
+    setPage(state.page);
+    setPageInput(String(state.page));
+  };
+
   // 切换资源类型同样要过未保存编辑守卫（泛型版在 .tsx 里会被当成 JSX，单独写一份）
   const safeSetResourceKind = (v: ResourceKind) => {
+    if (v === resourceKind) return;
+    const switchTo = () => {
+      // 先把当前这套存回它所属的 Tab（写 effect 也会做，这里显式一次确保切走前已落盘）
+      saveKindFilters(kindRef.current, {
+        subject: selectedSubject,
+        grade: selectedGrade,
+        category: selectedCategory,
+        search,
+        applied,
+        sortFields,
+        favoritesOnly,
+        pairsOnly,
+        page,
+      });
+      kindRef.current = v;
+      setResourceKind(v);
+      applyKindState(loadKindFilters(v));
+    };
     if (editMode && hasUnsavedChanges) {
       setPromptAction('filter');
       setShowSavePrompt(true);
-      (window as any).__pendingFilter = { setter: setResourceKind, value: v };
+      (window as any).__pendingFilter = { setter: switchTo, value: undefined };
     } else {
-      setResourceKind(v);
+      switchTo();
     }
   };
 
@@ -627,13 +621,11 @@ export default function Home() {
 
   const handleFavoritesOnlyChange = (v: boolean) => {
     setFavoritesOnly(v);
-    try { localStorage.setItem(STORAGE_KEY_FAV, v ? '1' : '0'); } catch { /* ignore */ }
     // 进入收藏视图默认按「添加收藏时间」倒序；退出时恢复普通默认排序
     setSortFields(v ? defaultFavSort() : defaultBookSort());
   };
   const handlePairsOnlyChange = (v: boolean) => {
     setPairsOnly(v);
-    try { localStorage.setItem(STORAGE_KEY_PAIRS, v ? '1' : '0'); } catch { /* ignore */ }
   };
 
   const handleToggleFavorite = async (bookId: number) => {
