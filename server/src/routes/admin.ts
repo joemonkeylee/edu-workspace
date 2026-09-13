@@ -11,10 +11,85 @@ import { execFile } from 'child_process';
 import { adminRequired, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { createSseTicket } from '../utils/sseTicket.js';
+import { scanVideos, matchVideosToPdfs, resolveVideoPath, toRelativePath } from '../services/videoMatcher.js';
+import type { PdfMatchResult } from '../services/videoMatcher.js';
 
 const router = Router();
 const maxConcurrency = Math.max(1, os.cpus().length - 1);
 const scanConcurrency = new Map<string, { value: number }>();
+
+/** 视频关联预处理结果（短时效，扫描开始后被消费） */
+interface VideoPlanVideo {
+  filePath: string;
+  title: string;
+  lessonNo: number | null;
+  score: number;
+  sortOrder: number;
+}
+interface VideoPlanItem {
+  scope: 'lesson' | 'course';
+  videos: VideoPlanVideo[];
+}
+interface VideoPlan {
+  rootPath: string;
+  items: Map<string, VideoPlanItem>;
+  createdAt: number;
+}
+type PdfVideoMatch = PdfMatchResult;
+const VIDEO_PLAN_TTL = 2 * 60 * 60 * 1000;
+const videoPlans = new Map<string, VideoPlan>();
+
+function pruneVideoPlans() {
+  const cutoff = Date.now() - VIDEO_PLAN_TTL;
+  for (const [id, plan] of videoPlans) {
+    if (plan.createdAt < cutoff) videoPlans.delete(id);
+  }
+}
+
+/** 把预处理确认过的视频写入 BookVideo（已存在的按路径更新，未在新方案里的移除） */
+async function applyVideoPlan(
+  bookId: number,
+  pdfPath: string,
+  plan: VideoPlan | undefined,
+  send: (type: string, data: any) => void,
+): Promise<number> {
+  const entry = plan?.items.get(pdfPath);
+  if (!entry) return 0;
+
+  const existing = await prisma.bookVideo.findMany({ where: { bookId }, select: { id: true, filePath: true } });
+  const keep = new Set(entry.videos.map((v) => v.filePath));
+  const stale = existing.filter((v) => !keep.has(v.filePath));
+  if (stale.length > 0) {
+    await prisma.bookVideo.deleteMany({ where: { id: { in: stale.map((v) => v.id) } } });
+  }
+
+  let count = 0;
+  for (const video of entry.videos) {
+    const relPath = toRelativePath(plan!.rootPath, video.filePath) || video.filePath;
+    const missing = !fs.existsSync(video.filePath);
+    const data = {
+      title: video.title,
+      fileName: path.basename(video.filePath),
+      filePath: video.filePath,
+      rootPath: plan!.rootPath,
+      relPath,
+      lessonNo: video.lessonNo,
+      sortOrder: video.sortOrder,
+      matchScore: video.score,
+      scope: entry.scope,
+      missing,
+    };
+    const found = existing.find((v) => v.filePath === video.filePath);
+    if (found) {
+      await prisma.bookVideo.update({ where: { id: found.id }, data });
+    } else {
+      await prisma.bookVideo.create({ data: { bookId, ...data } });
+    }
+    count++;
+    if (missing) send('log', { message: `  ⚠ 视频文件不存在: ${path.basename(video.filePath)}` });
+  }
+  return count;
+}
 
 router.use(adminRequired);
 
@@ -123,12 +198,29 @@ router.post('/scan-pdf/preview', asyncHandler(async (req: Request, res: Response
   const pNow = new Date();
   const previewBatchId = `${pNow.getFullYear()}${String(pNow.getMonth() + 1).padStart(2, '0')}${String(pNow.getDate()).padStart(2, '0')}${String(pNow.getHours()).padStart(2, '0')}${String(pNow.getMinutes()).padStart(2, '0')}${String(pNow.getSeconds()).padStart(2, '0')}`;
 
+  // 可选：顺带解析 MP4 讲解视频并给出 PDF → 视频 的对应建议
+  const withVideo = req.body?.withVideo === true;
+  const videoRoot = stat.isDirectory() ? targetPath : path.dirname(targetPath);
+  let matchMap = new Map<string, PdfVideoMatch>();
+  let videoTotal = 0;
+  if (withVideo) {
+    const videos = scanVideos(videoRoot);
+    videoTotal = videos.length;
+    const matches = matchVideosToPdfs(
+      videoRoot,
+      pdfFiles.map((p) => ({ fullPath: p, fileName: path.basename(p) })),
+      videos,
+    );
+    matchMap = new Map(matches.map((m) => [m.fullPath, m]));
+  }
+
   const results = pdfFiles.map((pdfPath) => {
     const fileName = path.basename(pdfPath);
     const title = path.basename(pdfPath, '.pdf');
     const parsed = parseGradeSubjectFromPath(pdfPath);
     const category = overrideCategory || path.basename(path.dirname(pdfPath)) || '未分类';
     const grade = overrideGrade || parsed.grade || previewBatchId;
+    const m = matchMap.get(pdfPath);
     return {
       fileName,
       fullPath: pdfPath,
@@ -136,10 +228,69 @@ router.post('/scan-pdf/preview', asyncHandler(async (req: Request, res: Response
       grade,
       subject: overrideSubject || parsed.subject,
       title,
+      ...(withVideo
+        ? {
+            videoScope: m?.scope ?? 'lesson',
+            videoLessonNo: m?.lessonNo ?? null,
+            videoMatches: m?.matches ?? [],
+          }
+        : {}),
     };
   });
 
-  res.json({ files: results, total: results.length });
+  const videoLinks = withVideo
+    ? results.reduce((sum, r: any) => sum + (r.videoMatches || []).filter((v: any) => v.selected).length, 0)
+    : 0;
+
+  res.json({
+    files: results,
+    total: results.length,
+    videoRoot,
+    videoStats: withVideo ? { videos: videoTotal, links: videoLinks } : null,
+  });
+}));
+
+/**
+ * 提交「视频关联预处理」结果，供随后的扫描任务消费。
+ * 匹配结果可能很大，不适合塞进 SSE 的 query string，所以先落一个短时效的 plan。
+ */
+router.post('/scan-pdf/video-plan', asyncHandler(async (req: Request, res: Response) => {
+  const rootPath = typeof req.body?.rootPath === 'string' ? req.body.rootPath.trim() : '';
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (!rootPath) {
+    res.status(400).json({ error: '缺少资源根目录' });
+    return;
+  }
+
+  const planItems = new Map<string, VideoPlanItem>();
+  for (const raw of items) {
+    const pdfPath = typeof raw?.pdfPath === 'string' ? raw.pdfPath : '';
+    if (!pdfPath) continue;
+    const videos: VideoPlanVideo[] = [];
+    const seen = new Set<string>();
+    const list = Array.isArray(raw?.videos) ? raw.videos : [];
+    list.forEach((v: any, index: number) => {
+      const filePath = typeof v?.filePath === 'string' ? v.filePath : '';
+      if (!filePath || seen.has(filePath)) return;
+      seen.add(filePath);
+      videos.push({
+        filePath,
+        title: typeof v?.title === 'string' && v.title ? v.title : path.basename(filePath, path.extname(filePath)),
+        lessonNo: typeof v?.lessonNo === 'number' ? v.lessonNo : null,
+        score: typeof v?.score === 'number' ? v.score : 0,
+        sortOrder: index,
+      });
+    });
+    planItems.set(pdfPath, {
+      scope: raw?.scope === 'course' ? 'course' : 'lesson',
+      videos,
+    });
+  }
+
+  const planId = crypto.randomUUID();
+  videoPlans.set(planId, { rootPath, items: planItems, createdAt: Date.now() });
+  pruneVideoPlans();
+  res.json({ data: { planId, pdfs: planItems.size, links: [...planItems.values()].reduce((s, i) => s + i.videos.length, 0) } });
 }));
 
 router.get('/scan-pdf', async (req: Request, res: Response) => {
@@ -148,6 +299,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   const explicitGrade = req.query.grade as string;
   const explicitSubject = req.query.subject as string;
   const skipDb = req.query.skipDb === 'true';
+  // 视频关联预处理结果（由前端确认后先 POST 到 /scan-pdf/video-plan）
+  const videoPlanId = typeof req.query.videoPlan === 'string' ? req.query.videoPlan : '';
+  // 注意：不在读取时删除，扫描中断后可以直接用同一个方案重试
+  const videoPlan = videoPlanId ? videoPlans.get(videoPlanId) : undefined;
   const dpi = parseInt((req.query.dpi as string) || '300', 10);
   // Concurrency: default to min(4, cores-1), cap at 8 to avoid choking the system
   const taskId = typeof req.query.taskId === 'string' ? req.query.taskId : crypto.randomUUID();
@@ -253,6 +408,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
     }
 
     send('log', { message: `扫描完成，找到 ${pdfFiles.length} 个 PDF 文件，目标 DPI=${dpi}，并发数=${concurrencyState.value}` });
+    if (videoPlan) {
+      const linkCount = [...videoPlan.items.values()].reduce((s, i) => s + i.videos.length, 0);
+      send('log', { message: `视频关联方案已载入：${videoPlan.items.size} 个 PDF，共 ${linkCount} 条视频关联（根目录 ${videoPlan.rootPath}）` });
+    }
 
     // Phase 1: collect PDF info (async — pdfinfo and hash are non-blocking)
     const tasks: PdfTask[] = [];
@@ -334,6 +493,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         seenHashes.add(task.fileHash);
         skippedDupContent++;
         send('log', { message: `跳过（重复文件内容）: ${task.fileName} → 已记录路径到已有书籍` });
+        if (videoPlan && duplicateIds.length > 0) {
+          const n = await applyVideoPlan(duplicateIds[0], task.pdfPath, videoPlan, send);
+          if (n > 0) send('log', { message: `  关联 ${n} 个讲解视频` });
+        }
         continue;
       }
 
@@ -348,6 +511,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           if (isDpiComplete(bookDir, dpi, task.pages)) {
             skippedComplete++;
             send('log', { message: `跳过（已导入）: ${task.fileName}` });
+            if (videoPlan) {
+              const n = await applyVideoPlan(existing.id, task.pdfPath, videoPlan, send);
+              if (n > 0) send('log', { message: `  关联 ${n} 个讲解视频` });
+            }
             continue;
           }
           // Incomplete but same content → re-render to complete the pages
@@ -530,6 +697,11 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
             where: { id: bookId },
             data: { storagePath, totalPages: task.pages, batchId, fileHash: task.fileHash, sourcePaths: finalSourcePaths as any },
           });
+
+          if (videoPlan) {
+            const n = await applyVideoPlan(bookId, task.pdfPath, videoPlan, send);
+            if (n > 0) send('log', { message: `  关联 ${n} 个讲解视频` });
+          }
         }
 
         send('log', { message: `  渲染完成，共 ${images.length} 张图片，可用 DPI: ${allDpis.join(', ')}` });

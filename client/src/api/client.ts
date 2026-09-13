@@ -330,13 +330,14 @@ export async function deleteMistake(id: number) {
   return data;
 }
 
-export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string, grade?: string, subject?: string, skipDb?: boolean, ticket?: string) {
+export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string, grade?: string, subject?: string, skipDb?: boolean, ticket?: string, videoPlan?: string) {
   const params = new URLSearchParams({ targetPath, category, dpi: String(dpi) });
   if (concurrency) params.set('concurrency', String(concurrency));
   if (taskId) params.set('taskId', taskId);
   if (grade) params.set('grade', grade);
   if (subject) params.set('subject', subject);
   if (skipDb) params.set('skipDb', 'true');
+  if (videoPlan) params.set('videoPlan', videoPlan);
   // Use one-time ticket instead of raw token in URL (avoids log/referer/history leaks)
   if (ticket) params.set('ticket', ticket);
   return `/api/admin/scan-pdf?${params}`;
@@ -357,6 +358,15 @@ export function withAuthToken(url: string): string {
   return `${url}${sep}token=${encodeURIComponent(accessToken)}`;
 }
 
+export interface VideoMatch {
+  filePath: string;
+  fileName: string;
+  title: string;
+  lessonNo: number | null;
+  score: number;
+  selected: boolean;
+}
+
 export interface PreviewFile {
   fileName: string;
   fullPath: string;
@@ -364,11 +374,115 @@ export interface PreviewFile {
   grade: string;
   subject: string;
   title: string;
+  /** 仅当开启了视频解析时返回 */
+  videoScope?: 'lesson' | 'course';
+  videoLessonNo?: number | null;
+  videoMatches?: VideoMatch[];
 }
 
-export async function previewScanPdf(path: string, grade?: string, subject?: string, category?: string) {
-  const { data } = await api.post('/admin/scan-pdf/preview', { path, grade, subject, category });
-  return data as { files: PreviewFile[]; total: number };
+export interface PreviewScanResult {
+  files: PreviewFile[];
+  total: number;
+  videoRoot: string;
+  videoStats: { videos: number; links: number } | null;
+}
+
+export async function previewScanPdf(path: string, grade?: string, subject?: string, category?: string, withVideo?: boolean) {
+  const { data } = await api.post('/admin/scan-pdf/preview', { path, grade, subject, category, withVideo });
+  return data as PreviewScanResult;
+}
+
+export interface VideoPlanItemPayload {
+  pdfPath: string;
+  scope: 'lesson' | 'course';
+  videos: { filePath: string; title: string; lessonNo: number | null; score: number }[];
+}
+
+/** 提交「PDF → 视频」对应关系，返回 planId 供扫描任务引用 */
+export async function submitVideoPlan(rootPath: string, items: VideoPlanItemPayload[]) {
+  const { data } = await api.post('/admin/scan-pdf/video-plan', { rootPath, items });
+  return data.data as { planId: string; pdfs: number; links: number };
+}
+
+// ── 讲解视频 ──────────────────────────────────────────────────────
+
+export interface BookVideo {
+  id: number;
+  title: string;
+  fileName: string;
+  lessonNo: number | null;
+  scope: string;
+  matchScore: number;
+  missing: boolean;
+  streamUrl: string;
+}
+
+export async function getBookVideos(bookId: number) {
+  const { data } = await api.get(`/books/${bookId}/videos`);
+  return data.data as BookVideo[];
+}
+
+/** <video> 无法带 Authorization 头，走 query token */
+export function videoStreamUrl(id: number) {
+  const base = `/api/videos/${id}/stream`;
+  return accessToken ? `${base}?token=${encodeURIComponent(accessToken)}` : base;
+}
+
+export interface AdminVideo {
+  id: number;
+  bookId: number;
+  title: string;
+  fileName: string;
+  filePath: string;
+  rootPath: string;
+  relPath: string;
+  lessonNo: number | null;
+  sortOrder: number;
+  matchScore: number;
+  scope: string;
+  missing: boolean;
+  exists: boolean;
+}
+
+export interface VideoRootInfo {
+  rootPath: string;
+  total: number;
+  missing: number;
+  batches: string[];
+}
+
+export async function getVideoRoots() {
+  const { data } = await api.get('/admin/videos/roots');
+  return data.data as VideoRootInfo[];
+}
+
+export async function repointVideoRoot(payload: { newRoot: string; rootPath?: string; batchId?: string }) {
+  const { data } = await api.post('/admin/videos/repoint', payload);
+  return data.data as { updated: number; stillMissing: number; newRoot: string };
+}
+
+export async function recheckVideos() {
+  const { data } = await api.post('/admin/videos/recheck');
+  return data.data as { total: number; missing: number; recovered: number };
+}
+
+export async function getAdminBookVideos(bookId: number) {
+  const { data } = await api.get(`/admin/videos/books/${bookId}/videos`);
+  return data.data as AdminVideo[];
+}
+
+export async function addBookVideos(bookId: number, filePaths: string[], rootPath?: string, scope?: 'lesson' | 'course') {
+  const { data } = await api.post(`/admin/videos/books/${bookId}/videos`, { filePaths, rootPath, scope });
+  return data.data as { added: number };
+}
+
+export async function updateVideo(id: number, payload: Record<string, any>) {
+  const { data } = await api.patch(`/admin/videos/${id}`, payload);
+  return data.data as AdminVideo;
+}
+
+export async function deleteVideo(id: number) {
+  await api.delete(`/admin/videos/${id}`);
 }
 
 export async function getScanCapacity() {

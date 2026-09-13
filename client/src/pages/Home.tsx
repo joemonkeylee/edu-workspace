@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
@@ -835,15 +835,28 @@ export default function Home() {
                     onClick={() => { if (editMode) toggleSelect(book.id); else window.open(`/book/${book.id}`, '_blank'); }}
                   >
                     <BookCover book={book} className={`w-full h-full object-cover ${editMode ? '' : 'transition group-hover:scale-[1.02]'}`} />
-                    {/* 左上角答案角标 */}
-                    {book.pairSummary?.role === 'textbook' && book.pairSummary.partnerCount > 0 && (
-                      <div className="absolute top-0 left-0 z-10 flex items-center gap-0.5 bg-sky-500 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm">
-                        <span>✓</span>
-                        <span>答案</span>
-                        <span className="ml-0.5">{book.pairSummary.partnerCount}</span>
-                        <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-sky-500 border-r-[6px] border-r-transparent border-b-0" />
-                      </div>
-                    )}
+                    {/* 左上角角标：答案 + 讲解视频 */}
+                    <div className="absolute top-0 left-0 z-10 flex flex-col items-start">
+                      {book.pairSummary?.role === 'textbook' && book.pairSummary.partnerCount > 0 && (
+                        <div className="relative flex items-center gap-0.5 bg-sky-500 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm">
+                          <span>✓</span>
+                          <span>答案</span>
+                          <span className="ml-0.5">{book.pairSummary.partnerCount}</span>
+                          <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-sky-500 border-r-[6px] border-r-transparent border-b-0" />
+                        </div>
+                      )}
+                      {(book.videoCount || 0) > 0 && (
+                        <div
+                          className="relative mt-0.5 flex items-center gap-0.5 bg-teal-600 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
+                          title={`${book.videoCount} 个讲解视频`}
+                        >
+                          <Video size={9} />
+                          <span>讲解</span>
+                          <span className="ml-0.5">{book.videoCount}</span>
+                          <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-teal-600 border-r-[6px] border-r-transparent border-b-0" />
+                        </div>
+                      )}
+                    </div>
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
                       {editMode ? (
                         <>
@@ -996,6 +1009,15 @@ export default function Home() {
                                 title={`已绑定 ${book.pairSummary.partnerCount} 本答案`}
                               >
                                 ✓ 答案 {book.pairSummary.partnerCount}
+                              </span>
+                            )}
+                            {(book.videoCount || 0) > 0 && (
+                              <span
+                                className="flex-shrink-0 flex items-center gap-0.5 rounded bg-teal-600 text-white px-1.5 py-0.5 text-[10px] font-medium"
+                                title={`${book.videoCount} 个讲解视频`}
+                              >
+                                <Video size={9} />
+                                讲解 {book.videoCount}
                               </span>
                             )}
                           </div>

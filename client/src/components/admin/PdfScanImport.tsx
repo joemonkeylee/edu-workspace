@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { getScanCapacity, scanPdfUrl, updateScanConcurrency, previewScanPdf, getScanPdfTicket } from '../../api/client';
-import type { PreviewFile } from '../../api/client';
+import {
+  getScanCapacity, scanPdfUrl, updateScanConcurrency, previewScanPdf, getScanPdfTicket,
+  submitVideoPlan, getVideoRoots, repointVideoRoot, recheckVideos,
+} from '../../api/client';
+import type { PreviewFile, VideoPlanItemPayload, VideoRootInfo } from '../../api/client';
 import { useStore } from '../../store/useStore';
-import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check, ChevronDown, X } from 'lucide-react';
+import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check, ChevronDown, X, Video, HardDrive, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import VideoMatchReview from './VideoMatchReview';
 
 interface ProgressData {
   phase?: number;
@@ -83,6 +87,17 @@ export default function PdfScanImport() {
   const [copied, setCopied] = useState(false);
   const [pathHistory, setPathHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  // 视频关联
+  const [withVideo, setWithVideo] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [videoPlanId, setVideoPlanId] = useState('');
+  const [videoRoot, setVideoRoot] = useState('');
+  const [videoPlanLinks, setVideoPlanLinks] = useState(0);
+  const [videoRoots, setVideoRoots] = useState<VideoRootInfo[]>([]);
+  const [showRootPanel, setShowRootPanel] = useState(false);
+  const [repointTarget, setRepointTarget] = useState('');
+  const [newRootInput, setNewRootInput] = useState('');
+  const [repointing, setRepointing] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
   const doneRef = useRef(false);
@@ -119,13 +134,20 @@ export default function PdfScanImport() {
     });
   }, [logs, autoScroll]);
 
+  const loadVideoRoots = useCallback(async () => {
+    try {
+      setVideoRoots(await getVideoRoots());
+    } catch { /* 忽略 */ }
+  }, []);
+
   useEffect(() => {
     getScanCapacity().then(({ maxConcurrency: max }) => {
       setMaxConcurrency(max);
       setConcurrency((current) => Math.min(current, max));
     }).catch(() => setMaxConcurrency(1));
     setPathHistory(loadPathHistory());
-  }, []);
+    loadVideoRoots();
+  }, [loadVideoRoots]);
 
   const pushPathToHistory = useCallback((p: string) => {
     const trimmed = p.trim();
@@ -152,13 +174,32 @@ export default function PdfScanImport() {
     pushPathToHistory(targetPath);
     setPreviewing(true);
     setPreviewFiles([]);
+    setVideoPlanId('');
+    setVideoPlanLinks(0);
     try {
-      const result = await previewScanPdf(targetPath.trim(), grade || undefined, subject || undefined, category || undefined);
+      const result = await previewScanPdf(targetPath.trim(), grade || undefined, subject || undefined, category || undefined, withVideo);
       setPreviewFiles(result.files);
+      setVideoRoot(result.videoRoot || targetPath.trim());
+      if (withVideo && result.files.length > 0) {
+        setShowReview(true);
+      }
     } catch {
       setPreviewFiles([]);
     } finally {
       setPreviewing(false);
+    }
+  };
+
+  const handleReviewConfirm = async (items: VideoPlanItemPayload[]) => {
+    try {
+      const res = await submitVideoPlan(videoRoot || targetPath.trim(), items);
+      setVideoPlanId(res.planId);
+      setVideoPlanLinks(res.links);
+      setShowReview(false);
+      toast.success(`视频关联方案已就绪：${res.pdfs} 个 PDF / ${res.links} 条关联`);
+      startScan();
+    } catch (e: any) {
+      toast.error('保存视频关联方案失败: ' + (e?.message || ''));
     }
   };
 
@@ -175,6 +216,12 @@ export default function PdfScanImport() {
   };
 
   const startScan = () => {
+    // 开了视频关联但还没确认过对应关系的，先走预解析
+    if (withVideo && !videoPlanId) {
+      toast('开启视频关联后，需要先「预解析」并确认 PDF 与 MP4 的对应关系');
+      handlePreview();
+      return;
+    }
     setShowConfirm(true);
   };
 
@@ -211,6 +258,7 @@ export default function PdfScanImport() {
       subject.trim() || undefined,
       !importToDb,
       ticket,
+      videoPlanId || undefined,
     );
     const es = new EventSource(url);
     esRef.current = es;
@@ -241,7 +289,9 @@ export default function PdfScanImport() {
       setProgress(null);
       es.close();
       setScanTaskId('');
+      setVideoPlanId('');
       fetchBooks();
+      loadVideoRoots();
     });
     es.addEventListener('error', (e: Event) => {
       if (doneRef.current) return;
@@ -447,6 +497,107 @@ export default function PdfScanImport() {
           </p>
         )}
 
+        {/* 视频关联 */}
+        <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50/60">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={withVideo}
+              onChange={(e) => setWithVideo(e.target.checked)}
+              className="w-4 h-4 accent-teal-600 cursor-pointer"
+              disabled={scanning}
+            />
+            <Video size={15} className="text-primary" />
+            <span className="text-sm font-semibold text-gray-700">解析并关联 MP4 讲解视频</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            按「讲次序号 + 标题相似度」把目录里的 MP4 匹配到 PDF。视频文件不会被复制，只记录原始路径。
+            预解析后会先弹出对照表供你逐条确认，确认后才写入数据库。
+          </p>
+          {videoPlanId && (
+            <p className="text-xs text-teal-600 mt-1.5 ml-6 flex items-center gap-1">
+              <Check size={12} /> 已确认 {videoPlanLinks} 条视频关联，开始扫描后将一并写入
+            </p>
+          )}
+
+          <div className="ml-6 mt-2">
+            <button
+              onClick={() => setShowRootPanel((v) => !v)}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary transition"
+            >
+              <HardDrive size={12} />
+              视频根目录管理（换盘后批量重定向）
+              <ChevronDown size={12} className={`transition-transform ${showRootPanel ? 'rotate-180' : ''}`} />
+            </button>
+            {showRootPanel && (
+              <div className="mt-2 bg-white border border-gray-200 rounded-lg p-3">
+                {videoRoots.length === 0 ? (
+                  <p className="text-xs text-gray-400">还没有已关联的视频</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {videoRoots.map((r) => (
+                      <div key={r.rootPath} className="flex items-start gap-2 text-xs">
+                        <input
+                          type="radio"
+                          name="video-root"
+                          checked={repointTarget === r.rootPath}
+                          onChange={() => { setRepointTarget(r.rootPath); setNewRootInput(''); }}
+                          className="mt-0.5 accent-primary cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-gray-700 break-all">{r.rootPath}</div>
+                          <div className="text-gray-400">
+                            {r.total} 个视频
+                            {r.missing > 0 && <span className="text-red-500"> · {r.missing} 个文件缺失</span>}
+                            {r.batches.length > 0 && ` · 批次 ${r.batches.join('、')}`}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2 mt-3">
+                  <input
+                    value={newRootInput}
+                    onChange={(e) => setNewRootInput(e.target.value)}
+                    placeholder="新的根目录绝对路径（子目录结构需保持不变）"
+                    className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    disabled={!repointTarget || !newRootInput.trim() || repointing}
+                    onClick={async () => {
+                      setRepointing(true);
+                      try {
+                        const res = await repointVideoRoot({ rootPath: repointTarget, newRoot: newRootInput.trim() });
+                        toast.success(`已重定向 ${res.updated} 个视频${res.stillMissing > 0 ? `，${res.stillMissing} 个仍然缺失` : ''}`);
+                        setNewRootInput('');
+                        loadVideoRoots();
+                      } catch (e: any) {
+                        toast.error('重定向失败: ' + (e?.response?.data?.error || e?.message || ''));
+                      } finally {
+                        setRepointing(false);
+                      }
+                    }}
+                    className="px-3 py-1 text-xs rounded bg-primary text-white hover:bg-primaryDark disabled:bg-gray-300 transition whitespace-nowrap"
+                  >
+                    {repointing ? '处理中...' : '重定向'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const res = await recheckVideos();
+                      toast.success(`复查完成：${res.total} 个视频，${res.missing} 个缺失，${res.recovered} 个恢复`);
+                      loadVideoRoots();
+                    }}
+                    className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-100 transition flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <RefreshCw size={12} /> 复查
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Action buttons */}
         <div className="flex gap-3 mt-4">
           <button
@@ -605,6 +756,16 @@ export default function PdfScanImport() {
         </div>
       </div>
 
+      {/* 视频关联预处理 */}
+      {showReview && previewFiles.length > 0 && (
+        <VideoMatchReview
+          files={previewFiles}
+          videoRoot={videoRoot}
+          onCancel={() => setShowReview(false)}
+          onConfirm={handleReviewConfirm}
+        />
+      )}
+
       {/* Confirmation dialog */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowConfirm(false)}>
@@ -624,6 +785,9 @@ export default function PdfScanImport() {
                   {grade && <p>学期: <span className="text-gray-700">{grade}</span></p>}
                   {subject && <p>科目: <span className="text-gray-700">{subject}</span></p>}
                   {category && <p>分类: <span className="text-gray-700">{category}</span></p>}
+                  {videoPlanId && (
+                    <p>视频关联: <span className="text-teal-600">{videoPlanLinks} 条（仅记录路径，不复制文件）</span></p>
+                  )}
                 </div>
               </div>
             </div>

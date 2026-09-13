@@ -970,6 +970,8 @@ export default function BookViewer() {
               totalPages={totalPages}
               storagePath={currentBook.storagePath || ''}
               onPageSelect={setCurrentPage}
+              bookId={currentBook.id}
+              videoCount={currentBook.videoCount || 0}
             />
           </aside>
         )}

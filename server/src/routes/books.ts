@@ -199,7 +199,8 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   const start = (page - 1) * pageSize;
   const pageSlice = filtered.slice(start, start + pageSize);
 
-  // 6) Attach isFavorite, availableDpis, pairSummary — strip raw attributes from response
+  // 6) Attach isFavorite, availableDpis, pairSummary, videoCount — strip raw attributes from response
+  const videoCountMap = await buildVideoCountMap(pageSlice.map((b) => b.id));
   const booksWithMeta = await Promise.all(
     pageSlice.map(async (b) => {
       const bookDir = getBookRoot(b.id);
@@ -211,11 +212,43 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
         isFavorite: favoriteIdSet.has(b.id),
         availableDpis: dpis,
         pairSummary: pairSummary.role ? pairSummary : null,
+        videoCount: videoCountMap.get(b.id) || 0,
       };
     })
   );
 
   res.json({ data: booksWithMeta, total, page, pageSize, options: { subjects, grades, categories } });
+}));
+
+/** 批量统计可用（未缺失）讲解视频数量 */
+async function buildVideoCountMap(bookIds: number[]): Promise<Map<number, number>> {
+  if (bookIds.length === 0) return new Map();
+  const rows = await prisma.bookVideo.groupBy({
+    by: ['bookId'],
+    where: { bookId: { in: bookIds }, missing: false },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.bookId, r._count._all]));
+}
+
+// 某本书的讲解视频列表（供阅读器左侧「视频」标签使用）
+router.get('/:id/videos', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  const rows = await prisma.bookVideo.findMany({
+    where: { bookId: id },
+    orderBy: [{ sortOrder: 'asc' }, { lessonNo: 'asc' }, { id: 'asc' }],
+  });
+  const data = rows.map((v) => ({
+    id: v.id,
+    title: v.title || v.fileName,
+    fileName: v.fileName,
+    lessonNo: v.lessonNo,
+    scope: v.scope,
+    matchScore: v.matchScore,
+    missing: v.missing || !fs.existsSync(v.filePath),
+    streamUrl: `/api/videos/${v.id}/stream`,
+  }));
+  res.json({ data });
 }));
 
 router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
@@ -249,7 +282,8 @@ router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
       .then((all) => new Map(all.map((b) => [b.id, b.title]))),
   ]);
   const pairSummary = buildPairSummary(book.attributes, id, tbToAnswers, idToTitleMap);
-  res.json({ data: { ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl, pairSummary: pairSummary.role ? pairSummary : null } });
+  const videoCountMap = await buildVideoCountMap([id]);
+  res.json({ data: { ...book, annotations, storagePath, availableDpis: dpis, pdfFileName, pdfUrl, pairSummary: pairSummary.role ? pairSummary : null, videoCount: videoCountMap.get(id) || 0 } });
 }));
 
 router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {

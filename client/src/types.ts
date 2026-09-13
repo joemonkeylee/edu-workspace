@@ -32,6 +32,8 @@ export interface Book {
   pdfUrl?: string | null;
   isFavorite?: boolean;
   pairSummary?: PairSummary | null;
+  /** 关联的讲解视频数量（不含文件缺失的） */
+  videoCount?: number;
 }
 
 export interface Annotation {

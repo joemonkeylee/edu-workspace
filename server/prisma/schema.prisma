@@ -78,6 +78,36 @@ model Book {
   assignments Assignment[]
   readingProgress ReadingProgress[]
   bookFavorites BookFavorite[]
+  videos      BookVideo[]
+}
+
+/// MP4 讲解视频，关联到某本书。文件不复制，只记录原绝对路径。
+model BookVideo {
+  id         Int      @id @default(autoincrement())
+  bookId     Int
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  title      String   @default("") @db.VarChar(512)
+  fileName   String   @default("") @db.VarChar(512)
+  /// 当前完整绝对路径（跨平台原生分隔符）
+  filePath   String   @db.Text
+  /// 导入时的根目录，批量迁移硬盘时按 batchId 整体替换
+  rootPath   String   @db.Text
+  /// 相对根目录的路径，统一用 / 分隔，与平台无关
+  relPath    String   @db.Text
+  /// 讲次序号（从文件名解析，可能为空）
+  lessonNo   Int?
+  sortOrder  Int      @default(0)
+  /// 自动匹配置信度 0~1
+  matchScore Float    @default(0)
+  /// lesson = 精确对应某讲；course = 整本课程视频列表（讲义/合集用）
+  scope      String   @default("lesson") @db.VarChar(16)
+  /// 文件不存在（目录被移动）时置为 true
+  missing    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([bookId])
+  @@index([bookId, sortOrder])
 }
 
 model Assignment {
