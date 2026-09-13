@@ -49,6 +49,9 @@ import { toast } from 'sonner';
 type FitMode = 'width' | 'page' | null;
 type PageLayout = 'single' | 'double';
 
+// 左侧栏拖拽时的吸附容差（px）：靠近吸附点会被吸住
+const LEFT_SNAP_TOLERANCE = 16;
+
 export default function BookViewer() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -67,11 +70,9 @@ export default function BookViewer() {
     zoom,
     tool,
     annotations,
-    mistakes,
     loading,
     fetchBook,
     fetchAnnotations,
-    fetchMistakes,
     setCurrentPage,
     setZoom,
     setTool,
@@ -89,7 +90,8 @@ export default function BookViewer() {
   const draggingRef = useRef(false);
   const startXRef = useRef(0);
   const startWRef = useRef(0);
-  const maxWRef = useRef(LEFT_MIN); // 拖拽开始时冻结的最大值（= 一页书显示宽度）
+  // 拖拽开始时冻结的吸附点（一页书显示宽度及其 1.25 / 1.5 倍）
+  const snapPointsRef = useRef<number[]>([]);
   const initWidthSet = useRef(false); // 是否已按「适应页面后的画布宽度」初始化过
   const pageFitWidthRef = useRef(LEFT_MIN); // 当前布局下「一页书」的显示宽度
 
@@ -101,12 +103,19 @@ export default function BookViewer() {
     }
   }, [bookId, hasVideos]);
 
-  // 拖拽调整左侧栏宽度
+  // 拖拽调整左侧栏宽度（不设上限，仅在关键宽度处吸附）
   const onResizeMove = useCallback((e: MouseEvent) => {
     if (!draggingRef.current) return;
     const delta = e.clientX - startXRef.current;
-    let w = startWRef.current + delta;
-    w = Math.max(LEFT_MIN, Math.min(maxWRef.current, w));
+    let w = Math.max(LEFT_MIN, startWRef.current + delta);
+    // 吸附到关键宽度（一页书 / 1.25 倍 / 1.5 倍）
+    let bestW = w;
+    let bestDist = LEFT_SNAP_TOLERANCE;
+    for (const sp of snapPointsRef.current) {
+      const d = Math.abs(w - sp);
+      if (d < bestDist) { bestDist = d; bestW = sp; }
+    }
+    w = bestW;
     leftWidthRef.current = w;
     setLeftWidth(w);
   }, []);
@@ -126,7 +135,9 @@ export default function BookViewer() {
     const rect = aside.getBoundingClientRect();
     startXRef.current = e.clientX;
     startWRef.current = rect.width;
-    maxWRef.current = pageFitWidthRef.current; // 冻结最大值，避免拖拽中正反馈抖动
+    // 冻结吸附点：一页书显示宽度、其 1.25 倍与 1.5 倍
+    const fit = pageFitWidthRef.current;
+    snapPointsRef.current = [fit, fit * 1.25, fit * 1.5].filter((p) => p >= LEFT_MIN);
     draggingRef.current = true;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -194,8 +205,7 @@ export default function BookViewer() {
 
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [rightTab, setRightTab] = useState<'annotations' | 'mistakes' | 'assignments'>('assignments');
-  const [mistakeFilter, setMistakeFilter] = useState('');
+  const [rightTab, setRightTab] = useState<'annotations' | 'assignments'>('assignments');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [layers, setLayers] = useState({
     annotations: true,
@@ -215,7 +225,6 @@ export default function BookViewer() {
   const [assignmentCount, setAssignmentCount] = useState(0);
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
   const [assignmentPrompt, setAssignmentPrompt] = useState<Assignment | null>(null);
-  const [mistakeCount, setMistakeCount] = useState(0);
 
   // Clear annotation selection when page changes via toolbar/keyboard
   useEffect(() => {
@@ -254,7 +263,6 @@ export default function BookViewer() {
         if (!cancelled && cfg.page > 1) setCurrentPage(cfg.page);
       });
       fetchAnnotations(bookId);
-      api.getMistakes({ bookId }).then((result) => setMistakeCount(result.total));
     })();
     return () => { cancelled = true; clearCurrent(); };
   }, [bookId]);
@@ -345,20 +353,15 @@ export default function BookViewer() {
     const widthZoom = availPerPage / natW;
     const heightZoom = ch / natH;
 
-    // 「一页书」在「适应页面」下的显示宽度：用作左侧栏最大宽度与初始宽度
+    // 「一页书」在「适应页面」下的显示宽度：用作左侧栏的吸附点与初始宽度
     const pageFitZoom = Math.min(widthZoom, heightZoom);
     const fitW = natW * pageFitZoom;
     pageFitWidthRef.current = fitW;
-    if (!draggingRef.current) {
-      if (!initWidthSet.current) {
-        // 首屏按「适应页面后的画布宽度」初始化左侧栏宽度
-        initWidthSet.current = true;
-        leftWidthRef.current = fitW;
-        setLeftWidth(fitW);
-      } else {
-        // 之后仅在布局变化导致上限缩小（如窗口变窄）时，把宽度夹回上限以内
-        setLeftWidth((w) => Math.min(Math.max(LEFT_MIN, w), fitW));
-      }
+    if (!draggingRef.current && !initWidthSet.current) {
+      // 首屏按「适应页面后的画布宽度」初始化左侧栏宽度（之后不再强制夹取，宽度无上限）
+      initWidthSet.current = true;
+      leftWidthRef.current = fitW;
+      setLeftWidth(fitW);
     }
 
     if (fitMode) {
@@ -617,30 +620,16 @@ export default function BookViewer() {
     return filtered;
   }, [allAssignments, currentPage, currentAssignment]);
 
+  // 错题（crop 批注）的「已掌握」切换：更新后刷新批注，使列表内联的错题状态同步
   const handleMistakeToggle = async (id: number, current: number) => {
+    if (!currentBook) return;
     try {
       await api.updateMistake(id, { reviewStatus: current === 0 ? 1 : 0 });
-      fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
+      await fetchAnnotations(currentBook.id);
       toast.success(current === 0 ? '已标记为已掌握' : '已取消掌握标记');
     } catch (e: any) {
       toast.error('操作失败: ' + (e?.message || ''));
     }
-  };
-
-  const handleMistakeDelete = async (id: number) => {
-    try {
-      await api.deleteMistake(id);
-      setMistakeCount((count) => Math.max(0, count - 1));
-      fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
-      toast.success('错题已删除');
-    } catch (e: any) {
-      toast.error('删除失败: ' + (e?.message || ''));
-    }
-  };
-
-  const loadMistakes = () => {
-    setRightTab('mistakes');
-    fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) });
   };
 
   if (loading || !currentBook) {
@@ -1105,7 +1094,6 @@ export default function BookViewer() {
                     <CropTool
                       storagePath={effectiveStoragePath}
                       pageNumber={currentPage}
-                      zoom={zoom}
                       onSave={handleCropSave}
                       onCancel={() => setTool('view')}
                     />
@@ -1200,34 +1188,18 @@ export default function BookViewer() {
                 作业 ({assignmentCount})
               </button>
               <button
-                onClick={loadMistakes}
-                className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'mistakes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                错题 ({mistakeCount})
-              </button>
-              <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
                   rightTab === 'annotations' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
                 }`}
+                title="批注与错题（错题为已裁剪的批注）"
               >
-                批注 ({annotations.length})
+                错题批注 ({annotations.length})
               </button>
             </div>
 
             <div className="flex-1 overflow-auto scrollbar-thin">
-              {rightTab === 'mistakes' ? (
-                <MistakeList
-                  mistakes={mistakes}
-                  filter={mistakeFilter}
-                  onFilterChange={setMistakeFilter}
-                  onToggle={handleMistakeToggle}
-                  onDelete={handleMistakeDelete}
-                  onRefresh={() => fetchMistakes({ bookId, ...(mistakeFilter ? { subject: mistakeFilter } : {}) })}
-                />
-              ) : rightTab === 'assignments' ? (
+              {rightTab === 'assignments' ? (
                 <AssignmentList
                   bookId={bookId}
                   onSelect={(a) => {
@@ -1250,6 +1222,7 @@ export default function BookViewer() {
                   onSelect={setSelectedAnnotationId}
                   onNavigate={(p) => { setTool('view'); setShowAnnotations(true); skipClearRef.current = true; setCurrentPage(p); }}
                   onDelete={setDeleteAnnId}
+                  onToggleMistake={handleMistakeToggle}
                 />
               )}
             </div>
@@ -1391,6 +1364,7 @@ function AnnotationList({
   onSelect,
   onNavigate,
   onDelete,
+  onToggleMistake,
 }: {
   annotations: any[];
   colorIndex: Map<number, number>;
@@ -1400,6 +1374,7 @@ function AnnotationList({
   onSelect: (id: number | null) => void;
   onNavigate: (page: number) => void;
   onDelete: (id: number) => void;
+  onToggleMistake: (id: number, status: number) => void;
 }) {
   if (annotations.length === 0) {
     return <div className="p-4 text-sm text-center text-gray-400">暂无批注</div>;
@@ -1411,33 +1386,89 @@ function AnnotationList({
         const isSelected = selectedAnnotationId === ann.id;
         const ci = colorIndex.get(ann.id) ?? 0;
         const color = getAnnotationColor(ci);
+        const mistake = ann.type === 'crop' ? (ann.mistakes?.[0] ?? null) : null;
+
+        const handleClick = () => {
+          if (isSelected) { onSelect(null); return; }
+          onSelect(ann.id);
+          // Only navigate if the annotation's page is NOT already visible
+          // In double-page mode, currentPage and currentPage+1 are both visible
+          const isAlreadyVisible = isDouble
+            ? (ann.pageNumber === currentPage || ann.pageNumber === currentPage + 1)
+            : (ann.pageNumber === currentPage);
+          if (!isAlreadyVisible) {
+            onNavigate(ann.pageNumber);
+          }
+        };
+
+        const rowClass = isSelected
+          ? `${color.bg} ${color.border} ring-2 ring-offset-1`
+          : isCurrent
+            ? 'bg-blue-50 border-blue-200'
+            : 'bg-gray-50 border-gray-200 hover:bg-gray-100';
+
+        // 错题（crop 批注）：沿用「错题」列表的 item 样式（缩略图 + 学科 + 复习状态）
+        if (ann.type === 'crop') {
+          return (
+            <div
+              key={ann.id}
+              className={`flex gap-2 p-2 rounded-lg group cursor-pointer transition border ${rowClass}`}
+              onClick={handleClick}
+            >
+              <div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-amber-50 border-amber-100">
+                {mistake?.imagePath ? (
+                  <img
+                    src={withAuthToken(mistake.imagePath)}
+                    alt="错题"
+                    className="object-cover w-full h-full"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="text-xs text-amber-400">无图</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-700">{mistake?.subject || '未分类'}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                    第 {ann.pageNumber} 页
+                  </span>
+                </div>
+                {ann.tags && <div className="text-xs text-gray-500 mt-0.5 truncate">{ann.tags}</div>}
+                <div className="flex items-center gap-2 mt-1">
+                  {mistake && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onToggleMistake(mistake.id, mistake.reviewStatus); }}
+                      className={`flex items-center gap-1 text-xs transition ${
+                        mistake.reviewStatus === 1 ? 'text-primary' : 'text-gray-400 hover:text-primary'
+                      }`}
+                    >
+                      {mistake.reviewStatus === 1 ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                      {mistake.reviewStatus === 1 ? '已掌握' : '未复习'}
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }}
+                    className="text-gray-300 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // 普通批注（笔记 / 高亮）
         return (
           <div
             key={ann.id}
-            className={`rounded-lg p-3 flex items-start gap-2 group cursor-pointer transition border-l-4 ${
-              isSelected
-                ? `${color.bg} ${color.border} ring-2 ring-offset-1`
-                : isCurrent
-                  ? 'bg-blue-50 border-blue-200'
-                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-            }`}
-            onClick={() => {
-              if (isSelected) { onSelect(null); return; }
-              onSelect(ann.id);
-              // Only navigate if the annotation's page is NOT already visible
-              // In double-page mode, currentPage and currentPage+1 are both visible
-              const isAlreadyVisible = isDouble
-                ? (ann.pageNumber === currentPage || ann.pageNumber === currentPage + 1)
-                : (ann.pageNumber === currentPage);
-              if (!isAlreadyVisible) {
-                onNavigate(ann.pageNumber);
-              }
-            }}
+            className={`rounded-lg p-3 flex items-start gap-2 group cursor-pointer transition border-l-4 ${rowClass}`}
+            onClick={handleClick}
           >
             <div className="flex-shrink-0 mt-0.5 flex items-center gap-1">
               {ann.type === 'note' && <StickyNote size={16} className="text-amber-500" />}
               {ann.type === 'highlight' && <Highlighter size={16} className="text-yellow-500" />}
-              {ann.type === 'crop' && <Scissors size={16} className="text-blue-500" />}
               <span
                 className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white ${color.dot}`}
                 title={`批注 ${ci + 1}`}
@@ -1450,7 +1481,6 @@ function AnnotationList({
                 <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">{ann.contentJson.text}</p>
               )}
               {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
-              {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
               <div className="flex items-center gap-2 mt-1">
                 <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-blue-100 text-blue-600' : 'text-gray-400'}`}>
                   第 {ann.pageNumber} 页
@@ -1651,80 +1681,4 @@ function DashedConnector({
   );
 }
 
-function MistakeList({
-  mistakes,
-  filter,
-  onFilterChange,
-  onToggle,
-  onDelete,
-  onRefresh,
-}: {
-  mistakes: any[];
-  filter: string;
-  onFilterChange: (v: string) => void;
-  onToggle: (id: number, status: number) => void;
-  onDelete: (id: number) => void;
-  onRefresh: () => void;
-}) {
-  return (
-    <div>
-      <div className="p-2 border-b border-gray-100">
-        <input
-          type="text"
-          value={filter}
-          onChange={(e) => onFilterChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && onRefresh()}
-          placeholder="按学科筛选..."
-          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-        />
-      </div>
-      {mistakes.length === 0 ? (
-        <div className="p-4 text-sm text-center text-gray-400">暂无错题</div>
-      ) : (
-        <div className="p-2 space-y-2">
-          {mistakes.map((m) => (
-            <div key={m.id} className="flex gap-2 p-2 rounded-lg bg-gray-50 group">
-              <div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-amber-50 border-amber-100">
-                {m.imagePath ? (
-                  <img
-                    src={withAuthToken(m.imagePath)}
-                    alt="错题"
-                    className="object-cover w-full h-full"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <span className="text-xs text-amber-400">无图</span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-700">{m.subject}</span>
-                  {m.book && <span className="text-xs text-gray-400 truncate">{m.book.title}</span>}
-                </div>
-                <div className="text-xs text-gray-400 mt-0.5">第 {m.pageNumber} 页</div>
-                {m.tags && <div className="text-xs text-gray-500 mt-0.5 truncate">{m.tags}</div>}
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    onClick={() => onToggle(m.id, m.reviewStatus)}
-                    className={`flex items-center gap-1 text-xs transition ${
-                      m.reviewStatus === 1 ? 'text-primary' : 'text-gray-400 hover:text-primary'
-                    }`}
-                  >
-                    {m.reviewStatus === 1 ? <CheckCircle2 size={14} /> : <Circle size={14} />}
-                    {m.reviewStatus === 1 ? '已掌握' : '未复习'}
-                  </button>
-                  <button
-                    onClick={() => onDelete(m.id)}
-                    className="text-gray-300 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+

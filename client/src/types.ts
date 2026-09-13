@@ -46,6 +46,8 @@ export interface Annotation {
   contentJson: any;
   tags: string | null;
   createdAt: string;
+  /** Linked mistake records (crop annotations only) */
+  mistakes?: Mistake[];
 }
 
 export interface Mistake {

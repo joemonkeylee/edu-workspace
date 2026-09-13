@@ -74,9 +74,12 @@ router.get('/book/:bookId', authRequired, asyncHandler(async (req: AuthedRequest
     where.userId = null;
   }
 
+  // Include the linked Mistake for crop annotations, so the unified
+  // annotation list can render mistake items without a second request.
   const annotations = await prisma.annotation.findMany({
     where,
     orderBy: { pageNumber: 'asc' },
+    include: { mistakes: true },
   });
   res.json({ data: annotations });
 }));

@@ -7,14 +7,13 @@ import { Scissors, Check, X } from 'lucide-react';
 interface CropToolProps {
   storagePath: string;
   pageNumber: number;
-  zoom: number;
   onSave: (blob: Blob, cropData: { x: number; y: number; w: number; h: number }, subject: string, tags: string) => Promise<void>;
   onCancel: () => void;
 }
 
 const SUBJECTS = ['数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
 
-export default function CropTool({ storagePath, pageNumber, zoom, onSave, onCancel }: CropToolProps) {
+export default function CropTool({ storagePath, pageNumber, onSave, onCancel }: CropToolProps) {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
   const [showForm, setShowForm] = useState(false);
@@ -70,7 +69,9 @@ export default function CropTool({ storagePath, pageNumber, zoom, onSave, onCanc
   };
 
   return (
-    <div className="inline-block" style={{ width: `${zoom * 100}%` }}>
+    // Fill the wrapper the parent sizes for the current zoom, so entering crop
+    // mode does not change the displayed canvas size.
+    <div className="inline-block w-full">
       <ReactCrop
         crop={crop}
         onChange={(_, pc) => setCrop(pc)}
