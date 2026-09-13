@@ -776,6 +776,51 @@ function BoundTab() {
     }
   };
 
+  const handleBatchSoftDelete = async () => {
+    if (selected.size === 0) { toast.warning('请先勾选要软删的行'); return; }
+    const ids = groups
+      .filter((g) => selected.has(g.textbook.id))
+      .flatMap((g) => [g.textbook.id, ...g.answers.map((a: any) => a.id)]);
+    const confirmed = await confirm({
+      title: '批量软删除确认',
+      message: `将选中的 ${selected.size} 组（共 ${ids.length} 本）移到已删除？可恢复。`,
+      confirmText: '批量软删',
+      confirmClass: 'bg-amber-500 hover:bg-amber-600',
+    });
+    if (!confirmed) return;
+    try {
+      const res = await adminSoftDeleteBooksBatch(ids);
+      toast.success(`已软删 ${res.deleted} 本（${res.skipped} 跳过）`);
+      fetch();
+    } catch (e: any) {
+      toast.error('批量软删失败: ' + (e?.message || ''));
+    }
+  };
+
+  const handleBatchRestore = async () => {
+    if (selected.size === 0) { toast.warning('请先勾选要恢复的行'); return; }
+    const ids = groups
+      .filter((g) => selected.has(g.textbook.id))
+      .flatMap((g) => [g.textbook.id, ...g.answers.map((a: any) => a.id)]);
+    const confirmed = await confirm({
+      title: '批量恢复确认',
+      message: `将选中的 ${selected.size} 组（共 ${ids.length} 本）恢复？`,
+      confirmText: '批量恢复',
+      confirmClass: 'bg-green-600 hover:bg-green-700',
+    });
+    if (!confirmed) return;
+    try {
+      const res = await adminRestoreBooksBatch(ids);
+      const parts = [`恢复 ${res.restored} 本`];
+      if (res.noResource > 0) parts.push(`${res.noResource} 本无资源`);
+      if (res.skipped > 0) parts.push(`${res.skipped} 跳过`);
+      toast.success(parts.join('，'));
+      fetch();
+    } catch (e: any) {
+      toast.error('批量恢复失败: ' + (e?.message || ''));
+    }
+  };
+
   const SortHeader = ({ label, col, w = '' }: { label: string; col: string; w?: string }) => (
     <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100 ${w}`} onClick={() => toggleSort(col)}>
       <span className="inline-flex items-center gap-1">
@@ -803,6 +848,20 @@ function BoundTab() {
         >
           {batchUnbinding ? <Loader2 size={14} className="animate-spin" /> : null}
           {batchUnbinding ? `解绑中...` : `批量解绑 (${selected.size})`}
+        </button>
+        <button
+          onClick={handleBatchSoftDelete}
+          disabled={selected.size === 0}
+          className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50"
+        >
+          批量软删 ({selected.size})
+        </button>
+        <button
+          onClick={handleBatchRestore}
+          disabled={selected.size === 0}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
+        >
+          批量恢复 ({selected.size})
         </button>
       </div>
 
@@ -1001,6 +1060,28 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
     }
   };
 
+  const handleBatchRestore = async () => {
+    if (selected.size === 0) { toast.warning('请先勾选要恢复的书'); return; }
+    const ids = Array.from(selected);
+    const confirmed = await confirm({
+      title: '批量恢复确认',
+      message: `将选中的 ${ids.length} 本书恢复？`,
+      confirmText: '批量恢复',
+      confirmClass: 'bg-green-600 hover:bg-green-700',
+    });
+    if (!confirmed) return;
+    try {
+      const res = await adminRestoreBooksBatch(ids);
+      const parts = [`恢复 ${res.restored} 本`];
+      if (res.noResource > 0) parts.push(`${res.noResource} 本无资源`);
+      if (res.skipped > 0) parts.push(`${res.skipped} 跳过`);
+      toast.success(parts.join('，'));
+      fetch();
+    } catch (e: any) {
+      toast.error('批量恢复失败: ' + (e?.message || ''));
+    }
+  };
+
   const SortHeader = ({ label, col, w = '' }: { label: string; col: string; w?: string }) => (
     <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100 ${w}`} onClick={() => toggleSort(col)}>
       <span className="inline-flex items-center gap-1">
@@ -1041,7 +1122,14 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
           className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-50"
         >
           {deleting ? <Loader2 size={14} className="animate-spin" /> : null}
-          {deleting ? `删除中...` : `批量删除 (${selected.size})`}
+          {deleting ? `删除中...` : `批量软删 (${selected.size})`}
+        </button>
+        <button
+          onClick={handleBatchRestore}
+          disabled={selected.size === 0}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
+        >
+          批量恢复 ({selected.size})
         </button>
       </div>
 
