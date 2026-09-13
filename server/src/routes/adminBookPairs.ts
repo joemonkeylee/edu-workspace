@@ -69,6 +69,10 @@ const ANSWER_KEYWORDS = [
   '解析版', '答案版', '答案', '参考答案', '解析', '全解全析', '详解', '教师版', '教师用书',
   // ── 新规则补充 ──
   '背记版', '英译汉', '答案解析', '解析卷',
+  // ── 必刷题 / 同步练习类变体 ──
+  '详答', '详析', '批注式详答', '批注详答', '批注式详答与详析', '批注详答与详析',
+  '狂K重点', '狂k重点', 'K重点', 'k重点',
+  '详答与详析', '解答', '解析与答案', '答案与解析',
 ];
 const ALL_VERSION_KEYWORDS = [...TEXTBOOK_KEYWORDS, ...ANSWER_KEYWORDS];
 
@@ -127,7 +131,7 @@ function detectKeyword(title: string): string | null {
 
 // ── Mode2 helpers ──
 const TEST_RANGE_PATTERN = /【?测试范围[：:][^】\]]*[】\]]?/g;
-const TRAILING_SUFFIX_PATTERN = /[-_\s]*(答案|解析|全解全析|答案解析|详解|参考答案|解析版|答案版|答案在最后|详细解析)(?:[\s_\-].*)?$/;
+const TRAILING_SUFFIX_PATTERN = /[-_\s]*(批注式详答与详析|批注详答与详析|答案与解析|解析与答案|答案解析|全解全析|参考答案|详细解析|批注式详答|批注详答|详答与详析|狂K重点|狂k重点|K重点|k重点|解析版|答案版|详解|详答|详析|解答|答案在最后|答案|解析|详解答)(?:[\s_\-].*)?$/;
 
 function extractCleanTitle(title: string): string {
   let result = title;
@@ -235,7 +239,7 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
   function runMode1(): { pairs: any[]; coveredIds: Set<number> } {
     const groupMap = new Map<string, BookLite[]>();
     for (const b of books) {
-      if (!b.role) continue;
+      // 包含 role=null 的书（默认归 textbook 侧），和 Mode2 保持一致
       const key = `${b.category}||${b.grade}||${b.subject}||${b.baseTitle}`;
       if (!groupMap.has(key)) groupMap.set(key, []);
       groupMap.get(key)!.push(b);
@@ -245,7 +249,8 @@ router.get('/scan', asyncHandler(async (req: Request, res: Response) => {
     const coveredIds = new Set<number>();
 
     for (const [key, group] of groupMap) {
-      const textbooks = group.filter((b) => b.role === 'textbook');
+      // role=null 归 textbook 侧（和 Mode2 一致）
+      const textbooks = group.filter((b) => b.role !== 'answer');
       const answers = group.filter((b) => b.role === 'answer');
       if (textbooks.length === 0 || answers.length === 0) continue;
 
