@@ -113,11 +113,12 @@ export default function PdfScanImport() {
   const { fetchBooks, subjectOptions, gradeOptions, categoryOptions } = useStore();
 
   const logBufferRef = useRef<string[]>([]);
-  const logRafRef = useRef<number | null>(null);
+  const logTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logSeqRef = useRef(0);
-  const MAX_LOGS = 200;
+  const MAX_LOGS = 100;
+  const LOG_FLUSH_MS = 50;
   const flushLogs = useCallback(() => {
-    logRafRef.current = null;
+    logTimerRef.current = null;
     if (logBufferRef.current.length === 0) return;
     const batch = logBufferRef.current;
     logBufferRef.current = [];
@@ -129,19 +130,22 @@ export default function PdfScanImport() {
   }, []);
   const appendLog = useCallback((messages: string[]) => {
     logBufferRef.current.push(...messages);
-    if (logRafRef.current === null) {
-      logRafRef.current = requestAnimationFrame(flushLogs);
+    if (logTimerRef.current === null) {
+      logTimerRef.current = setTimeout(flushLogs, LOG_FLUSH_MS);
     }
   }, [flushLogs]);
 
-  const scrollRafRef = useRef<number | null>(null);
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!autoScroll) return;
-    if (scrollRafRef.current !== null) return;
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      logEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-    });
+    if (scrollTimerRef.current !== null) return;
+    scrollTimerRef.current = setTimeout(() => {
+      scrollTimerRef.current = null;
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    }, 0);
   }, [logs, autoScroll]);
 
   const loadVideoRoots = useCallback(async () => {
@@ -312,8 +316,8 @@ export default function PdfScanImport() {
     es.addEventListener('done', (e: MessageEvent) => {
       const data = JSON.parse(e.data);
       appendLog([`✓ ${data.message}`]);
-      if (logRafRef.current !== null) {
-        cancelAnimationFrame(logRafRef.current);
+      if (logTimerRef.current !== null) {
+        clearTimeout(logTimerRef.current);
         flushLogs();
       }
       doneRef.current = true;
@@ -334,8 +338,8 @@ export default function PdfScanImport() {
           appendLog([`✗ ${data.message}`]);
         } catch { /* ignore */ }
       }
-      if (logRafRef.current !== null) {
-        cancelAnimationFrame(logRafRef.current);
+      if (logTimerRef.current !== null) {
+        clearTimeout(logTimerRef.current);
         flushLogs();
       }
       setScanning(false);
@@ -355,8 +359,8 @@ export default function PdfScanImport() {
 
   useEffect(() => () => {
     esRef.current?.close();
-    if (logRafRef.current !== null) cancelAnimationFrame(logRafRef.current);
-    if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
+    if (logTimerRef.current !== null) clearTimeout(logTimerRef.current);
+    if (scrollTimerRef.current !== null) clearTimeout(scrollTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -816,7 +820,7 @@ export default function PdfScanImport() {
             自动滚动
           </label>
         </div>
-        <div className="font-mono text-sm p-4 h-80 overflow-auto scrollbar-thin">
+        <div ref={scrollContainerRef} className="font-mono text-sm p-4 h-80 overflow-auto scrollbar-thin">
           {logs.length === 0 && !scanning && <div className="text-gray-500">等待开始扫描...</div>}
           {logs.map((log) => (
             <div

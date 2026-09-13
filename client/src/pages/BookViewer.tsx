@@ -96,10 +96,19 @@ export default function BookViewer() {
   const pageFitWidthRef = useRef(LEFT_MIN); // 当前布局下「一页书」的显示宽度
 
   // 带讲解视频的课程书打开时，自动展开左侧栏并默认停在「视频」标签
+  // 没有视频的书也展开左侧栏但保持最小宽度 240px，停在 thumbs tab
   useEffect(() => {
+    initWidthSet.current = false; // 切书后重置，让下一个书按自身条件初始化宽度
     if (hasVideos) {
       setLeftOpen(true);
       setLeftView('video');
+      // 宽度交给下面的 fit 逻辑按「适应页面」自动初始化
+    } else {
+      setLeftOpen(true);
+      setLeftView('thumbs');
+      leftWidthRef.current = LEFT_MIN;
+      setLeftWidth(LEFT_MIN);
+      initWidthSet.current = true; // 标记已初始化，阻止 fit 逻辑覆盖
     }
   }, [bookId, hasVideos]);
 
