@@ -275,10 +275,27 @@ export interface BooksResponse {
   total: number;
   page: number;
   pageSize: number;
-  options: { subjects: string[]; grades: string[]; categories: { name: string; count: number }[] };
+  options: {
+    subjects: string[];
+    grades: string[];
+    categories: { name: string; count: number }[];
+    kindCounts?: { book: number; course: number };
+  };
 }
 
-export async function getBooks(params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean; hasPairs?: boolean }) {
+export async function getBooks(params?: {
+  category?: string;
+  grade?: string;
+  subject?: string;
+  search?: string;
+  sort?: string;
+  page?: number;
+  pageSize?: number;
+  favoritesOnly?: boolean;
+  hasPairs?: boolean;
+  kind?: 'book' | 'course';
+  hasVideo?: boolean;
+}) {
   const { data } = await api.get('/books', { params });
   return data as BooksResponse;
 }
@@ -330,7 +347,7 @@ export async function deleteMistake(id: number) {
   return data;
 }
 
-export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string, grade?: string, subject?: string, skipDb?: boolean, ticket?: string, videoPlan?: string) {
+export function scanPdfUrl(targetPath: string, category: string, dpi: number = 200, concurrency?: number, taskId?: string, grade?: string, subject?: string, skipDb?: boolean, ticket?: string, videoPlan?: string, cleanNames?: boolean) {
   const params = new URLSearchParams({ targetPath, category, dpi: String(dpi) });
   if (concurrency) params.set('concurrency', String(concurrency));
   if (taskId) params.set('taskId', taskId);
@@ -338,6 +355,7 @@ export function scanPdfUrl(targetPath: string, category: string, dpi: number = 2
   if (subject) params.set('subject', subject);
   if (skipDb) params.set('skipDb', 'true');
   if (videoPlan) params.set('videoPlan', videoPlan);
+  if (cleanNames === false) params.set('cleanNames', 'false');
   // Use one-time ticket instead of raw token in URL (avoids log/referer/history leaks)
   if (ticket) params.set('ticket', ticket);
   return `/api/admin/scan-pdf?${params}`;
@@ -369,6 +387,10 @@ export interface VideoMatch {
 
 export interface PreviewFile {
   fileName: string;
+  /** 原始文件名（清洗前） */
+  rawFileName?: string;
+  /** 是否清洗过（文件名含广告噪声） */
+  renamed?: boolean;
   fullPath: string;
   category: string;
   grade: string;
@@ -387,8 +409,8 @@ export interface PreviewScanResult {
   videoStats: { videos: number; links: number } | null;
 }
 
-export async function previewScanPdf(path: string, grade?: string, subject?: string, category?: string, withVideo?: boolean) {
-  const { data } = await api.post('/admin/scan-pdf/preview', { path, grade, subject, category, withVideo });
+export async function previewScanPdf(path: string, grade?: string, subject?: string, category?: string, withVideo?: boolean, cleanNames?: boolean) {
+  const { data } = await api.post('/admin/scan-pdf/preview', { path, grade, subject, category, withVideo, cleanNames });
   return data as PreviewScanResult;
 }
 

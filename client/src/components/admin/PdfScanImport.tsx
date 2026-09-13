@@ -5,7 +5,7 @@ import {
 } from '../../api/client';
 import type { PreviewFile, VideoPlanItemPayload, VideoRootInfo } from '../../api/client';
 import { useStore } from '../../store/useStore';
-import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check, ChevronDown, X, Video, HardDrive, RefreshCw } from 'lucide-react';
+import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check, ChevronDown, X, Video, HardDrive, RefreshCw, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import VideoMatchReview from './VideoMatchReview';
 
@@ -89,6 +89,8 @@ export default function PdfScanImport() {
   const [showHistory, setShowHistory] = useState(false);
   // 视频关联
   const [withVideo, setWithVideo] = useState(false);
+  /** 导入时剥掉文件名里的广告水印（【爱豆爱做题】、【一手资源…】等） */
+  const [cleanNames, setCleanNames] = useState(true);
   const [showReview, setShowReview] = useState(false);
   const [videoPlanId, setVideoPlanId] = useState('');
   const [videoRoot, setVideoRoot] = useState('');
@@ -177,7 +179,7 @@ export default function PdfScanImport() {
     setVideoPlanId('');
     setVideoPlanLinks(0);
     try {
-      const result = await previewScanPdf(targetPath.trim(), grade || undefined, subject || undefined, category || undefined, withVideo);
+      const result = await previewScanPdf(targetPath.trim(), grade || undefined, subject || undefined, category || undefined, withVideo, cleanNames);
       setPreviewFiles(result.files);
       setVideoRoot(result.videoRoot || targetPath.trim());
       if (withVideo && result.files.length > 0) {
@@ -202,6 +204,8 @@ export default function PdfScanImport() {
       toast.error('保存视频关联方案失败: ' + (e?.message || ''));
     }
   };
+
+  const renamedCount = previewFiles.filter((f) => f.renamed && f.rawFileName && f.rawFileName !== f.fileName).length;
 
   const handleCopyPreview = () => {
     if (previewFiles.length === 0) return;
@@ -259,6 +263,7 @@ export default function PdfScanImport() {
       !importToDb,
       ticket,
       videoPlanId || undefined,
+      cleanNames,
     );
     const es = new EventSource(url);
     esRef.current = es;
@@ -497,6 +502,32 @@ export default function PdfScanImport() {
           </p>
         )}
 
+        {/* 文件名清洗 */}
+        <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50/60">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cleanNames}
+              onChange={(e) => setCleanNames(e.target.checked)}
+              className="w-4 h-4 accent-teal-600 cursor-pointer"
+              disabled={scanning}
+            />
+            <Eraser size={15} className="text-primary" />
+            <span className="text-sm font-semibold text-gray-700">清理文件名中的广告水印</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            导入时剥掉 <code className="bg-gray-200 px-1 rounded">【爱豆爱做题】</code>、
+            <code className="bg-gray-200 px-1 rounded">【一手资源更新有保障联系sanniaowl】</code>、
+            加微信/QQ群、8 位以上数字串等噪声，书名和归档的 PDF 文件名都会用清理后的版本。
+            讲次、课型、学期等真实信息保留。
+          </p>
+          {renamedCount > 0 && (
+            <p className="text-xs text-teal-600 mt-1.5 ml-6 flex items-center gap-1">
+              <Check size={12} /> 本次预解析有 {renamedCount} 个文件名含噪声，将被清理
+            </p>
+          )}
+        </div>
+
         {/* 视频关联 */}
         <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50/60">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -655,7 +686,17 @@ export default function PdfScanImport() {
               <tbody>
                 {previewFiles.map((f, i) => (
                   <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-4 py-1.5 text-gray-800 truncate max-w-[200px]" title={f.fileName}>{f.fileName}</td>
+                    <td className="px-4 py-1.5 text-gray-800 truncate max-w-[200px]" title={f.rawFileName ? `${f.rawFileName} → ${f.fileName}` : f.fileName}>
+                      {f.renamed && f.rawFileName ? (
+                        <span className="flex items-center gap-1 min-w-0">
+                          <span className="truncate text-gray-400 line-through">{f.rawFileName.replace(/\.pdf$/i, '')}</span>
+                          <span className="text-teal-600 flex-shrink-0">→</span>
+                          <span className="truncate">{f.fileName.replace(/\.pdf$/i, '')}</span>
+                        </span>
+                      ) : (
+                        f.fileName
+                      )}
+                    </td>
                     <td className="px-4 py-1.5 text-gray-500 truncate max-w-[300px]" title={f.fullPath}>{f.fullPath}</td>
                     <td className="px-4 py-1.5">
                       {f.grade ? <span className="text-blue-600">{f.grade}</span> : <span className="text-gray-300">—</span>}

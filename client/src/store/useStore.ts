@@ -8,6 +8,8 @@ interface StoreState {
   subjectOptions: string[];
   gradeOptions: string[];
   categoryOptions: { name: string; count: number }[];
+  /** 全库资源类型计数，用于「全部书籍 / 视频课程」Tab 角标 */
+  kindCounts: { book: number; course: number };
   currentBook: Book | null;
   currentPage: number;
   zoom: number;
@@ -18,7 +20,7 @@ interface StoreState {
   mistakes: Mistake[];
   loading: boolean;
 
-  fetchBooks: (params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean; hasPairs?: boolean }) => Promise<void>;
+  fetchBooks: (params?: { category?: string; grade?: string; subject?: string; search?: string; sort?: string; page?: number; pageSize?: number; favoritesOnly?: boolean; hasPairs?: boolean; kind?: 'book' | 'course'; hasVideo?: boolean }) => Promise<void>;
   fetchBook: (id: number) => Promise<void>;
   setCurrentPage: (page: number) => void;
   setZoom: (zoom: number) => void;
@@ -47,6 +49,7 @@ export const useStore = create<StoreState>((set, get) => ({
   subjectOptions: [],
   gradeOptions: [],
   categoryOptions: [] as { name: string; count: number }[],
+  kindCounts: { book: 0, course: 0 },
   currentBook: null,
   currentPage: 1,
   zoom: 1,
@@ -67,6 +70,7 @@ export const useStore = create<StoreState>((set, get) => ({
         subjectOptions: res.options.subjects,
         gradeOptions: res.options.grades,
         categoryOptions: res.options.categories,
+        kindCounts: res.options.kindCounts ?? get().kindCounts,
       });
     } catch (e) {
       console.error('fetchBooks failed:', e);

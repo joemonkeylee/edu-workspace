@@ -103,6 +103,10 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   const pageSize = parseInt(req.query.pageSize as string, 10) || 16;
   const favoritesOnly = req.query.favoritesOnly === 'true';
   const hasPairsOnly = req.query.hasPairs === 'true';
+  // 资源类型：book = 普通书籍，course = 带讲解视频的课程资源；不传/all 表示不过滤
+  const kind = req.query.kind as string;
+  // 只看当前确实关联了视频的书（换盘后视频缺失的会被排除）
+  const hasVideoOnly = req.query.hasVideo === 'true';
 
   // Current user (null in standalone mode → global favorites)
   const userId = req.user?.userId ?? null;
@@ -118,6 +122,8 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   if (category && category !== 'all') where.category = category;
   if (grade && grade !== 'all') where.grade = grade;
   if (subject && subject !== 'all') where.subject = subject;
+  if (kind === 'book' || kind === 'course') where.kind = kind;
+  if (hasVideoOnly) where.videos = { some: { missing: false } };
   if (search) {
     where.OR = [
       { title: { contains: search } },
@@ -153,6 +159,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
       category: true,
       grade: true,
       subject: true,
+      kind: true,
       coverPage: true,
       totalPages: true,
       storagePath: true,
@@ -217,7 +224,19 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
     })
   );
 
-  res.json({ data: booksWithMeta, total, page, pageSize, options: { subjects, grades, categories } });
+  // 全库资源类型计数 —— 首页「全部书籍 / 视频课程」Tab 上的角标，不受当前筛选影响
+  const kindRows = await prisma.book.groupBy({
+    by: ['kind'],
+    where: { isDeleted: false },
+    _count: { _all: true },
+  });
+  const kindCounts = { book: 0, course: 0 };
+  for (const r of kindRows) {
+    if (r.kind === 'course') kindCounts.course = r._count._all;
+    else kindCounts.book += r._count._all;
+  }
+
+  res.json({ data: booksWithMeta, total, page, pageSize, options: { subjects, grades, categories, kindCounts } });
 }));
 
 /** 批量统计可用（未缺失）讲解视频数量 */

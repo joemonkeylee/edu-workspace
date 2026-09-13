@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import prisma from '../prisma.js';
-import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, isDpiComplete, hashFile, mergeSourcePaths, normalizeSourcePaths } from '../services/pdfProcessor.js';
+import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, inferCourseCategory, isDpiComplete, hashFile, mergeSourcePaths, normalizeSourcePaths } from '../services/pdfProcessor.js';
 import { runWithDynamicConcurrency } from '../utils/concurrency.js';
 import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
 import { execFile } from 'child_process';
@@ -13,6 +13,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { createSseTicket } from '../utils/sseTicket.js';
 import { scanVideos, matchVideosToPdfs, resolveVideoPath, toRelativePath } from '../services/videoMatcher.js';
 import type { PdfMatchResult } from '../services/videoMatcher.js';
+import { cleanPdfName, sanitizeFileName } from '../services/nameCleaner.js';
 
 const router = Router();
 const maxConcurrency = Math.max(1, os.cpus().length - 1);
@@ -91,6 +92,15 @@ async function applyVideoPlan(
   return count;
 }
 
+/** 把书籍标记为 course / book，失败（书已被删）不影响主流程 */
+async function markBookKind(bookId: number, kind: 'book' | 'course') {
+  try {
+    await prisma.book.update({ where: { id: bookId }, data: { kind } });
+  } catch {
+    /* ignore */
+  }
+}
+
 router.use(adminRequired);
 
 router.post('/scan-pdf/ticket', asyncHandler(async (req: AuthedRequest, res: Response) => {
@@ -152,12 +162,25 @@ router.post('/storage/open', (req: Request, res: Response) => {
 interface PdfTask {
   pdfPath: string;
   fileName: string;
+  /** 清洗掉广告噪声后用于归档拷贝的文件名（未清洗时等于 fileName） */
+  cleanFileName: string;
   category: string;
   title: string;
   pages: number;
   fileHash: string;
   grade: string;
   subject: string;
+}
+
+/**
+ * 清洗书名并记录使用次数：同一分类下撞名时追加 (2)(3)…，
+ * 避免清洗噪声后两本书同名触发 title+category 唯一约束。
+ */
+function dedupeTitle(used: Map<string, number>, category: string, title: string): string {
+  const key = `${category}::${title}`;
+  const n = (used.get(key) || 0) + 1;
+  used.set(key, n);
+  return n === 1 ? title : `${title} (${n})`;
 }
 
 // Pre-scan preview: parse a directory and return parsed metadata without importing
@@ -214,15 +237,27 @@ router.post('/scan-pdf/preview', asyncHandler(async (req: Request, res: Response
     matchMap = new Map(matches.map((m) => [m.fullPath, m]));
   }
 
+  // 默认开启：剥掉「【爱豆爱做题】」「【一手资源更新有保障联系sanniaowl】」这类广告水印
+  const cleanNames = req.body?.cleanNames !== false;
+  const usedTitles = new Map<string, number>();
+
   const results = pdfFiles.map((pdfPath) => {
-    const fileName = path.basename(pdfPath);
-    const title = path.basename(pdfPath, '.pdf');
+    const rawFileName = path.basename(pdfPath);
+    const cleaned = cleanNames ? cleanPdfName(rawFileName) : null;
+    const fileName = cleaned ? sanitizeFileName(cleaned.fileName) : rawFileName;
+    const category = overrideCategory || inferCourseCategory(pdfPath);
+    const title = dedupeTitle(
+      usedTitles,
+      category,
+      cleaned ? cleaned.title : path.basename(pdfPath, '.pdf'),
+    );
     const parsed = parseGradeSubjectFromPath(pdfPath);
-    const category = overrideCategory || path.basename(path.dirname(pdfPath)) || '未分类';
     const grade = overrideGrade || parsed.grade || previewBatchId;
     const m = matchMap.get(pdfPath);
     return {
       fileName,
+      rawFileName,
+      renamed: !!cleaned?.changed,
       fullPath: pdfPath,
       category,
       grade,
@@ -303,12 +338,20 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   const videoPlanId = typeof req.query.videoPlan === 'string' ? req.query.videoPlan : '';
   // 注意：不在读取时删除，扫描中断后可以直接用同一个方案重试
   const videoPlan = videoPlanId ? videoPlans.get(videoPlanId) : undefined;
+  // 资源类型：带视频关联方案的批次标记为 course（首页单独页面展示）；可用 ?kind= 显式覆盖
+  const requestedKind = typeof req.query.kind === 'string' ? req.query.kind.trim() : '';
+  const bookKind: 'book' | 'course' =
+    requestedKind === 'course' || requestedKind === 'book' ? requestedKind : videoPlan ? 'course' : 'book';
   const dpi = parseInt((req.query.dpi as string) || '300', 10);
   // Concurrency: default to min(4, cores-1), cap at 8 to avoid choking the system
   const taskId = typeof req.query.taskId === 'string' ? req.query.taskId : crypto.randomUUID();
   const initialConcurrency = Math.max(1, Math.min(maxConcurrency, parseInt((req.query.concurrency as string) || String(Math.min(4, maxConcurrency)), 10)));
   const concurrencyState = { value: initialConcurrency };
   scanConcurrency.set(taskId, concurrencyState);
+
+  // 本批次计划给某个 PDF 关联多少个视频 —— 决定它算不算「课程资源」
+  const kindFor = (pdfPath: string): 'book' | 'course' =>
+    requestedKind ? bookKind : (videoPlan?.items.get(pdfPath)?.videos.length ?? 0) > 0 ? 'course' : 'book';
 
   // Batch ID: YYYYMMDDHHmmss — all books imported in this scan share the same batchId
   const now = new Date();
@@ -413,6 +456,20 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       send('log', { message: `视频关联方案已载入：${videoPlan.items.size} 个 PDF，共 ${linkCount} 条视频关联（根目录 ${videoPlan.rootPath}）` });
     }
 
+    // 预先按固定顺序算好书名（Phase 1 是并发的，边算边去重会导致与预解析结果不一致）
+    const cleanNames = req.query.cleanNames !== 'false';
+    const usedTitles = new Map<string, number>();
+    const titleByPath = new Map<string, string>();
+    const cleanNameByPath = new Map<string, string>();
+    for (const pdfPath of pdfFiles) {
+      const name = path.basename(pdfPath);
+      const cleaned = cleanNames ? cleanPdfName(name) : null;
+      const cat = explicitCategory || inferCourseCategory(pdfPath);
+      const rawTitle = path.basename(pdfPath, '.pdf');
+      titleByPath.set(pdfPath, dedupeTitle(usedTitles, cat, cleaned ? cleaned.title || rawTitle : rawTitle));
+      cleanNameByPath.set(pdfPath, cleaned ? sanitizeFileName(cleaned.fileName) : name);
+    }
+
     // Phase 1: collect PDF info (async — pdfinfo and hash are non-blocking)
     const tasks: PdfTask[] = [];
     let phase1Done = 0;
@@ -423,13 +480,17 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
       const fileName = path.basename(pdfPath);
       try {
         const info = await getPdfInfo(pdfPath);
-        const pdfCategory = explicitCategory || path.basename(path.dirname(pdfPath)) || '未分类';
-        const title = path.basename(pdfPath, '.pdf') || info.title;
+        const pdfCategory = explicitCategory || inferCourseCategory(pdfPath);
+        const cleanFileName = cleanNameByPath.get(pdfPath) || fileName;
+        const title = titleByPath.get(pdfPath) || path.basename(pdfPath, '.pdf') || info.title;
         const { grade: parsedGrade, subject: parsedSubject } = parseGradeSubjectFromPath(pdfPath);
         const grade = explicitGrade || parsedGrade || batchId;
         const subject = explicitSubject || parsedSubject;
         const fileHash = await hashFile(pdfPath);
-        tasks.push({ pdfPath, fileName, category: pdfCategory, title, pages: info.pages, fileHash, grade, subject });
+        if (cleanFileName !== fileName) {
+          send('log', { message: `清洗文件名: ${fileName} → ${cleanFileName}` });
+        }
+        tasks.push({ pdfPath, fileName, cleanFileName, category: pdfCategory, title, pages: info.pages, fileHash, grade, subject });
       } catch {
         send('log', { message: `跳过（无法读取）: ${fileName}` });
       }
@@ -495,7 +556,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         send('log', { message: `跳过（重复文件内容）: ${task.fileName} → 已记录路径到已有书籍` });
         if (videoPlan && duplicateIds.length > 0) {
           const n = await applyVideoPlan(duplicateIds[0], task.pdfPath, videoPlan, send);
-          if (n > 0) send('log', { message: `  关联 ${n} 个讲解视频` });
+          if (n > 0) {
+            send('log', { message: `  关联 ${n} 个讲解视频` });
+            await markBookKind(duplicateIds[0], 'course');
+          }
         }
         continue;
       }
@@ -513,7 +577,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
             send('log', { message: `跳过（已导入）: ${task.fileName}` });
             if (videoPlan) {
               const n = await applyVideoPlan(existing.id, task.pdfPath, videoPlan, send);
-              if (n > 0) send('log', { message: `  关联 ${n} 个讲解视频` });
+              if (n > 0) {
+                send('log', { message: `  关联 ${n} 个讲解视频` });
+                await markBookKind(existing.id, 'course');
+              }
             }
             continue;
           }
@@ -638,6 +705,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
                 grade: task.grade,
                 subject: task.subject,
                 batchId,
+                kind: kindFor(task.pdfPath),
                 totalPages: task.pages,
                 storagePath: '',
                 fileHash: task.fileHash,
@@ -655,7 +723,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           fs.mkdirSync(bookDir, { recursive: true });
           const hasArchivedPdf = fs.readdirSync(bookDir).some((name) => name.toLowerCase().endsWith('.pdf'));
           if (!hasArchivedPdf) {
-            fs.copyFileSync(task.pdfPath, path.join(bookDir, path.basename(task.fileName)));
+            fs.copyFileSync(task.pdfPath, path.join(bookDir, path.basename(task.cleanFileName || task.fileName)));
           }
         }
         const dpiDir = path.join(bookDir, String(dpi));
@@ -700,7 +768,10 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
           if (videoPlan) {
             const n = await applyVideoPlan(bookId, task.pdfPath, videoPlan, send);
-            if (n > 0) send('log', { message: `  关联 ${n} 个讲解视频` });
+            if (n > 0) {
+              send('log', { message: `  关联 ${n} 个讲解视频` });
+              await markBookKind(bookId, 'course');
+            }
           }
         }
 

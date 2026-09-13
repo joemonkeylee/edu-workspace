@@ -12,8 +12,19 @@ const STORAGE_KEY_VIEW = 'edu-home-view-mode';
 const STORAGE_KEY_LIST_PS = 'edu-home-list-page-size';
 const STORAGE_KEY_FAV = 'edu-home-favorites-only';
 const STORAGE_KEY_PAIRS = 'edu-home-pairs-only';
+const STORAGE_KEY_KIND = 'edu-home-resource-kind';
 
 type ViewMode = 'preview' | 'list';
+/** 资源类型视图：all = 全部书籍；course = 视频课程（带讲解视频的课程资源） */
+type ResourceKind = 'all' | 'course';
+
+function loadResourceKind(): ResourceKind {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_KIND);
+    if (raw === 'all' || raw === 'course') return raw;
+  } catch { /* ignore */ }
+  return 'all';
+}
 
 function loadViewMode(): ViewMode {
   try {
@@ -135,7 +146,8 @@ function SavePrompt({
 }
 
 export default function Home() {
-  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, fetchBooks, loading, booksPerRow, setBooksPerRow, toggleFavorite } = useStore();
+  const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, kindCounts, fetchBooks, loading, booksPerRow, setBooksPerRow, toggleFavorite } = useStore();
+  const [resourceKind, setResourceKind] = useState<ResourceKind>(loadResourceKind);
 
   const loadFavoritesOnly = (): boolean => {
     try { return localStorage.getItem(STORAGE_KEY_FAV) === '1'; } catch { return false; }
@@ -272,8 +284,9 @@ export default function Home() {
       pageSize: pageSize,
       favoritesOnly,
       hasPairs: pairsOnly,
+      kind: resourceKind === 'course' ? 'course' : undefined,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly, pairsOnly]);
+  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly, pairsOnly, resourceKind]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -285,13 +298,17 @@ export default function Home() {
     }));
   }, [selectedSubject, selectedGrade, selectedCategory, search, sortFields]);
 
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY_KIND, resourceKind); } catch { /* ignore */ }
+  }, [resourceKind]);
+
   const hasUnsavedChanges = draftEdits.size > 0 || pendingDeletes.size > 0;
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
     setPageInput('1');
-  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly]);
+  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly, resourceKind]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -492,6 +509,16 @@ export default function Home() {
   const safeSetSubject = handleFilterChange(setSelectedSubject);
   const safeSetGrade = handleFilterChange(setSelectedGrade);
   const safeSetCategory = handleFilterChange(setSelectedCategory);
+  // 切换资源类型同样要过未保存编辑守卫（泛型版在 .tsx 里会被当成 JSX，单独写一份）
+  const safeSetResourceKind = (v: ResourceKind) => {
+    if (editMode && hasUnsavedChanges) {
+      setPromptAction('filter');
+      setShowSavePrompt(true);
+      (window as any).__pendingFilter = { setter: setResourceKind, value: v };
+    } else {
+      setResourceKind(v);
+    }
+  };
 
   const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory || favoritesOnly || pairsOnly);
 
@@ -524,6 +551,7 @@ export default function Home() {
       pageSize: pageSize,
       favoritesOnly,
       hasPairs: pairsOnly,
+      kind: resourceKind === 'course' ? 'course' : undefined,
     });
   };
 
@@ -575,6 +603,43 @@ export default function Home() {
       </header>
 
       <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
+        {/* Row 0: 资源类型切换（全部书籍 / 视频课程） */}
+        <div className="mb-3 flex items-center gap-4 border-b border-gray-300">
+          <button
+            type="button"
+            onClick={() => safeSetResourceKind('all')}
+            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
+              resourceKind === 'all'
+                ? 'border-primary text-primary font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <BookOpen size={14} />
+            全部书籍
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'all' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+              {kindCounts.book + kindCounts.course}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => safeSetResourceKind('course')}
+            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
+              resourceKind === 'course'
+                ? 'border-primary text-primary font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <Video size={14} />
+            视频课程
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'course' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+              {kindCounts.course}
+            </span>
+          </button>
+          {resourceKind === 'course' && (
+            <span className="pb-2 text-xs text-gray-400">PDF 讲义 + 配套讲解视频，打开书后在左侧「视频」标签观看</span>
+          )}
+        </div>
+
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-gray-400 mr-1">筛选</span> */}
@@ -771,9 +836,11 @@ export default function Home() {
           )
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
-            <BookOpen size={48} className="mb-4" />
-            <p className="mb-2">暂无书籍</p>
-            <Link to="/admin" className="text-primary hover:underline">前往后台导入 PDF</Link>
+            {resourceKind === 'course' ? <Video size={48} className="mb-4" /> : <BookOpen size={48} className="mb-4" />}
+            <p className="mb-2">{resourceKind === 'course' ? '暂无视频课程' : '暂无书籍'}</p>
+            <Link to="/admin" className="text-primary hover:underline">
+              {resourceKind === 'course' ? '前往后台扫描并勾选「解析并关联 MP4」' : '前往后台导入 PDF'}
+            </Link>
           </div>
         ) : viewMode === 'preview' ? (
           <div className="flex flex-wrap gap-3">

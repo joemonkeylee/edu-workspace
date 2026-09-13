@@ -56,6 +56,8 @@ model Book {
   grade       String   @default("")
   subject     String   @default("")
   batchId     String   @default("")
+  /// 资源类型：book = 普通书籍/教辅；course = 带讲解视频的课程资源（PDF + MP4）
+  kind        String   @default("book") @db.VarChar(16)
   coverPage   Int      @default(1)
   totalPages  Int
   storagePath String
@@ -72,6 +74,7 @@ model Book {
   @@index([category])
   @@index([grade])
   @@index([subject])
+  @@index([kind])
   @@unique([title, category])
   annotations Annotation[]
   mistakes    Mistake[]

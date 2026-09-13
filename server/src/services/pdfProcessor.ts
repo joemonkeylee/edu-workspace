@@ -236,6 +236,17 @@ const GRADE_MAP: Record<string, string> = {
  *
  * Subject: extracted from the same folder/filename text if a known keyword is found.
  */
+/**
+ * 从「【2025秋下】」「26春上」这类课程目录标记里推断学期（上/下）。
+ * 只在年级后面没有直接的上/下标记时作为兜底使用。
+ */
+function inferTermHalf(fullPathText: string): string {
+  const m = fullPathText.match(/\d{2}\s*([春秋暑寒])\s*([上下])?/);
+  if (!m) return '';
+  if (m[2]) return m[2];
+  return m[1] === '秋' || m[1] === '暑' ? '上' : '下';
+}
+
 export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; subject: string } {
   const parts = pdfPath.split(path.sep);
   // Full path text for fallback subject search (all parts + filename)
@@ -246,12 +257,15 @@ export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; sub
   const chuZhongRegex = /初([一二三])([上下])?/;
   const gaoZhongRegex = /高([一二三])([上下])?/;
 
+  // 机构课程目录常写成「【2025秋下】初三数学A+」——年级后面没有上/下，学期藏在年份后的季节词里
+  const termFallback = inferTermHalf(fullPathText);
+
   const tryMatch = (text: string): { grade: string; subject: string } | null => {
     // Middle school: 七/八/九年级 + 上下册
     const m1 = text.match(gradeRegex);
     if (m1) {
       const num = m1[1];
-      const half = m1[2] || '上';
+      const half = m1[2] || termFallback || '上';
       const gradeNum = GRADE_MAP[num] ? GRADE_MAP[num].replace('上', half) : '';
       const grade = gradeNum || `${num}年级${half}`;
       let subject = extractSubject(text.replace(gradeRegex, ''));
@@ -264,7 +278,7 @@ export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; sub
     if (m2) {
       const chuMap: Record<string, string> = { '一': '七', '二': '八', '三': '九' };
       const num = chuMap[m2[1]] || m2[1];
-      const half = m2[2] || '上';
+      const half = m2[2] || termFallback || '上';
       const grade = `${num}${half}`;
       let subject = extractSubject(text.replace(chuZhongRegex, ''));
       if (!subject) subject = extractSubject(fullPathText);
@@ -274,7 +288,7 @@ export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; sub
     // 高一/高二/高三
     const m3 = text.match(gaoZhongRegex);
     if (m3) {
-      const grade = `高${m3[1]}${m3[2] || ''}`;
+      const grade = `高${m3[1]}${m3[2] || termFallback || ''}`;
       let subject = extractSubject(text.replace(gaoZhongRegex, ''));
       if (!subject) subject = extractSubject(fullPathText);
       return { grade, subject };
@@ -342,4 +356,25 @@ export function mergeSourcePaths(...groups: unknown[]): string[] {
     }
   }
   return [...merged];
+}
+
+/**
+ * 推断 PDF 所属的课程分类。
+ *
+ * 课程资源目录的典型形态是「…/朱涛26初三/朱涛26初三A+/顺序B. 【2025秋下】初三数学A+（完结）/讲义及习题/xxx.pdf」，
+ * PDF 的直接父目录只是「讲义」「课后习题」这类内容目录，拿它当分类会产生几十个无意义的值。
+ * 所以向上找第一个「顺序…」课程目录作为分类。
+ *
+ * 找不到「顺序…」就退回原来的行为（直接父目录名）—— 普通教辅目录不受影响。
+ */
+export function inferCourseCategory(pdfPath: string): string {
+  let dir = path.dirname(pdfPath);
+  for (let i = 0; i < 8; i++) {
+    const name = path.basename(dir);
+    if (/^顺序/.test(name)) return name;
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return path.basename(path.dirname(pdfPath)) || '未分类';
 }
