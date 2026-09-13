@@ -338,7 +338,9 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   const videoPlanId = typeof req.query.videoPlan === 'string' ? req.query.videoPlan : '';
   // 注意：不在读取时删除，扫描中断后可以直接用同一个方案重试
   const videoPlan = videoPlanId ? videoPlans.get(videoPlanId) : undefined;
-  // 资源类型：带视频关联方案的批次标记为 course（首页单独页面展示）；可用 ?kind= 显式覆盖
+  // 资源类型：带视频关联方案的批次整批标记为 course（首页单独页面展示）；可用 ?kind= 显式覆盖。
+  // 整批处理而不是「按单个 PDF 有没有视频」—— 否则一门课里没匹配到视频的那几本讲义
+  // 会被标成 book，在课程页里就凭空少了几本。
   const requestedKind = typeof req.query.kind === 'string' ? req.query.kind.trim() : '';
   const bookKind: 'book' | 'course' =
     requestedKind === 'course' || requestedKind === 'book' ? requestedKind : videoPlan ? 'course' : 'book';
@@ -348,10 +350,6 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
   const initialConcurrency = Math.max(1, Math.min(maxConcurrency, parseInt((req.query.concurrency as string) || String(Math.min(4, maxConcurrency)), 10)));
   const concurrencyState = { value: initialConcurrency };
   scanConcurrency.set(taskId, concurrencyState);
-
-  // 本批次计划给某个 PDF 关联多少个视频 —— 决定它算不算「课程资源」
-  const kindFor = (pdfPath: string): 'book' | 'course' =>
-    requestedKind ? bookKind : (videoPlan?.items.get(pdfPath)?.videos.length ?? 0) > 0 ? 'course' : 'book';
 
   // Batch ID: YYYYMMDDHHmmss — all books imported in this scan share the same batchId
   const now = new Date();
@@ -705,7 +703,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
                 grade: task.grade,
                 subject: task.subject,
                 batchId,
-                kind: kindFor(task.pdfPath),
+                kind: bookKind,
                 totalPages: task.pages,
                 storagePath: '',
                 fileHash: task.fileHash,
