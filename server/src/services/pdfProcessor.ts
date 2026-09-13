@@ -222,22 +222,6 @@ const GRADE_MAP: Record<string, string> = {
 };
 
 /**
- * Parse grade (学期) and subject (学科) from a PDF file path.
- *
- * Recognised patterns (tried in order, directory parts from deepest to shallowest,
- * then filename as fallback):
- *
- * Grade patterns:
- *   七年级上册 / 7年级上册 / 七年级上 / 7年级上  → "七上"
- *   七年级下册 / 7年级下册 / 七年级下 / 7年级下  → "七下"
- *   初一上 / 初一下       → "七上" / "七下"
- *   初二上 / 初二下       → "八上" / "八下"
- *   初三上 / 初三下       → "九上" / "九下"
- *   高一 / 高二 / 高三    → "高一" / "高二" / "高三"
- *
- * Subject: extracted from the same folder/filename text if a known keyword is found.
- */
-/**
  * 从「【2025秋下】」「26春上」这类课程目录标记里推断学期（上/下）。
  * 只在年级后面没有直接的上/下标记时作为兜底使用。
  */
@@ -248,72 +232,107 @@ function inferTermHalf(fullPathText: string): string {
   return m[1] === '秋' || m[1] === '暑' ? '上' : '下';
 }
 
+/**
+ * Parse grade (学期) and subject (学科) from a PDF file path.
+ *
+ * 扫描顺序：目录（由深到浅）→ 文件名；只有真正解析出学期才算命中，
+ * 目录里只写了学科时会继续往文件名找。逐个文本的识别规则见
+ * {@link parseGradeSubjectFromText}。
+ */
 export function parseGradeSubjectFromPath(pdfPath: string): { grade: string; subject: string } {
   const parts = pdfPath.split(path.sep);
   // Full path text for fallback subject search (all parts + filename)
   const fullPathText = parts.join(' ');
 
-  // Regex: captures grade number (Chinese or Arabic), optional 上下, optional 册
-  const gradeRegex = /([七八九7-9])年级([上下])?(?:册)?/;
-  const chuZhongRegex = /初([一二三])([上下])?/;
-  const gaoZhongRegex = /高([一二三])([上下])?/;
-
-  // 机构课程目录常写成「【2025秋下】初三数学A+」——年级后面没有上/下，学期藏在年份后的季节词里
-  const termFallback = inferTermHalf(fullPathText);
-
-  const tryMatch = (text: string): { grade: string; subject: string } | null => {
-    // Middle school: 七/八/九年级 + 上下册
-    const m1 = text.match(gradeRegex);
-    if (m1) {
-      const num = m1[1];
-      const half = m1[2] || termFallback || '上';
-      const gradeNum = GRADE_MAP[num] ? GRADE_MAP[num].replace('上', half) : '';
-      const grade = gradeNum || `${num}年级${half}`;
-      let subject = extractSubject(text.replace(gradeRegex, ''));
-      if (!subject) subject = extractSubject(fullPathText);
-      return { grade, subject };
-    }
-
-    // 初一/初二/初三 + optional 上下
-    const m2 = text.match(chuZhongRegex);
-    if (m2) {
-      const chuMap: Record<string, string> = { '一': '七', '二': '八', '三': '九' };
-      const num = chuMap[m2[1]] || m2[1];
-      const half = m2[2] || termFallback || '上';
-      const grade = `${num}${half}`;
-      let subject = extractSubject(text.replace(chuZhongRegex, ''));
-      if (!subject) subject = extractSubject(fullPathText);
-      return { grade, subject };
-    }
-
-    // 高一/高二/高三
-    const m3 = text.match(gaoZhongRegex);
-    if (m3) {
-      const grade = `高${m3[1]}${m3[2] || termFallback || ''}`;
-      let subject = extractSubject(text.replace(gaoZhongRegex, ''));
-      if (!subject) subject = extractSubject(fullPathText);
-      return { grade, subject };
-    }
-
-    return null;
-  };
-
-  // 1) Walk through directory parts (exclude the filename at the end)
+  // 1) Walk through directory parts (exclude the filename at the end).
+  //    只有真的解析出学期才返回；目录里只写了学科时继续往文件名找学期。
   for (let i = parts.length - 2; i >= 0; i--) {
-    const result = tryMatch(parts[i]);
-    if (result) return result;
+    const result = parseGradeSubjectFromText(parts[i], fullPathText);
+    if (result.grade) return result;
   }
 
   // 2) Fallback: try the filename (strip .pdf)
   const fileName = parts[parts.length - 1].replace(/\.pdf$/i, '');
-  const result = tryMatch(fileName);
-  if (result) return result;
+  const byFileName = parseGradeSubjectFromText(fileName, fullPathText);
+  if (byFileName.grade) return byFileName;
 
   // 3) Last resort: try to extract subject from full path even without grade
   const subjectOnly = extractSubject(fullPathText);
   if (subjectOnly) return { grade: '', subject: subjectOnly };
 
   return { grade: '', subject: '' };
+}
+
+/**
+ * 从一段文本（文件名 / 目录名 / 书名）里解析学期与学科。
+ * 路径版负责「先目录、后文件名」的扫描顺序，这里只处理单段文本，
+ * 因此也可以直接喂书名来补齐 grade（例如从导入时算出的 title 兜底）。
+ *
+ * 识别顺序与写法：
+ *   七/八/九年级 + 上下册      七年级上册 / 7年级上 / 九年级下册   → 七上 / 七下 / 九下
+ *   紧凑写法（教辅最常见）      七上 / 7上 / 8下 / 9下              → 七上 / 八下 / 九下
+ *   初一/初二/初三 + 上下      初一上 / 初二下                     → 七上 / 八下
+ *   高一/高二/高三             高一 / 高二下                       → 高一 / 高二下
+ * 年级后没有直接的上/下时，用「26春上」这类季节标记补学期。
+ *
+ * @param text     待解析的文本（通常是不带 .pdf 的文件名或书名）
+ * @param fullText 用于学科兜底的完整上下文，默认等于 text
+ */
+export function parseGradeSubjectFromText(text: string, fullText = text): { grade: string; subject: string } {
+  // Regex: captures grade number (Chinese or Arabic), optional 上下, optional 册
+  const gradeRegex = /([七八九7-9])年级([上下])?(?:册)?/;
+  // 教辅/机构文件名最常见的紧凑写法：「初中必刷题-7上-数学人教版」「七下·英语」。
+  // 只认 7/8/9（初中三个年级）；前面不能是数字/字母/「第」（避免在 2017上、第7上 里误取），
+  // 后面不能是「午」或数字（避免 7上午、7上2 之类误判）。
+  const compactGradeRegex = /(?<![0-9A-Za-z第])([七八九7-9])([上下])(?![午0-9])/;
+  const chuZhongRegex = /初([一二三])([上下])?/;
+  const gaoZhongRegex = /高([一二三])([上下])?/;
+
+  // 机构课程目录常写成「【2025秋下】初三数学A+」——年级后面没有上/下，学期藏在年份后的季节词里
+  const termFallback = inferTermHalf(fullText);
+
+  const withSubject = (regex: RegExp, grade: string): { grade: string; subject: string } => {
+    let subject = extractSubject(text.replace(regex, ''));
+    if (!subject) subject = extractSubject(fullText);
+    return { grade, subject };
+  };
+
+  // Middle school: 七/八/九年级 + 上下册
+  const m1 = text.match(gradeRegex);
+  if (m1) {
+    const num = m1[1];
+    const half = m1[2] || termFallback || '上';
+    const gradeNum = GRADE_MAP[num] ? GRADE_MAP[num].replace('上', half) : '';
+    const grade = gradeNum || `${num}年级${half}`;
+    return withSubject(gradeRegex, grade);
+  }
+
+  // 紧凑写法：七上 / 7上 / 八下 / 9下
+  const mCompact = text.match(compactGradeRegex);
+  if (mCompact) {
+    const num = mCompact[1];
+    const half = mCompact[2] || termFallback || '上';
+    const base = GRADE_MAP[num];
+    const grade = base ? base.replace('上', half) : `${num}${half}`;
+    return withSubject(compactGradeRegex, grade);
+  }
+
+  // 初一/初二/初三 + optional 上下
+  const m2 = text.match(chuZhongRegex);
+  if (m2) {
+    const chuMap: Record<string, string> = { '一': '七', '二': '八', '三': '九' };
+    const num = chuMap[m2[1]] || m2[1];
+    const half = m2[2] || termFallback || '上';
+    return withSubject(chuZhongRegex, `${num}${half}`);
+  }
+
+  // 高一/高二/高三
+  const m3 = text.match(gaoZhongRegex);
+  if (m3) {
+    return withSubject(gaoZhongRegex, `高${m3[1]}${m3[2] || termFallback || ''}`);
+  }
+
+  return { grade: '', subject: extractSubject(fullText) };
 }
 
 function extractSubject(rest: string): string {

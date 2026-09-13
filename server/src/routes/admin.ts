@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import prisma from '../prisma.js';
-import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, inferCourseCategory, isDpiComplete, hashFile, mergeSourcePaths, normalizeSourcePaths } from '../services/pdfProcessor.js';
+import { getPdfInfo, extractOutline, renderPages, getAvailableDpis, parseGradeSubjectFromPath, parseGradeSubjectFromText, inferCourseCategory, isDpiComplete, hashFile, mergeSourcePaths, normalizeSourcePaths } from '../services/pdfProcessor.js';
 import { runWithDynamicConcurrency } from '../utils/concurrency.js';
 import { getBookRoot, getStorageRoot, inspectStorageRoot, setStorageRoot } from '../services/storage.js';
 import { execFile } from 'child_process';
@@ -224,10 +224,6 @@ router.post('/scan-pdf/preview', asyncHandler(async (req: Request, res: Response
   const overrideSubject = typeof req.body?.subject === 'string' ? req.body.subject.trim() : '';
   const overrideCategory = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
 
-  // Generate a preview batchId so grade-less files can be grouped (per-call, includes seconds)
-  const pNow = new Date();
-  const previewBatchId = `${pNow.getFullYear()}${String(pNow.getMonth() + 1).padStart(2, '0')}${String(pNow.getDate()).padStart(2, '0')}${String(pNow.getHours()).padStart(2, '0')}${String(pNow.getMinutes()).padStart(2, '0')}${String(pNow.getSeconds()).padStart(2, '0')}`;
-
   // 可选：顺带解析 MP4 讲解视频并给出 PDF → 视频 的对应建议
   const withVideo = req.body?.withVideo === true;
   const videoRoot = stat.isDirectory() ? targetPath : path.dirname(targetPath);
@@ -259,7 +255,9 @@ router.post('/scan-pdf/preview', asyncHandler(async (req: Request, res: Response
       cleaned ? cleaned.title : path.basename(pdfPath, '.pdf'),
     );
     const parsed = parseGradeSubjectFromPath(pdfPath);
-    const grade = overrideGrade || parsed.grade || previewBatchId;
+    // 解析不出学期就留空，不要退回批次号 —— batchId 有自己的字段，
+    // 把批次号写进 grade 会让首页「学期」筛选里冒出一串时间戳。
+    const grade = overrideGrade || parsed.grade || parseGradeSubjectFromText(title).grade;
     const m = matchMap.get(pdfPath);
     return {
       fileName,
@@ -499,7 +497,8 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         const cleanFileName = cleanNameByPath.get(pdfPath) || fileName;
         const title = titleByPath.get(pdfPath) || path.basename(pdfPath, '.pdf') || info.title;
         const { grade: parsedGrade, subject: parsedSubject } = parseGradeSubjectFromPath(pdfPath);
-        const grade = explicitGrade || parsedGrade || batchId;
+        // 解析不出学期就留空：batchId 单独存字段，塞进 grade 会污染首页的学期筛选
+        const grade = explicitGrade || parsedGrade || parseGradeSubjectFromText(title).grade;
         const subject = explicitSubject || parsedSubject;
         const fileHash = await hashFile(pdfPath);
         if (cleanFileName !== fileName) {
@@ -525,6 +524,16 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
 
     const totalPages = tasks.reduce((s, t) => s + t.pages, 0);
     send('log', { message: `共 ${tasks.length} 个有效 PDF，合计 ${totalPages} 页` });
+
+    // 学期解析不出来的文件留空（不再用批次号顶替），这里汇总提醒一次，
+    // 方便在导入前的预览里手动指定「学期」覆盖。
+    const gradeMissing = tasks.filter((t) => !t.grade);
+    if (gradeMissing.length) {
+      const shown = gradeMissing.slice(0, 5).map((t) => t.fileName).join('、');
+      send('log', {
+        message: `提示：${gradeMissing.length} 个文件无法从文件名/目录推断学期，grade 已留空（示例：${shown}${gradeMissing.length > 5 ? ' 等' : ''}）。可在预览里指定学期后重新导入。`,
+      });
+    }
 
     // Pre-scan: build lookup maps for existing books by title::category and by file hash.
     const existingBooks = await prisma.book.findMany({
