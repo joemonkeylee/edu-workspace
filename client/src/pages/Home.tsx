@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, CheckCircle2, Video, VideoOff } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
@@ -193,7 +193,14 @@ export default function Home() {
   const [selectedGrade, setSelectedGrade] = useState(saved.grade);
   const [selectedCategory, setSelectedCategory] = useState(saved.category);
   const [search, setSearch] = useState(saved.search);
-  const [debouncedSearch, setDebouncedSearch] = useState(saved.search);
+  // 已生效的筛选条件：下拉/输入只改「草稿」，点「搜索」或回车才同步到这里并发起请求，
+  // 避免每改一次下拉或每敲一个字都打一次接口
+  const [applied, setApplied] = useState({
+    subject: saved.subject,
+    grade: saved.grade,
+    category: saved.category,
+    search: saved.search,
+  });
   const [favoritesOnly, setFavoritesOnly] = useState<boolean>(loadFavoritesOnly);
   const [pairsOnly, setPairsOnly] = useState<boolean>(loadPairsOnly);
   // Sort: array of { field, dir } where dir is 'asc' | 'desc' | null; order = priority
@@ -290,20 +297,34 @@ export default function Home() {
   );
   const categoryOptions = useMemo(() => [...rawCategoryOptions].sort((a, b) => a.name.localeCompare(b.name)), [rawCategoryOptions]);
 
-  // Debounce search input (only triggers if value actually changed)
-  useEffect(() => {
-    if (search === debouncedSearch) return;
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
-  }, [search, debouncedSearch]);
+  // 草稿与已应用条件是否不一致（用来高亮「搜索」按钮，提示还有条件没生效）
+  const pendingSearch = (
+    search !== applied.search ||
+    selectedSubject !== applied.subject ||
+    selectedGrade !== applied.grade ||
+    selectedCategory !== applied.category
+  );
 
-  // Server-side fetch: whenever page or filters change
+  /** 把当前草稿条件应用并查询（点「搜索」/ 回车 / 清空关键字时调用） */
+  const applySearch = (overrides?: Partial<typeof applied>) => {
+    setApplied({
+      subject: selectedSubject,
+      grade: selectedGrade,
+      category: selectedCategory,
+      search,
+      ...overrides,
+    });
+    setPage(1);
+    setPageInput('1');
+  };
+
+  // Server-side fetch: whenever page or applied filters change
   useEffect(() => {
     fetchBooks({
-      category: selectedCategory || undefined,
-      grade: selectedGrade || undefined,
-      subject: selectedSubject || undefined,
-      search: debouncedSearch || undefined,
+      category: applied.category || undefined,
+      grade: applied.grade || undefined,
+      subject: applied.subject || undefined,
+      search: applied.search || undefined,
       sort: sortString,
       page,
       pageSize: pageSize,
@@ -311,7 +332,7 @@ export default function Home() {
       hasPairs: pairsOnly,
       kind: resourceKind === 'course' ? 'course' : undefined,
     });
-  }, [page, selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly, pairsOnly, resourceKind]);
+  }, [page, applied, sortString, pageSize, favoritesOnly, pairsOnly, resourceKind]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -329,11 +350,11 @@ export default function Home() {
 
   const hasUnsavedChanges = draftEdits.size > 0 || pendingDeletes.size > 0;
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when applied filters change
   useEffect(() => {
     setPage(1);
     setPageInput('1');
-  }, [selectedSubject, selectedGrade, selectedCategory, debouncedSearch, sortString, pageSize, favoritesOnly, resourceKind]);
+  }, [applied, sortString, pageSize, favoritesOnly, resourceKind]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -467,10 +488,10 @@ export default function Home() {
       setPendingDeletes(new Set());
       setSelectedIds(new Set());
       await fetchBooks({
-        category: selectedCategory || undefined,
-        grade: selectedGrade || undefined,
-        subject: selectedSubject || undefined,
-        search: debouncedSearch || undefined,
+        category: applied.category || undefined,
+        grade: applied.grade || undefined,
+        subject: applied.subject || undefined,
+        search: applied.search || undefined,
         sort: sortString,
         page: safePage,
         pageSize: pageSize,
@@ -545,7 +566,7 @@ export default function Home() {
     }
   };
 
-  const hasActiveFilters = !!(search || selectedSubject || selectedGrade || selectedCategory || favoritesOnly || pairsOnly);
+  const hasActiveFilters = !!(applied.search || applied.subject || applied.grade || applied.category || favoritesOnly || pairsOnly);
 
   const resetFilters = () => {
     const reset = () => {
@@ -553,6 +574,7 @@ export default function Home() {
       setSelectedGrade('');
       setSelectedCategory('');
       setSearch('');
+      setApplied({ subject: '', grade: '', category: '', search: '' });
       handleFavoritesOnlyChange(false);
       handlePairsOnlyChange(false);
     };
@@ -567,10 +589,10 @@ export default function Home() {
 
   const refreshBooks = () => {
     fetchBooks({
-      category: selectedCategory || undefined,
-      grade: selectedGrade || undefined,
-      subject: selectedSubject || undefined,
-      search: debouncedSearch || undefined,
+      category: applied.category || undefined,
+      grade: applied.grade || undefined,
+      subject: applied.subject || undefined,
+      search: applied.search || undefined,
       sort: sortString,
       page: safePage,
       pageSize: pageSize,
@@ -610,6 +632,7 @@ export default function Home() {
   };
 
   // 关键字搜索框：普通视图放在筛选区前部；只看收藏时移到行尾（弱化 页/关键字 这类次要筛选）
+  // 输入时不自动查询，回车或点旁边的「搜索」才生效
   const keywordSearchEl = (
     <div className="relative w-36">
       <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
@@ -617,15 +640,14 @@ export default function Home() {
         type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        onBlur={() => { if (search !== debouncedSearch) setDebouncedSearch(search); }}
-        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (search !== debouncedSearch) setDebouncedSearch(search); } }}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applySearch(); } }}
         placeholder="关键字..."
         className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-7 pr-3 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
       />
       {search && (
         <button
           type="button"
-          onClick={() => setSearch('')}
+          onClick={() => { setSearch(''); applySearch({ search: '' }); }}
           className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
           title="清除"
         >
@@ -633,6 +655,24 @@ export default function Home() {
         </button>
       )}
     </div>
+  );
+
+  // 「搜索」按钮：下拉与关键字只改草稿，点这里（或回车）才真正查询；有条件未生效时高亮
+  const searchButtonEl = (
+    <button
+      type="button"
+      onClick={() => applySearch()}
+      className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+        pendingSearch
+          ? 'border-primary bg-primary/5 text-primary font-medium hover:bg-primary/10'
+          : 'border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary'
+      }`}
+      title={pendingSearch ? '有筛选条件未生效，点击查询' : '按当前条件查询'}
+    >
+      <Search size={13} />
+      搜索
+      {pendingSearch && <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-primary" />}
+    </button>
   );
 
   return (
@@ -697,6 +737,7 @@ export default function Home() {
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-18" />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
           {!favoritesOnly && keywordSearchEl}
+          {!favoritesOnly && searchButtonEl}
           <button
             type="button"
             onClick={hasActiveFilters ? resetFilters : refreshBooks}
@@ -805,6 +846,7 @@ export default function Home() {
           </button>
           {/* 只看收藏时，把「关键字」筛选移到行尾（弱化次要筛选，主排序为收藏时间） */}
           {favoritesOnly && keywordSearchEl}
+          {favoritesOnly && searchButtonEl}
         </div>
 
         {loading ? (
@@ -965,24 +1007,12 @@ export default function Home() {
                           </div>
                         )
                       )}
-                      {/* 学习进度角标：已完成 x/y 讲 */}
-                      {book.videoProgress && book.videoProgress.total > 0 && (
-                        <div
-                          className="relative mt-0.5 flex items-center gap-0.5 bg-emerald-600 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
-                          title={`已完成 ${book.videoProgress.done}/${book.videoProgress.total} 讲 · 完成度 ${book.videoProgress.percent}%`}
-                        >
-                          <CheckCircle2 size={9} />
-                          <span>已完成</span>
-                          <span className="ml-0.5">{book.videoProgress.done}/{book.videoProgress.total}</span>
-                          <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-emerald-600 border-r-[6px] border-r-transparent border-b-0" />
-                        </div>
-                      )}
                     </div>
                     {/* 封面底部细进度条 */}
                     {book.videoProgress && book.videoProgress.total > 0 && (
-                      <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-black/30">
+                      <div className="absolute inset-x-0 bottom-0 z-20 h-[3px] bg-white/20">
                         <div
-                          className="h-full bg-emerald-400 transition-all"
+                          className="h-full bg-emerald-500 transition-all"
                           style={{ width: `${book.videoProgress.percent}%` }}
                         />
                       </div>
@@ -1043,8 +1073,21 @@ export default function Home() {
                           </div>
                         </>
                       )}
-                      <div className="mt-1 text-right">
-                        <span className="text-[10px] text-white/80">{book.totalPages} 页</span>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        {book.videoProgress && book.videoProgress.total > 0 ? (
+                          <span
+                            className={`flex items-center gap-1 rounded px-1 py-0.5 text-[9px] font-medium text-white ${
+                              book.videoProgress.done > 0 ? 'bg-emerald-500/90' : 'bg-gray-500/90'
+                            }`}
+                            title={`已完成 ${book.videoProgress.done}/${book.videoProgress.total} 讲 · 完成度 ${book.videoProgress.percent}%`}
+                          >
+                            {book.videoProgress.done > 0 ? <Check size={9} strokeWidth={3} /> : <Circle size={8} />}
+                            已完成 {book.videoProgress.done}/{book.videoProgress.total}
+                          </span>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="whitespace-nowrap text-[10px] text-white/70">{book.totalPages} 页</span>
                       </div>
                     </div>
                   </div>
