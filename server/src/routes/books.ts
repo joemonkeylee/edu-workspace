@@ -114,7 +114,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   });
   const favoriteIdSet = new Set(favoriteRows.map((r) => r.bookId));
 
-  const where: any = {};
+  const where: any = { isDeleted: false };
   if (category && category !== 'all') where.category = category;
   if (grade && grade !== 'all') where.grade = grade;
   if (subject && subject !== 'all') where.subject = subject;
@@ -221,7 +221,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
 router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const book = await prisma.book.findUnique({ where: { id } });
-  if (!book) {
+  if (!book || book.isDeleted) {
     return res.status(404).json({ error: '书籍不存在' });
   }
   const userId = req.user?.userId;

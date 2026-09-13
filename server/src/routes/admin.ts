@@ -294,6 +294,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
     // Pre-scan: build lookup maps for existing books by title::category and by file hash.
     const existingBooks = await prisma.book.findMany({
       select: { id: true, title: true, category: true, fileHash: true, sourcePaths: true },
+      where: { isDeleted: false },
     });
     const existingMap = new Map<string, number>();
     const hashLookup = new Map<string, number[]>();
@@ -406,7 +407,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
         if (skipDb) {
           // skipDb mode: find book by hash, only render images to storage
           const existingByHash = await prisma.book.findFirst({
-            where: { fileHash: task.fileHash },
+            where: { fileHash: task.fileHash, isDeleted: false },
             select: { id: true },
           });
           if (!existingByHash) {
@@ -418,7 +419,7 @@ router.get('/scan-pdf', async (req: Request, res: Response) => {
           send('log', { message: `  匹配到 Book ID=${bookId}` });
         } else {
           const existing = await prisma.book.findFirst({
-            where: { title: task.title, category: task.category },
+            where: { title: task.title, category: task.category, isDeleted: false },
           });
 
           let isNew = false;

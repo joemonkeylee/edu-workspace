@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { TocNode } from '../../types';
-import { adminGetBooks, adminGetBatches, adminUpdateBook, adminDeleteBook, adminDeleteBooksBatch, adminClearBooks } from '../../api/client';
+import { adminGetBooks, adminGetBatches, adminUpdateBook, adminSoftDeleteBook, adminSoftDeleteBooksBatch, adminClearBooks } from '../../api/client';
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../BookCover';
@@ -176,11 +176,12 @@ export default function BooksTable() {
 
   const handleDelete = (id: number, title: string) => {
     setDeleteConfirm({
-      title: '确认删除',
-      message: `删除「${title}」？将同时清理所有切图、批注和错题，无法恢复。`,
+      title: '软删除确认',
+      message: `将「${title}」移到「已删除」？资源文件搬至 books-deleted，可随时恢复。`,
       onConfirm: async () => {
         setDeleteConfirm(null);
-        await adminDeleteBook(id);
+        await adminSoftDeleteBook(id);
+        toast.success(`已软删除「${title}」`);
         setSelectedIds((prev) => {
           const next = new Set(prev);
           next.delete(id);
@@ -220,22 +221,23 @@ export default function BooksTable() {
     if (selectedIds.size === 0) return;
     const count = selectedIds.size;
     setDeleteConfirm({
-      title: '批量删除确认',
-      message: `确定删除选中的 ${count} 本书？将同时清理所有切图、批注和错题，无法恢复。`,
+      title: '批量软删除确认',
+      message: `将选中的 ${count} 本书移到「已删除」？资源文件搬至 books-deleted，可随时恢复。`,
       onConfirm: async () => {
         setDeleteConfirm(null);
         const ids = Array.from(selectedIds);
         setDeleting(true);
         setDeleteProgress({ current: 0, total: ids.length, title: '' });
         try {
-          setDeleteProgress({ current: 0, total: ids.length, title: `批量删除 ${ids.length} 本` });
-          await adminDeleteBooksBatch(ids);
-          setDeleteProgress({ current: ids.length, total: ids.length, title: '完成' });
+          setDeleteProgress({ current: 0, total: ids.length, title: `批量软删除 ${ids.length} 本` });
+          const res = await adminSoftDeleteBooksBatch(ids);
+          setDeleteProgress({ current: res.deleted, total: ids.length, title: '完成' });
+          toast.success(`已软删除 ${res.deleted} 本（${res.skipped} 本跳过）`);
           await new Promise((r) => setTimeout(r, 300));
           setSelectedIds(new Set());
           fetch();
         } catch (e: any) {
-          toast.error('批量删除失败: ' + (e?.message || ''));
+          toast.error('批量软删除失败: ' + (e?.message || ''));
         } finally {
           setDeleting(false);
           setDeleteProgress(null);

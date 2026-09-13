@@ -428,6 +428,31 @@ export async function adminDeleteBooksBatch(ids: number[]) {
   return data;
 }
 
+export async function adminSoftDeleteBook(id: number) {
+  const { data } = await api.post(`/admin/books/${id}/soft-delete`);
+  return data;
+}
+
+export async function adminSoftDeleteBooksBatch(ids: number[]) {
+  const { data } = await api.post('/admin/books/soft-delete-batch', { ids });
+  return data;
+}
+
+export async function adminRestoreBook(id: number) {
+  const { data } = await api.post(`/admin/books/${id}/restore`);
+  return data;
+}
+
+export async function adminRestoreBooksBatch(ids: number[]) {
+  const { data } = await api.post('/admin/books/restore-batch', { ids });
+  return data;
+}
+
+export async function adminBooksDeleted(params?: { page?: number; pageSize?: number; search?: string }) {
+  const { data } = await api.get('/admin/books/deleted', { params });
+  return data;
+}
+
 export async function adminClearBooks(onProgress: (progress: { current: number; total: number; title: string }) => void) {
   const headers: Record<string, string> = {};
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;

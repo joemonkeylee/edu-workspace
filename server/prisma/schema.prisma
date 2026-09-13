@@ -63,6 +63,8 @@ model Book {
   sourcePaths Json?    @default("[]")
   tocJson     Json
   attributes  Json     @default("{}")
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 

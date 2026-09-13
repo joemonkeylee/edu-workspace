@@ -10,7 +10,7 @@ import {
   bookPairsUnbindBatch,
   bookPairsExport,
   bookPairsRules,
-  adminDeleteBooksBatch,
+  adminSoftDeleteBooksBatch,
   type BookPairCandidate,
   type PairStats,
   type PairRules,
@@ -924,24 +924,24 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
     if (selected.size === 0) { toast.warning('请先勾选要删除的书'); return; }
     const ids = Array.from(selected);
     const confirmed = await confirm({
-      title: '删除确认',
-      message: `确认删除选中的 ${ids.length} 本孤儿书？此操作将同时删除数据库记录和存储文件（页面图片、裁剪），不可恢复。`,
-      confirmText: '确认删除',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      title: '软删除确认',
+      message: `确认将选中的 ${ids.length} 本孤儿书移到「已删除」？资源文件会搬至 books-deleted 目录，可随时恢复。`,
+      confirmText: '软删除',
+      confirmClass: 'bg-amber-500 hover:bg-amber-600',
     });
     if (!confirmed) return;
     setDeleting(true);
     setDeleteProgress({ current: 0, total: ids.length });
     try {
-      const res = await adminDeleteBooksBatch(ids);
+      const res = await adminSoftDeleteBooksBatch(ids);
       setDeleteProgress({ current: res.deleted, total: ids.length });
-      toast.success(`已删除 ${res.deleted} 本（含数据+资源文件）`);
+      toast.success(`已软删除 ${res.deleted} 本（${res.skipped} 本跳过）`);
       setTimeout(() => {
         setDeleteProgress(null);
       }, 1200);
       fetch();
     } catch (e: any) {
-      toast.error('删除失败: ' + (e?.message || ''));
+      toast.error('操作失败: ' + (e?.message || ''));
       setDeleteProgress(null);
     } finally {
       setDeleting(false);

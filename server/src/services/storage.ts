@@ -25,6 +25,36 @@ export function getBookRoot(bookId: number) {
   return path.join(getBooksRoot(), String(bookId));
 }
 
+export function getBooksDeletedRoot() {
+  return path.join(storageRoot, 'books-deleted');
+}
+
+export function getBookDeletedRoot(bookId: number) {
+  return path.join(getBooksDeletedRoot(), String(bookId));
+}
+
+/** Move books/{id} → books-deleted/{id}. No-op if source doesn't exist. */
+export function moveBookToDeleted(bookId: number): boolean {
+  const src = getBookRoot(bookId);
+  if (!fs.existsSync(src)) return false;
+  const dest = getBookDeletedRoot(bookId);
+  fs.mkdirSync(getBooksDeletedRoot(), { recursive: true });
+  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+  fs.renameSync(src, dest);
+  return true;
+}
+
+/** Move books-deleted/{id} → books/{id}. Returns false if source doesn't exist. */
+export function restoreBookFromDeleted(bookId: number): boolean {
+  const src = getBookDeletedRoot(bookId);
+  if (!fs.existsSync(src)) return false;
+  const dest = getBookRoot(bookId);
+  if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(getBooksRoot(), { recursive: true });
+  fs.renameSync(src, dest);
+  return true;
+}
+
 export function getCropsRoot() {
   return path.join(storageRoot, 'crops');
 }
