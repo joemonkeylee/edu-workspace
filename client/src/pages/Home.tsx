@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Video } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
@@ -912,7 +912,7 @@ export default function Home() {
                           <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-sky-500 border-r-[6px] border-r-transparent border-b-0" />
                         </div>
                       )}
-                      {(book.videoCount || 0) > 0 && (
+                      {(book.videoCount || 0) > 0 ? (
                         <div
                           className="relative mt-0.5 flex items-center gap-0.5 bg-teal-600 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
                           title={`${book.videoCount} 个讲解视频`}
@@ -922,6 +922,18 @@ export default function Home() {
                           <span className="ml-0.5">{book.videoCount}</span>
                           <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-teal-600 border-r-[6px] border-r-transparent border-b-0" />
                         </div>
+                      ) : (
+                        // 课程资源但没匹配到视频 —— 留在课程页，同时让「没讲解」一眼可见
+                        book.kind === 'course' && (
+                          <div
+                            className="relative mt-0.5 flex items-center gap-0.5 bg-gray-500/90 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
+                            title="课程讲义，暂无配套讲解视频"
+                          >
+                            <VideoOff size={9} />
+                            <span>无讲解</span>
+                            <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-gray-500/90 border-r-[6px] border-r-transparent border-b-0" />
+                          </div>
+                        )
                       )}
                     </div>
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
@@ -1078,7 +1090,7 @@ export default function Home() {
                                 ✓ 答案 {book.pairSummary.partnerCount}
                               </span>
                             )}
-                            {(book.videoCount || 0) > 0 && (
+                            {(book.videoCount || 0) > 0 ? (
                               <span
                                 className="flex-shrink-0 flex items-center gap-0.5 rounded bg-teal-600 text-white px-1.5 py-0.5 text-[10px] font-medium"
                                 title={`${book.videoCount} 个讲解视频`}
@@ -1086,6 +1098,16 @@ export default function Home() {
                                 <Video size={9} />
                                 讲解 {book.videoCount}
                               </span>
+                            ) : (
+                              book.kind === 'course' && (
+                                <span
+                                  className="flex-shrink-0 flex items-center gap-0.5 rounded bg-gray-500/90 text-white px-1.5 py-0.5 text-[10px] font-medium"
+                                  title="课程讲义，暂无配套讲解视频"
+                                >
+                                  <VideoOff size={9} />
+                                  无讲解
+                                </span>
+                              )
                             )}
                           </div>
                         )}
