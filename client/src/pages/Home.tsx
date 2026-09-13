@@ -22,6 +22,13 @@ const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
 const STORAGE_KEY_VIEW = 'edu-home-view-mode';
 const STORAGE_KEY_LIST_PS = 'edu-home-list-page-size';
 
+/**
+ * 封面容器宽高比。库里的封面是 PDF 第 1 页渲染出来的图片，97% 都是标准 A4 竖版
+ * （2481×3508 ≈ 210:297）。容器按 A4 定比例、图片用 contain，封面就能整张显示；
+ * 之前容器是 3:4（更宽），配合 object-cover 会把上下各裁掉约 3%，书名和页脚正好被切。
+ */
+const COVER_ASPECT = '210 / 297';
+
 type ViewMode = 'preview' | 'list';
 
 const SORT_LABELS: Record<SortFieldName, string> = {
@@ -889,7 +896,7 @@ export default function Home() {
           viewMode === 'preview' ? (
             <div className="relative flex flex-wrap gap-3">
               {Array.from({ length: pageSize }).map((_, i) => (
-                <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: '3/4', width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
+                <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: COVER_ASPECT, width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
               ))}
               <div className="absolute inset-0 flex items-center justify-center bg-white/50">
                 <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
@@ -925,7 +932,7 @@ export default function Home() {
                     {Array.from({ length: Math.min(pageSize, 12) }).map((_, i) => (
                       <tr key={i} className="border-t border-gray-100">
                         {editMode && <td className="px-2 py-2"><div className="h-4 w-4 rounded bg-gray-200 animate-pulse" /></td>}
-                        <td className="px-2 py-2"><div className="h-10 w-8 rounded bg-gray-200 animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-10 rounded bg-gray-200 animate-pulse" style={{ aspectRatio: COVER_ASPECT }} /></td>
                         <td className="px-2 py-2"><div className="h-4 w-40 rounded bg-gray-200 animate-pulse" /></td>
                         <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-gray-200 animate-pulse" /></td>
                         <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-gray-200 animate-pulse" /></td>
@@ -1006,10 +1013,11 @@ export default function Home() {
 
                   <div
                     className={`relative overflow-hidden cursor-pointer ${editMode ? '' : 'hover:shadow-md group'}`}
-                    style={{ aspectRatio: '3/4' }}
+                    style={{ aspectRatio: COVER_ASPECT }}
                     onClick={() => { if (editMode) toggleSelect(book.id); else window.open(`/book/${book.id}`, '_blank'); }}
                   >
-                    <BookCover book={book} className={`w-full h-full object-cover ${editMode ? '' : 'transition group-hover:scale-[1.02]'}`} />
+                    {/* 封面：contain 保证整张可见；悬停用亮度反馈代替原来的放大（放大会把边缘再裁掉一点） */}
+                    <BookCover book={book} fit="contain" className={`w-full h-full ${editMode ? '' : 'transition group-hover:brightness-[1.04]'}`} />
                     {/* 左上角角标：答案 + 讲解视频 */}
                     <div className="absolute top-0 left-0 z-10 flex flex-col items-start">
                       {book.pairSummary?.role === 'textbook' && book.pairSummary.partnerCount > 0 && (
@@ -1132,7 +1140,7 @@ export default function Home() {
             })}
             {/* Placeholder cards to fill remaining grid slots */}
             {Array.from({ length: Math.max(0, pageSize - pagedBooks.length) }).map((_, i) => (
-              <div key={`ph-${i}`} className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center" style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: '3/4' }}>
+              <div key={`ph-${i}`} className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center" style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: COVER_ASPECT }}>
                 <BookOpen size={24} className="text-gray-200" />
               </div>
             ))}
@@ -1188,8 +1196,8 @@ export default function Home() {
                         </td>
                       )}
                       <td className="px-2 py-2">
-                        <div className="h-10 w-8 overflow-hidden rounded">
-                          <BookCover book={book} className="h-full w-full object-cover" />
+                        <div className="h-10 overflow-hidden rounded" style={{ aspectRatio: COVER_ASPECT }}>
+                          <BookCover book={book} fit="contain" className="h-full w-full" />
                         </div>
                       </td>
                       <td className="px-2 py-2 truncate">

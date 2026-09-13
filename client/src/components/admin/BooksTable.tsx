@@ -469,7 +469,8 @@ export default function BooksTable() {
                   <td className="px-4 py-3">
                     <BookCover
                       book={book}
-                      className="w-12 h-16 object-cover rounded border border-gray-200"
+                      fit="contain"
+                      className="aspect-[210/297] h-16 rounded border border-gray-200"
                     />
                   </td>
                   <td className="px-4 py-3 max-w-xs">
