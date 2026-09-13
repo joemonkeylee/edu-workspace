@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
@@ -15,8 +15,13 @@ const STORAGE_KEY_PAIRS = 'edu-home-pairs-only';
 const STORAGE_KEY_KIND = 'edu-home-resource-kind';
 
 type ViewMode = 'preview' | 'list';
-/** 资源类型视图：all = 全部书籍；course = 视频课程（带讲解视频的课程资源） */
-type ResourceKind = 'all' | 'course';
+/**
+ * 资源类型视图：
+ * - all = 全部书籍
+ * - course = 视频课程（带讲解视频的课程资源）
+ * - exercise = 必刷题（题目数据尚未导入，当前仅预留 Tab 位置，导入后在此接入列表）
+ */
+type ResourceKind = 'all' | 'course' | 'exercise';
 
 /** 可排序字段；favoriteAt = 添加收藏时间（按 BookFavorite.createdAt 排序） */
 type SortFieldName = 'subject' | 'grade' | 'category' | 'title' | 'totalPages' | 'favoriteAt';
@@ -53,7 +58,7 @@ const SORT_LABELS: Record<SortFieldName, string> = {
 function loadResourceKind(): ResourceKind {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_KIND);
-    if (raw === 'all' || raw === 'course') return raw;
+    if (raw === 'all' || raw === 'course' || raw === 'exercise') return raw;
   } catch { /* ignore */ }
   return 'course';
 }
@@ -173,6 +178,20 @@ function SavePrompt({
           <button onClick={onSave} className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primaryDark">保存</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 「必刷题」占位区域。
+ * 题库数据尚未导入，这里先占住位置；导入后把列表/筛选接到此视图即可（见 ResourceKind 的 exercise）。
+ */
+function ExercisePlaceholder() {
+  return (
+    <div className="flex min-h-[420px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white/60 text-gray-400">
+      <ListChecks size={48} className="mb-4" />
+      <p className="mb-1 text-sm font-medium text-gray-500">必刷题</p>
+      <p className="text-xs">题库数据尚未导入，导入后将在此展示</p>
     </div>
   );
 }
@@ -318,8 +337,12 @@ export default function Home() {
     setPageInput('1');
   };
 
+  // 必刷题为预留 Tab：题库数据尚未导入，暂不请求书籍列表（导入后在此接入对应的 kind 参数）
+  const isExercise = resourceKind === 'exercise';
+
   // Server-side fetch: whenever page or applied filters change
   useEffect(() => {
+    if (isExercise) return;
     fetchBooks({
       category: applied.category || undefined,
       grade: applied.grade || undefined,
@@ -695,8 +718,8 @@ export default function Home() {
         </Link>
       </header>
 
-      <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
-        {/* Row 0: 资源类型切换（视频课程 / 全部书籍） */}
+      <main className={`flex-1 p-6 ${!isExercise && total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
+        {/* Row 0: 资源类型切换（视频课程 / 必刷题 / 全部书籍） */}
         <div className="mb-3 flex items-center gap-4 border-b border-gray-300">
           <button
             type="button"
@@ -711,6 +734,22 @@ export default function Home() {
             视频课程
             <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'course' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
               {kindCounts.course}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => safeSetResourceKind('exercise')}
+            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
+              resourceKind === 'exercise'
+                ? 'border-primary text-primary font-semibold'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+            title="必刷题（题目数据导入后在此展示）"
+          >
+            <ListChecks size={14} />
+            必刷题
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'exercise' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+              0
             </span>
           </button>
           <button
@@ -730,6 +769,11 @@ export default function Home() {
           </button>
         </div>
 
+        {/* 必刷题为预留 Tab：不展示筛选栏与书籍列表，只给一块占位区域 */}
+        {isExercise ? (
+          <ExercisePlaceholder />
+        ) : (
+          <>
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-gray-400 mr-1">筛选</span> */}
@@ -1410,6 +1454,8 @@ export default function Home() {
               </button>
             </div>
           </div>
+        )}
+          </>
         )}
       </main>
 
