@@ -34,6 +34,7 @@ model User {
   mistakes         Mistake[]
   assignments      Assignment[]
   readingProgress  ReadingProgress[]
+  videoProgress    VideoProgress[]
   bookFavorites    BookFavorite[]
 }
 
@@ -217,4 +218,32 @@ model BookFavorite {
   @@unique([userId, bookId])
   @@index([userId])
   @@index([bookId])
+}
+
+/// 视频学习进度。
+/// 学习以「视频」为主维度：同一个 MP4 常被多本教材引用（当前库里 786 条关联只对应 316 个视频），
+/// 所以进度按视频身份记录，看完一讲即同时推进所有引用它的教材；
+/// 反过来一本书的学习情况由它关联的多个视频聚合而成（一对一也自然成立）。
+model VideoProgress {
+  id           Int       @id @default(autoincrement())
+  /// 视频身份 = BookVideo.relPath（相对资源根目录的路径，跨盘/跨平台稳定，重定向根目录后不变）
+  videoKey     String    @db.VarChar(512)
+  userId       Int?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 播放位置（秒），用于续播
+  positionSec  Float     @default(0)
+  /// 视频总时长（秒），由播放器上报
+  durationSec  Float     @default(0)
+  /// 播放比例达到阈值后自动置为「已看完」
+  watched      Boolean   @default(false)
+  /// 手动标记「已完成」（作业做完 + 错题整理完 后由用户确认）
+  completed    Boolean   @default(false)
+  completedAt  DateTime?
+  lastViewedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([videoKey])
+  @@index([userId])
+  @@index([userId, videoKey])
 }

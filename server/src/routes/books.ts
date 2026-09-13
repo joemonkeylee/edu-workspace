@@ -4,6 +4,7 @@ import fs from 'fs';
 import prisma from '../prisma.js';
 import { getBestDpiPath, getAvailableDpisAsync } from '../services/pdfProcessor.js';
 import { getBookRoot, getCropsRoot } from '../services/storage.js';
+import { bookReadiness, loadProgressMap, progressFraction, toProgressInfo } from '../services/videoProgress.js';
 import { authRequired, adminRequired, optionalAuth, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -234,6 +235,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
 
   // 6) Attach isFavorite, availableDpis, pairSummary, videoCount — strip raw attributes from response
   const videoCountMap = await buildVideoCountMap(pageSlice.map((b) => b.id));
+  const videoProgressMap = await buildVideoProgressMap(pageSlice.map((b) => b.id), req.user);
   const booksWithMeta = await Promise.all(
     pageSlice.map(async (b) => {
       const bookDir = getBookRoot(b.id);
@@ -246,6 +248,7 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
         availableDpis: dpis,
         pairSummary: pairSummary.role ? pairSummary : null,
         videoCount: videoCountMap.get(b.id) || 0,
+        videoProgress: videoProgressMap.get(b.id) || null,
       };
     })
   );
@@ -276,13 +279,66 @@ async function buildVideoCountMap(bookIds: number[]): Promise<Map<number, number
   return new Map(rows.map((r) => [r.bookId, r._count._all]));
 }
 
-// 某本书的讲解视频列表（供阅读器左侧「视频」标签使用）
+export interface BookVideoProgress {
+  total: number;
+  /** 手动标记完成的数量 */
+  done: number;
+  /** 已看完（未手动完成）的数量 */
+  watched: number;
+  /** 整本书的完成度 0-100（各视频完成度的均值） */
+  percent: number;
+}
+
+/**
+ * 每本书的学习进度 = 它关联的多个视频的进度聚合（同一个视频被多本书引用时进度共享）。
+ * 以视频为单位算出完成度，再对书内视频取均值。
+ */
+async function buildVideoProgressMap(
+  bookIds: number[],
+  user?: AuthedRequest['user'],
+): Promise<Map<number, BookVideoProgress>> {
+  const out = new Map<number, BookVideoProgress>();
+  if (bookIds.length === 0) return out;
+
+  const rows = await prisma.bookVideo.findMany({
+    where: { bookId: { in: bookIds }, missing: false },
+    select: { bookId: true, relPath: true },
+  });
+  const progressMap = await loadProgressMap(rows.map((r) => r.relPath), user);
+
+  const acc = new Map<number, { total: number; done: number; watched: number; frac: number }>();
+  for (const row of rows) {
+    const entry = acc.get(row.bookId) ?? { total: 0, done: 0, watched: 0, frac: 0 };
+    const p = progressMap.get(row.relPath) ?? null;
+    entry.total += 1;
+    entry.frac += progressFraction(p);
+    if (p?.completed) entry.done += 1;
+    else if (p?.watched) entry.watched += 1;
+    acc.set(row.bookId, entry);
+  }
+
+  for (const [bookId, entry] of acc) {
+    out.set(bookId, {
+      total: entry.total,
+      done: entry.done,
+      watched: entry.watched,
+      percent: entry.total > 0 ? Math.round((entry.frac / entry.total) * 100) : 0,
+    });
+  }
+  return out;
+}
+
+// 某本书的讲解视频列表（供阅读器左侧「视频」标签使用），附带学习进度与「手动完成」就绪状态
 router.get('/:id/videos', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseInt(req.params.id, 10);
   const rows = await prisma.bookVideo.findMany({
     where: { bookId: id },
     orderBy: [{ sortOrder: 'asc' }, { lessonNo: 'asc' }, { id: 'asc' }],
   });
+  const [progressMap, readiness] = await Promise.all([
+    loadProgressMap(rows.map((v) => v.relPath), req.user),
+    bookReadiness(id, req.user),
+  ]);
   const data = rows.map((v) => ({
     id: v.id,
     title: v.title || v.fileName,
@@ -292,8 +348,9 @@ router.get('/:id/videos', authRequired, asyncHandler(async (req: AuthedRequest, 
     matchScore: v.matchScore,
     missing: v.missing || !fs.existsSync(v.filePath),
     streamUrl: `/api/videos/${v.id}/stream`,
+    progress: toProgressInfo(progressMap.get(v.relPath)),
   }));
-  res.json({ data });
+  res.json({ data, readiness });
 }));
 
 router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {

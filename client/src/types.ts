@@ -36,6 +36,19 @@ export interface Book {
   pairSummary?: PairSummary | null;
   /** 关联的讲解视频数量（不含文件缺失的） */
   videoCount?: number;
+  /** 学习进度（由该书关联的多个视频聚合；无视频时为 null） */
+  videoProgress?: BookVideoProgress | null;
+}
+
+/** 一本书的学习进度聚合：以视频为单位，书内取多个视频的综合 */
+export interface BookVideoProgress {
+  total: number;
+  /** 手动标记完成的数量 */
+  done: number;
+  /** 已看完（未手动完成）的数量 */
+  watched: number;
+  /** 整本书完成度 0-100 */
+  percent: number;
 }
 
 export interface Annotation {

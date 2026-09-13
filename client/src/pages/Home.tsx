@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Video, VideoOff } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, CheckCircle2, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import { updateBook, deleteBook } from '../api/client';
@@ -965,7 +965,28 @@ export default function Home() {
                           </div>
                         )
                       )}
+                      {/* 学习进度角标：已完成 x/y 讲 */}
+                      {book.videoProgress && book.videoProgress.total > 0 && (
+                        <div
+                          className="relative mt-0.5 flex items-center gap-0.5 bg-emerald-600 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
+                          title={`已完成 ${book.videoProgress.done}/${book.videoProgress.total} 讲 · 完成度 ${book.videoProgress.percent}%`}
+                        >
+                          <CheckCircle2 size={9} />
+                          <span>已完成</span>
+                          <span className="ml-0.5">{book.videoProgress.done}/{book.videoProgress.total}</span>
+                          <div className="absolute top-0 right-[-6px] h-0 w-0 border-t-[10px] border-t-emerald-600 border-r-[6px] border-r-transparent border-b-0" />
+                        </div>
+                      )}
                     </div>
+                    {/* 封面底部细进度条 */}
+                    {book.videoProgress && book.videoProgress.total > 0 && (
+                      <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-black/30">
+                        <div
+                          className="h-full bg-emerald-400 transition-all"
+                          style={{ width: `${book.videoProgress.percent}%` }}
+                        />
+                      </div>
+                    )}
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent pt-8 pb-2 px-2">
                       {editMode ? (
                         <>
@@ -1138,6 +1159,15 @@ export default function Home() {
                                   无讲解
                                 </span>
                               )
+                            )}
+                            {book.videoProgress && book.videoProgress.total > 0 && (
+                              <span
+                                className="flex-shrink-0 flex items-center gap-0.5 rounded bg-emerald-600 text-white px-1.5 py-0.5 text-[10px] font-medium"
+                                title={`已完成 ${book.videoProgress.done}/${book.videoProgress.total} 讲 · 完成度 ${book.videoProgress.percent}%`}
+                              >
+                                <CheckCircle2 size={9} />
+                                已完成 {book.videoProgress.done}/{book.videoProgress.total}
+                              </span>
                             )}
                           </div>
                         )}

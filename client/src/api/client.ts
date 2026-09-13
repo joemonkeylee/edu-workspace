@@ -428,6 +428,30 @@ export async function submitVideoPlan(rootPath: string, items: VideoPlanItemPayl
 
 // ── 讲解视频 ──────────────────────────────────────────────────────
 
+export type VideoStatus = 'not_started' | 'in_progress' | 'watched' | 'completed';
+
+/** 单个视频的学习进度（按视频身份记录，多本教材引用同一视频时共享） */
+export interface VideoProgressInfo {
+  positionSec: number;
+  durationSec: number;
+  watched: boolean;
+  completed: boolean;
+  completedAt: string | null;
+  lastViewedAt: string | null;
+  /** 完成度 0-100 */
+  percent: number;
+  status: VideoStatus;
+}
+
+/** 手动标记「已完成」的就绪状态：作业做完 + 错题整理完 */
+export interface VideoReadiness {
+  assignmentsDone: number;
+  assignmentsTotal: number;
+  mistakesDone: number;
+  mistakesTotal: number;
+  ready: boolean;
+}
+
 export interface BookVideo {
   id: number;
   title: string;
@@ -437,11 +461,27 @@ export interface BookVideo {
   matchScore: number;
   missing: boolean;
   streamUrl: string;
+  progress: VideoProgressInfo | null;
 }
 
 export async function getBookVideos(bookId: number) {
   const { data } = await api.get(`/books/${bookId}/videos`);
-  return data.data as BookVideo[];
+  return {
+    videos: data.data as BookVideo[],
+    readiness: (data.readiness ?? null) as VideoReadiness | null,
+  };
+}
+
+/** 上报播放进度（播放到阈值自动标记已看完） */
+export async function saveVideoProgress(videoId: number, positionSec: number, durationSec: number) {
+  const { data } = await api.put(`/videos/${videoId}/progress`, { positionSec, durationSec });
+  return data.data as VideoProgressInfo;
+}
+
+/** 手动标记 / 取消「已完成」（标记需满足作业做完 + 错题整理完） */
+export async function setVideoCompleted(videoId: number, completed: boolean, bookId: number) {
+  const { data } = await api.post(`/videos/${videoId}/complete`, { completed, bookId });
+  return data.data as VideoProgressInfo;
 }
 
 /** <video> 无法带 Authorization 头，走 query token */
