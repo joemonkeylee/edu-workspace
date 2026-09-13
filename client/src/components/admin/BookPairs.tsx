@@ -11,6 +11,9 @@ import {
   bookPairsExport,
   bookPairsRules,
   adminSoftDeleteBooksBatch,
+  adminSoftDeleteBook,
+  adminRestoreBooksBatch,
+  adminRestoreBook,
   type BookPairCandidate,
   type PairStats,
   type PairRules,
@@ -708,6 +711,46 @@ function BoundTab() {
     }
   };
 
+  // 联合软删/恢复：textbook + 所有 answers 一起处理
+  const handleGroupSoftDelete = async (g: { textbook: any; answers: any[] }) => {
+    const ids = [g.textbook.id, ...g.answers.map((a: any) => a.id)];
+    const confirmed = await confirm({
+      title: '联合软删除',
+      message: `将「${g.textbook.title}」及 ${g.answers.length} 本答案一起移到已删除？可恢复。`,
+      confirmText: '软删除',
+      confirmClass: 'bg-amber-500 hover:bg-amber-600',
+    });
+    if (!confirmed) return;
+    try {
+      const res = await adminSoftDeleteBooksBatch(ids);
+      toast.success(`已软删 ${res.deleted} 本（${res.skipped} 跳过）`);
+      fetch();
+    } catch (e: any) {
+      toast.error('软删除失败: ' + (e?.message || ''));
+    }
+  };
+
+  const handleGroupRestore = async (g: { textbook: any; answers: any[] }) => {
+    const ids = [g.textbook.id, ...g.answers.map((a: any) => a.id)];
+    const confirmed = await confirm({
+      title: '联合恢复',
+      message: `将「${g.textbook.title}」及 ${g.answers.length} 本答案一起恢复？`,
+      confirmText: '恢复',
+      confirmClass: 'bg-green-600 hover:bg-green-700',
+    });
+    if (!confirmed) return;
+    try {
+      const res = await adminRestoreBooksBatch(ids);
+      const parts = [`恢复 ${res.restored} 本`];
+      if (res.noResource > 0) parts.push(`${res.noResource} 本无资源`);
+      if (res.skipped > 0) parts.push(`${res.skipped} 跳过`);
+      toast.success(parts.join('，'));
+      fetch();
+    } catch (e: any) {
+      toast.error('恢复失败: ' + (e?.message || ''));
+    }
+  };
+
   const handleBatchUnbind = async () => {
     if (selected.size === 0) { toast.warning('请先勾选要解绑的行'); return; }
     const titles = groups
@@ -786,8 +829,9 @@ function BoundTab() {
             <tbody className="divide-y divide-gray-100">
               {groups.map((g, idx) => {
                 const checked = selected.has(g.textbook.id);
+                const allDeleted = g.textbook.isDeleted && g.answers.every((a: any) => a.isDeleted);
                 return (
-                  <tr key={g.textbook.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100`}>
+                  <tr key={g.textbook.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100 ${allDeleted ? 'opacity-60' : ''}`}>
                     <td className="px-3 py-2">
                       <input
                         type="checkbox"
@@ -796,7 +840,10 @@ function BoundTab() {
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <div className="font-medium"><a href={`/book/${g.textbook.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{g.textbook.id}</a> {g.textbook.title}</div>
+                      <div className="font-medium">
+                        <a href={`/book/${g.textbook.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{g.textbook.id}</a> {g.textbook.title}
+                        {g.textbook.isDeleted && <span className="ml-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">已删</span>}
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-gray-500">{g.textbook.category}</td>
                     <td className="px-3 py-2 text-gray-400">{g.textbook.totalPages}</td>
@@ -807,12 +854,18 @@ function BoundTab() {
                       {g.answers.map((a: any) => (
                         <div key={a.id} className="text-xs">
                           <a href={`/book/${a.id}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">#{a.id}</a> {a.title} <span className="text-gray-400">({a.totalPages}p)</span>
+                          {a.isDeleted && <span className="ml-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">已删</span>}
                         </div>
                       ))}
                       {g.answers.length === 0 && <span className="text-gray-400 text-xs">无答案</span>}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <button onClick={() => handleUnbind(g.textbook.id, g.textbook.title)} className="text-xs text-red-600 hover:underline">解绑</button>
+                      <button onClick={() => handleUnbind(g.textbook.id, g.textbook.title)} className="text-xs text-red-600 hover:underline mr-2">解绑</button>
+                      {allDeleted ? (
+                        <button onClick={() => handleGroupRestore(g)} className="text-xs text-green-600 hover:underline">恢复</button>
+                      ) : (
+                        <button onClick={() => handleGroupSoftDelete(g)} className="text-xs text-amber-600 hover:underline">软删</button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -839,7 +892,7 @@ function BoundTab() {
 
 // ── Orphans Tab ────────────────────────────────────────────────────
 
-type OrphanRow = { id: number; title: string; category: string; totalPages: number; type: string; role: string | null };
+type OrphanRow = { id: number; title: string; category: string; totalPages: number; type: string; role: string | null; isDeleted?: boolean };
 
 function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r: OrphanRole) => void }) {
   const confirm = useConfirm();
@@ -1009,13 +1062,14 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                 <SortHeader label="分类" col="category" w="w-28" />
                 <SortHeader label="页数" col="totalPages" w="w-16" />
                 <SortHeader label="类型" col="type" w="w-28" />
+                <th className="px-3 py-2 text-left w-20">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {orphans.map((o, idx) => {
                 const checked = selected.has(o.id);
                 return (
-                  <tr key={o.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100`}>
+                  <tr key={o.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100 ${o.isDeleted ? 'opacity-60' : ''}`}>
                     <td className="px-3 py-2">
                       <input
                         type="checkbox"
@@ -1024,7 +1078,10 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                       />
                     </td>
                     <td className="px-3 py-2 text-gray-500"><a href={`/book/${o.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{o.id}</a></td>
-                    <td className="px-3 py-2">{o.title}</td>
+                    <td className="px-3 py-2">
+                      {o.title}
+                      {o.isDeleted && <span className="ml-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">已删</span>}
+                    </td>
                     <td className="px-3 py-2 text-gray-500">{o.category}</td>
                     <td className="px-3 py-2 text-gray-400">{o.totalPages}</td>
                     <td className="px-3 py-2">
@@ -1034,11 +1091,31 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                         'bg-gray-100 text-gray-600'
                       }`}>{o.type}</span>
                     </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {o.isDeleted ? (
+                        <button onClick={async () => {
+                          try { await adminRestoreBook(o.id); toast.success('已恢复'); fetch(); }
+                          catch (e: any) { toast.error('恢复失败: ' + (e?.message || '')); }
+                        }} className="text-xs text-green-600 hover:underline">恢复</button>
+                      ) : (
+                        <button onClick={async () => {
+                          const confirmed = await confirm({
+                            title: '软删除确认',
+                            message: `将「${o.title}」移到已删除？可恢复。`,
+                            confirmText: '软删除',
+                            confirmClass: 'bg-amber-500 hover:bg-amber-600',
+                          });
+                          if (!confirmed) return;
+                          try { await adminSoftDeleteBook(o.id); toast.success('已软删除'); fetch(); }
+                          catch (e: any) { toast.error('软删除失败: ' + (e?.message || '')); }
+                        }} className="text-xs text-amber-600 hover:underline">软删</button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {orphans.length === 0 && !loading && (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">暂无数据</td></tr>
               )}
             </tbody>
           </table>

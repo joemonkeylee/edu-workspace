@@ -518,7 +518,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
 
   // Find books that have attributes.pair
   const allBooks = await prisma.book.findMany({
-    select: { id: true, title: true, category: true, totalPages: true, attributes: true },
+    select: { id: true, title: true, category: true, totalPages: true, attributes: true, isDeleted: true },
   });
 
   // Build pair groups: textbook → list of answers (supports multi-pair array)
@@ -535,11 +535,11 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
       }
       const g = groupByAnchor.get(anchorId)!;
       if (pair.role === 'textbook') {
-        if (!g.textbook) g.textbook = { id: b.id, title: b.title, category: b.category, totalPages: b.totalPages };
+        if (!g.textbook) g.textbook = { id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, isDeleted: b.isDeleted };
       } else {
         // Avoid duplicate answers (same answer bound to same textbook via multiple pair entries)
         if (!g.answers.some((a: any) => a.id === b.id)) {
-          g.answers.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages });
+          g.answers.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, isDeleted: b.isDeleted });
         }
       }
     }
@@ -588,7 +588,7 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
 
   // Same logic as scan: find books that have role keyword but no candidate pair
   const allBooks = await prisma.book.findMany({
-    select: { id: true, title: true, category: true, totalPages: true, attributes: true },
+    select: { id: true, title: true, category: true, totalPages: true, attributes: true, isDeleted: true },
     orderBy: { id: 'asc' },
   });
 
@@ -598,6 +598,7 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
     title: b.title,
     category: b.category,
     totalPages: b.totalPages,
+    isDeleted: b.isDeleted,
     role: detectRole(b.title),
     baseTitle: extractBaseTitle(b.title),
     attrs: b.attributes,
@@ -620,7 +621,7 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Build unified list with type label
-  interface OrphanRow { id: number; title: string; category: string; totalPages: number; type: string; role: 'textbook' | 'answer' | null }
+  interface OrphanRow { id: number; title: string; category: string; totalPages: number; type: string; role: 'textbook' | 'answer' | null; isDeleted: boolean }
   let rows: OrphanRow[] = [];
 
   const pushMatch = (b: typeof allWithRole[0], type: string, role: 'textbook' | 'answer' | null) => {
@@ -630,7 +631,7 @@ router.get('/orphans', asyncHandler(async (req: Request, res: Response) => {
       const p = getPairs(b.attrs);
       if (p.length > 0) return;
     }
-    rows.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type, role });
+    rows.push({ id: b.id, title: b.title, category: b.category, totalPages: b.totalPages, type, role, isDeleted: b.isDeleted });
   };
 
   for (const b of allWithRole) {
