@@ -6,10 +6,21 @@ const STORAGE_KEY = 'storageRoot';
 const DEFAULT_ROOT = path.resolve(process.cwd(), process.env.STORAGE_DIR || './storage');
 let storageRoot = DEFAULT_ROOT;
 
+/** Safe mkdir that never throws — used at startup when storageRoot may be an external drive */
+function safeMkdir(dir: string, label?: string) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (err: any) {
+    // EACCES / EPERM — external drive not writable at startup. express.static can still READ it.
+    // Only warn; don't block server boot.
+    console.warn(`[storage] ${label || 'mkdir'} failed (${err.code || 'EACCES'}): ${dir}`);
+  }
+}
+
 export async function initializeStorageRoot() {
   const setting = await prisma.appSetting.findUnique({ where: { key: STORAGE_KEY } });
   if (setting?.value) storageRoot = path.resolve(setting.value);
-  fs.mkdirSync(storageRoot, { recursive: true });
+  safeMkdir(storageRoot, 'storageRoot');
   return storageRoot;
 }
 

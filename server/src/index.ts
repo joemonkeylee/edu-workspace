@@ -88,7 +88,6 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 
 async function start() {
   await initializeStorageRoot();
-  fs.mkdirSync(getStorageRoot(), { recursive: true });
   // Protect crop images with auth middleware
   app.use('/storage/crops', cropsAuthMiddleware);
   app.use('/storage', (req, res, next) => express.static(getStorageRoot())(req, res, next));
