@@ -26,6 +26,7 @@ import readingProgressRouter from './routes/readingProgress.js';
 import { getStorageRoot, initializeStorageRoot } from './services/storage.js';
 import { isAuthEnabled } from './services/auth.js';
 import { cropsAuthMiddleware } from './middleware/cropsAuth.js';
+import { startBackupScheduler } from './services/dbBackupScheduler.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -91,9 +92,15 @@ async function start() {
   // Protect crop images with auth middleware
   app.use('/storage/crops', cropsAuthMiddleware);
   app.use('/storage', (req, res, next) => express.static(getStorageRoot())(req, res, next));
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`[edu-workspace] 后端服务已启动: http://localhost:${PORT}`);
     console.log(`[edu-workspace] 认证: ${isAuthEnabled() ? '启用' : '未启用'}`);
+    // Start auto backup scheduler (after server is up so DB is ready)
+    try {
+      await startBackupScheduler();
+    } catch (e) {
+      console.warn('[edu-workspace] auto backup scheduler failed to start:', e);
+    }
   });
 }
 
