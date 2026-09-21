@@ -12,10 +12,10 @@ interface Props {
 const REPORT_INTERVAL = 5000;
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
-  not_started: { text: '未开始', cls: 'text-gray-400' },
-  in_progress: { text: '学习中', cls: 'text-blue-600' },
-  watched: { text: '已看完', cls: 'text-teal-600' },
-  completed: { text: '已完成', cls: 'text-emerald-600' },
+  not_started: { text: '未开始', cls: 'text-muted-foreground' },
+  in_progress: { text: '学习中', cls: 'text-blue-600 dark:text-blue-400' },
+  watched: { text: '已看完', cls: 'text-teal-600 dark:text-teal-400' },
+  completed: { text: '已完成', cls: 'text-emerald-600 dark:text-emerald-400' },
 };
 
 /**
@@ -123,28 +123,28 @@ export default function VideoListPanel({ bookId }: Props) {
   };
 
   if (loading) {
-    return <div className="p-4 text-xs text-gray-500">加载视频...</div>;
+    return <div className="p-4 text-xs text-muted-foreground">加载视频...</div>;
   }
   if (videos.length === 0) {
-    return <div className="p-4 text-xs text-gray-500">这本书还没有关联讲解视频</div>;
+    return <div className="p-4 text-xs text-muted-foreground">这本书还没有关联讲解视频</div>;
   }
 
   const isCompleted = Boolean(active?.progress?.completed);
   const canComplete = readiness?.ready ?? false;
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-card">
       {/* 学习进度总览 */}
       {summary.total > 0 && (
-        <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between text-[11px] text-gray-600">
+        <div className="px-2 py-1.5 border-b border-border bg-muted">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>
               已完成 <span className="font-semibold text-emerald-600">{summary.done}</span>/{summary.total} 讲
               {summary.watched > 0 && <span className="ml-1 text-teal-600">· 已看完 {summary.watched}</span>}
             </span>
-            <span className="tabular-nums font-medium text-gray-700">{summary.percent}%</span>
+            <span className="tabular-nums font-medium text-foreground">{summary.percent}%</span>
           </div>
-          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border">
             <div
               className="h-full rounded-full bg-emerald-500 transition-all"
               style={{ width: `${summary.percent}%` }}
@@ -154,9 +154,9 @@ export default function VideoListPanel({ bookId }: Props) {
       )}
 
       {active && (
-        <div className="p-2 border-b border-gray-200">
+        <div className="p-2 border-b border-border">
           {active.missing ? (
-            <div className="flex items-start gap-1.5 rounded bg-amber-50 px-2 py-2 text-[11px] text-amber-700 border border-amber-200">
+            <div className="flex items-start gap-1.5 rounded bg-amber-500/10 px-2 py-2 text-[11px] text-amber-700 dark:text-amber-300 border border-amber-500/30">
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
               <span className="break-all">视频文件不存在：{active.fileName}</span>
             </div>
@@ -174,7 +174,7 @@ export default function VideoListPanel({ bookId }: Props) {
               onEnded={() => report(true)}
             />
           )}
-          <div className="mt-1 text-[11px] text-gray-600 line-clamp-2" title={active.title}>
+          <div className="mt-1 text-[11px] text-muted-foreground line-clamp-2" title={active.title}>
             {active.title}
           </div>
 
@@ -194,15 +194,15 @@ export default function VideoListPanel({ bookId }: Props) {
                 isCompleted
                   ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                   : canComplete
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
-                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/40 dark:hover:bg-emerald-500/25'
+                    : 'bg-muted text-muted-foreground border border-border cursor-not-allowed'
               }`}
             >
               {busy ? <Loader2 size={12} className="animate-spin" /> : isCompleted ? <CheckCircle2 size={12} /> : <Circle size={12} />}
               {isCompleted ? '已完成' : '标记完成'}
             </button>
             {readiness && (
-              <span className="text-[10px] text-gray-400 truncate" title="标记完成需作业全部做完、错题全部整理完">
+              <span className="text-[10px] text-muted-foreground truncate" title="标记完成需作业全部做完、错题全部整理完">
                 作业 {readiness.assignmentsDone}/{readiness.assignmentsTotal} · 错题 {readiness.mistakesDone}/{readiness.mistakesTotal}
               </span>
             )}
@@ -220,11 +220,11 @@ export default function VideoListPanel({ bookId }: Props) {
               onClick={() => setActiveId(v.id)}
               className={`w-full text-left flex items-start gap-1.5 px-2 py-1.5 text-xs transition border-l-2 ${
                 v.id === activeId
-                  ? 'bg-blue-50 text-blue-700 border-blue-500'
-                  : 'text-gray-700 hover:bg-gray-100 border-transparent'
+                  ? 'bg-primary/10 text-primary border-primary'
+                  : 'text-foreground hover:bg-muted border-transparent'
               }`}
             >
-              <span className="text-gray-400 tabular-nums flex-shrink-0">{v.lessonNo ?? i + 1}</span>
+              <span className="text-muted-foreground tabular-nums flex-shrink-0">{v.lessonNo ?? i + 1}</span>
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1">
                   <Play size={10} className="flex-shrink-0 opacity-70" />
@@ -232,7 +232,7 @@ export default function VideoListPanel({ bookId }: Props) {
                 </span>
                 {/* 每条视频的进度条 + 状态 */}
                 <span className="mt-1 flex items-center gap-1.5">
-                  <span className="h-1 flex-1 overflow-hidden rounded-full bg-gray-200">
+                  <span className="h-1 flex-1 overflow-hidden rounded-full bg-border">
                     <span
                       className={`block h-full rounded-full ${v.progress?.completed ? 'bg-emerald-500' : 'bg-blue-400'}`}
                       style={{ width: `${pct}%` }}

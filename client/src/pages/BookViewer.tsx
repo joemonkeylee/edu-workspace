@@ -643,7 +643,7 @@ export default function BookViewer() {
 
   if (loading || !currentBook) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="flex items-center justify-center h-full text-muted-foreground">
         <div className="animate-pulse">加载中...</div>
       </div>
     );
@@ -673,34 +673,34 @@ export default function BookViewer() {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-[#525659]">
+    <div className="h-full flex flex-col bg-background">
       {/* Top bar - 3 column grid: left / center / right */}
-      <header className="bg-[#323639] text-white px-2 py-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-shrink-0 select-none">
+      <header className="bg-card text-card-foreground border-b border-border px-2 py-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-shrink-0 select-none">
         {/* === LEFT: back + sidebar toggle + title === */}
         <div className="flex items-center min-w-0 gap-1">
           <button
             onClick={() => navigate('/')}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
+            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition flex-shrink-0"
             title="返回"
           >
             <ArrowLeft size={18} />
           </button>
           <button
             onClick={() => setLeftOpen(!leftOpen)}
-            className={`p-1.5 rounded transition flex-shrink-0 ${leftOpen ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`p-1.5 rounded transition flex-shrink-0 ${leftOpen ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
             title="目录"
           >
             <PanelLeft size={18} />
           </button>
-          <h1 className="text-sm text-gray-200 truncate" title={currentBook.title}>{currentBook.title}</h1>
+          <h1 className="text-sm text-foreground truncate" title={currentBook.title}>{currentBook.title}</h1>
           {currentBook.pairSummary && (
             <div className="relative flex-shrink-0">
               <button
                 onClick={() => setPairOpen(!pairOpen)}
                 className={`ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition ${
                   currentBook.pairSummary.role === 'textbook'
-                    ? 'bg-sky-500/20 text-sky-200 hover:bg-sky-500/30'
-                    : 'bg-teal-500/20 text-teal-200 hover:bg-teal-500/30'
+                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 hover:bg-sky-500/25'
+                    : 'bg-teal-500/15 text-teal-700 dark:text-teal-300 hover:bg-teal-500/25'
                 }`}
                 title={currentBook.pairSummary.role === 'textbook'
                   ? `已绑定 ${currentBook.pairSummary.partnerCount} 本答案，点击查看`
@@ -715,7 +715,7 @@ export default function BookViewer() {
               {pairOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setPairOpen(false)} />
-                  <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1">
+                  <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-popover border border-border rounded-lg shadow-xl py-1">
                     {currentBook.pairSummary.role === 'textbook' ? (
                       currentBook.pairSummary.partners.length > 0 ? (
                         currentBook.pairSummary.partners.map((p) => (
@@ -725,14 +725,14 @@ export default function BookViewer() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => setPairOpen(false)}
-                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-200 hover:bg-white/10 transition"
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-muted transition"
                           >
                             <span className="text-teal-400">答案</span>
                             <span className="truncate flex-1">{p.title}</span>
                           </a>
                         ))
                       ) : (
-                        <div className="px-3 py-2 text-xs text-gray-500">暂无答案</div>
+                        <div className="px-3 py-2 text-xs text-muted-foreground">暂无答案</div>
                       )
                     ) : currentBook.pairSummary.partners.length > 0 ? (
                       currentBook.pairSummary.partners.map((p) => (
@@ -742,14 +742,14 @@ export default function BookViewer() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setPairOpen(false)}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-200 hover:bg-white/10 transition"
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-muted transition"
                         >
                           <span className="text-sky-400">教材</span>
                           <span className="truncate flex-1">{p.title}</span>
                         </a>
                       ))
                     ) : (
-                      <div className="px-3 py-2 text-xs text-gray-500">所属教材未知</div>
+                      <div className="px-3 py-2 text-xs text-muted-foreground">所属教材未知</div>
                     )}
                   </div>
                 </>
@@ -763,7 +763,7 @@ export default function BookViewer() {
           <button
             onClick={() => setCurrentPage(1)}
             disabled={currentPage <= 1}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition"
             title="第一页"
           >
             <ChevronFirst size={18} />
@@ -771,7 +771,7 @@ export default function BookViewer() {
           <button
             onClick={() => setCurrentPage(Math.max(1, currentPage - step))}
             disabled={currentPage <= 1}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition"
             title="上一页"
           >
             <ChevronLeft size={18} />
@@ -786,12 +786,12 @@ export default function BookViewer() {
                 const p = Number(e.target.value);
                 if (p >= 1 && p <= totalPages) setCurrentPage(p);
               }}
-              className="w-12 bg-white/10 text-center rounded px-1 py-1 text-white border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-12 bg-muted text-center rounded px-1 py-1 text-foreground border border-border focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             {isDouble && currentPage < totalPages && (
-              <span className="text-gray-400">-{Math.min(currentPage + 1, totalPages)}</span>
+              <span className="text-muted-foreground">-{Math.min(currentPage + 1, totalPages)}</span>
             )}
-            <span className="text-gray-400">/ {totalPages}</span>
+            <span className="text-muted-foreground">/ {totalPages}</span>
             {showAnnotations && layers.annotations && pagesWithAnnotations.has(currentPage) && (
               <span className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-orange-400" title="本页有批注" />
             )}
@@ -799,7 +799,7 @@ export default function BookViewer() {
           <button
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + step))}
             disabled={currentPage >= totalPages}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition"
             title="下一页"
           >
             <ChevronRight size={18} />
@@ -807,7 +807,7 @@ export default function BookViewer() {
           <button
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage >= totalPages}
-            className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition"
+            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition"
             title="最后一页"
           >
             <ChevronLast size={18} />
@@ -824,10 +824,10 @@ export default function BookViewer() {
               data-tooltip={label}
               className={`relative p-1.5 rounded transition flex-shrink-0 ${
                 disabled
-                  ? 'text-gray-600 opacity-40 cursor-not-allowed'
+                  ? 'text-muted-foreground opacity-40 cursor-not-allowed'
                   : tool === mode
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               <Icon size={16} />
@@ -836,7 +836,7 @@ export default function BookViewer() {
           <button
             onClick={handleEnterAssignmentMode}
             data-tooltip="做题"
-            className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0"
+            className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition flex-shrink-0"
           >
             <PenLine size={16} />
           </button>
@@ -847,20 +847,20 @@ export default function BookViewer() {
               data-tooltip={label}
               className={`relative p-1.5 rounded transition flex-shrink-0 ${
                 disabled
-                  ? 'text-gray-600 opacity-40 cursor-not-allowed'
+                  ? 'text-muted-foreground opacity-40 cursor-not-allowed'
                   : tool === mode
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               <Icon size={16} />
             </button>
           ))}
 
-          <div className="w-px h-5 bg-white/10 mx-0.5" />
+          <div className="w-px h-5 bg-muted mx-0.5" />
 
           {/* Group 2: Zoom controls */}
-          <button onClick={zoomOut} data-tooltip="缩小" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0">
+          <button onClick={zoomOut} data-tooltip="缩小" className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition flex-shrink-0">
             <ZoomOut size={16} />
           </button>
           {editingZoom ? (
@@ -874,36 +874,36 @@ export default function BookViewer() {
                 if (e.key === 'Escape') setEditingZoom(false);
               }}
               autoFocus
-              className="w-12 text-center text-xs bg-white/10 text-white rounded py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-12 text-center text-xs bg-muted text-foreground rounded py-0.5 px-1 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           ) : (
             <button
               onClick={startEditZoom}
               data-tooltip="点击输入缩放比例"
-              className="relative text-xs w-12 text-center text-gray-300 hover:text-white py-0.5 rounded flex-shrink-0"
+              className="relative text-xs w-12 text-center text-muted-foreground hover:text-foreground py-0.5 rounded flex-shrink-0"
             >
               {Math.round(snapZoom(zoom) * 100)}%
             </button>
           )}
-          <button onClick={zoomIn} data-tooltip="放大" className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex-shrink-0">
+          <button onClick={zoomIn} data-tooltip="放大" className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition flex-shrink-0">
             <ZoomIn size={16} />
           </button>
           <button
             onClick={() => setFitMode('page')}
             data-tooltip="适应页面"
-            className={`relative p-1.5 rounded transition flex-shrink-0 ${fitMode === 'page' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${fitMode === 'page' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
           >
             <Minimize2 size={16} />
           </button>
           <button
             onClick={() => setFitMode('width')}
             data-tooltip="适应宽度"
-            className={`relative p-1.5 rounded transition flex-shrink-0 ${fitMode === 'width' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${fitMode === 'width' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
           >
             <Maximize2 size={16} />
           </button>
 
-          <div className="w-px h-5 bg-white/10 mx-0.5" />
+          <div className="w-px h-5 bg-muted mx-0.5" />
 
           {/* Group 3: Layers + layout */}
           <div className="relative flex-shrink-0">
@@ -912,8 +912,8 @@ export default function BookViewer() {
               data-tooltip="图层控制"
               className={`relative p-1.5 rounded transition flex items-center gap-0.5 ${
                 Object.values(layers).some(v => !v)
-                  ? 'bg-blue-500/20 text-blue-300'
-                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               <Layers size={16} />
@@ -921,7 +921,7 @@ export default function BookViewer() {
             {layerDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-50" onClick={() => setLayerDropdownOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-36">
+                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-xl py-1 w-36">
                   {[
                     { key: 'annotations' as const, label: '批注图层' },
                     { key: 'highlights' as const, label: '高亮图层' },
@@ -930,7 +930,7 @@ export default function BookViewer() {
                   ].map(({ key, label }) => (
                     <label
                       key={key}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/5 cursor-pointer text-sm text-gray-200"
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted cursor-pointer text-sm text-foreground"
                     >
                       <input
                         type="checkbox"
@@ -949,42 +949,42 @@ export default function BookViewer() {
           <button
             onClick={() => setPageLayout('single')}
             data-tooltip="单页"
-            className={`relative p-1.5 rounded transition flex-shrink-0 ${pageLayout === 'single' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${pageLayout === 'single' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
           >
             <Book size={16} />
           </button>
           <button
             onClick={() => setPageLayout('double')}
             data-tooltip="双页"
-            className={`relative p-1.5 rounded transition flex-shrink-0 ${pageLayout === 'double' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${pageLayout === 'double' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
           >
             <BookOpen size={16} />
           </button>
 
-          <div className="w-px h-5 bg-white/10 mx-0.5" />
+          <div className="w-px h-5 bg-muted mx-0.5" />
 
           {/* Group 4: More menu (rotate, download, DPI) */}
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setMoreOpen(!moreOpen)}
               data-tooltip="更多"
-              className="relative p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center"
+              className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition flex items-center"
             >
               <MoreVertical size={16} />
             </button>
             {moreOpen && (
               <>
                 <div className="fixed inset-0 z-50" onClick={() => setMoreOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-50 bg-[#323639] border border-white/10 rounded-lg shadow-xl py-1 w-44">
+                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-xl py-1 w-44">
                   <button
                     onClick={() => { setRotation((r: number) => r + 90); }}
-                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-gray-200 transition hover:bg-white/5"
+                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-foreground transition hover:bg-muted"
                   >
                     <RotateCw size={14} /> 顺时针旋转 90°
                   </button>
                   <button
                     onClick={() => { setRotation((r: number) => r - 90); }}
-                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-gray-200 transition hover:bg-white/5"
+                    className="flex items-center w-full gap-2 px-3 py-2 text-sm text-foreground transition hover:bg-muted"
                   >
                     <RotateCcw size={14} /> 逆时针旋转 90°
                   </button>
@@ -997,18 +997,18 @@ export default function BookViewer() {
                       setMoreOpen(false);
                     }}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition ${
-                      currentBook.pdfUrl ? 'text-gray-200 hover:bg-white/5' : 'text-gray-600 cursor-not-allowed'
+                      currentBook.pdfUrl ? 'text-foreground hover:bg-muted' : 'text-muted-foreground/50 cursor-not-allowed'
                     }`}
                   >
                     <Download size={14} /> {currentBook.pdfFileName ? '下载原PDF' : '暂无 PDF'}
                   </a>
                   {availableDpis.length > 0 && (
-                    <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-200">
-                      <span className="text-xs text-gray-400">DPI</span>
+                    <div className="flex items-center gap-2 px-3 py-2 text-sm text-foreground">
+                      <span className="text-xs text-muted-foreground">DPI</span>
                       <select
                         value={activeDpi}
                         onChange={(e) => { setSelectedDpi(Number(e.target.value)); setFitMode('page'); }}
-                        className="flex-1 bg-transparent text-gray-200 text-xs rounded px-1 py-0.5 focus:outline-none cursor-pointer [&>option]:text-black"
+                        className="flex-1 bg-transparent text-foreground text-xs rounded px-1 py-0.5 focus:outline-none cursor-pointer [&>option]:text-black"
                       >
                         {availableDpis.map(d => (
                           <option key={d} value={d}>{d} DPI</option>
@@ -1025,7 +1025,7 @@ export default function BookViewer() {
           <button
             onClick={() => setRightOpen(!rightOpen)}
             data-tooltip="作业 / 错题 / 批注"
-            className={`relative p-1.5 rounded transition flex-shrink-0 ${rightOpen ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${rightOpen ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
           >
             <PanelRight size={18} />
           </button>
@@ -1038,7 +1038,7 @@ export default function BookViewer() {
         {leftOpen && (
           <aside
             style={{ width: leftWidth }}
-            className="relative bg-[#323639] text-white flex flex-col flex-shrink-0 border-r border-black/20"
+            className="relative bg-sidebar text-sidebar-foreground flex flex-col flex-shrink-0 border-r border-sidebar-border"
           >
             <TocTree
               toc={currentBook.tocJson || []}
@@ -1186,12 +1186,12 @@ export default function BookViewer() {
 
         {/* Right sidebar - annotations & mistakes */}
         {rightOpen && (
-          <aside className="flex flex-col flex-shrink-0 bg-white border-l border-gray-200 w-72">
-            <div className="flex items-center border-b border-gray-200">
+          <aside className="flex flex-col flex-shrink-0 bg-card border-l border-border w-72">
+            <div className="flex items-center border-b border-border">
               <button
                 onClick={() => setRightTab('assignments')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'assignments' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'assignments' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 作业 ({assignmentCount})
@@ -1199,7 +1199,7 @@ export default function BookViewer() {
               <button
                 onClick={() => setRightTab('annotations')}
                 className={`flex-1 py-2.5 text-sm font-medium transition ${
-                  rightTab === 'annotations' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  rightTab === 'annotations' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
                 }`}
                 title="批注与错题（错题为已裁剪的批注）"
               >
@@ -1246,15 +1246,15 @@ export default function BookViewer() {
           onClick={() => setDeleteAnnId(null)}
         >
           <div
-            className="p-5 bg-white shadow-2xl rounded-xl w-80"
+            className="p-5 bg-card shadow-2xl rounded-xl w-80"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-2 text-base font-semibold text-gray-800">确认删除批注</h3>
-            <p className="mb-4 text-sm text-gray-500">删除后无法恢复，确定要删除这条批注吗？</p>
+            <h3 className="mb-2 text-base font-semibold text-foreground">确认删除批注</h3>
+            <p className="mb-4 text-sm text-muted-foreground">删除后无法恢复，确定要删除这条批注吗？</p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteAnnId(null)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm rounded-lg border border-border text-muted-foreground hover:bg-muted"
               >
                 取消
               </button>
@@ -1286,17 +1286,17 @@ export default function BookViewer() {
           onClick={() => setAssignmentPrompt(null)}
         >
           <div
-            className="relative p-5 bg-white shadow-2xl rounded-xl w-80"
+            className="relative p-5 bg-card shadow-2xl rounded-xl w-80"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setAssignmentPrompt(null)}
-              className="absolute top-3 right-3 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="absolute top-3 right-3 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <X size={16} />
             </button>
-            <h3 className="mb-2 text-base font-semibold text-gray-800">当前页已有未批改作业</h3>
-            <p className="mb-4 text-sm text-gray-500">
+            <h3 className="mb-2 text-base font-semibold text-foreground">当前页已有未批改作业</h3>
+            <p className="mb-4 text-sm text-muted-foreground">
               {formatAssignmentTitle(assignmentPrompt.title) || `作业 #${assignmentPrompt.id}`}
             </p>
             <div className="flex justify-end gap-2">
@@ -1309,7 +1309,7 @@ export default function BookViewer() {
                   setRightTab('assignments');
                   setSearchParams({ assignmentId: String(a.id), role: 'student' }, { replace: true });
                 }}
-                className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                className="px-3 py-1.5 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 复用
               </button>
@@ -1318,7 +1318,7 @@ export default function BookViewer() {
                   setAssignmentPrompt(null);
                   await createNewAssignment();
                 }}
-                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm rounded-lg border border-border text-muted-foreground hover:bg-muted"
               >
                 新建
               </button>
@@ -1386,7 +1386,7 @@ function AnnotationList({
   onToggleMistake: (id: number, status: number) => void;
 }) {
   if (annotations.length === 0) {
-    return <div className="p-4 text-sm text-center text-gray-400">暂无批注</div>;
+    return <div className="p-4 text-sm text-center text-muted-foreground">暂无批注</div>;
   }
   return (
     <div className="p-2 space-y-2">
@@ -1413,8 +1413,8 @@ function AnnotationList({
         const rowClass = isSelected
           ? `${color.bg} ${color.border} ring-2 ring-offset-1`
           : isCurrent
-            ? 'bg-blue-50 border-blue-200'
-            : 'bg-gray-50 border-gray-200 hover:bg-gray-100';
+            ? 'bg-blue-500/10 border-blue-500/30'
+            : 'bg-muted/50 border-border hover:bg-muted';
 
         // 错题（crop 批注）：沿用「错题」列表的 item 样式（缩略图 + 学科 + 复习状态）
         if (ann.type === 'crop') {
@@ -1424,7 +1424,7 @@ function AnnotationList({
               className={`flex gap-2 p-2 rounded-lg group cursor-pointer transition border ${rowClass}`}
               onClick={handleClick}
             >
-              <div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-amber-50 border-amber-100">
+              <div className="flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border rounded bg-amber-500/10 border-amber-500/20">
                 {mistake?.imagePath ? (
                   <img
                     src={withAuthToken(mistake.imagePath)}
@@ -1438,18 +1438,18 @@ function AnnotationList({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-700">{mistake?.subject || '未分类'}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className="text-xs font-medium text-foreground">{mistake?.subject || '未分类'}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     第 {ann.pageNumber} 页
                   </span>
                 </div>
-                {ann.tags && <div className="text-xs text-gray-500 mt-0.5 truncate">{ann.tags}</div>}
+                {ann.tags && <div className="text-xs text-muted-foreground mt-0.5 truncate">{ann.tags}</div>}
                 <div className="flex items-center gap-2 mt-1">
                   {mistake && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleMistake(mistake.id, mistake.reviewStatus); }}
                       className={`flex items-center gap-1 text-xs transition ${
-                        mistake.reviewStatus === 1 ? 'text-primary' : 'text-gray-400 hover:text-primary'
+                        mistake.reviewStatus === 1 ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                       }`}
                     >
                       {mistake.reviewStatus === 1 ? <CheckCircle2 size={14} /> : <Circle size={14} />}
@@ -1458,7 +1458,7 @@ function AnnotationList({
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }}
-                    className="text-gray-300 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
+                    className="text-muted-foreground/60 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -1487,22 +1487,22 @@ function AnnotationList({
             </div>
             <div className="flex-1 min-w-0">
               {ann.type === 'note' && (
-                <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">{ann.contentJson.text}</p>
+                <p className="text-sm text-foreground break-words whitespace-pre-wrap">{ann.contentJson.text}</p>
               )}
-              {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
+              {ann.type === 'highlight' && <span className="text-xs text-muted-foreground">高亮区域</span>}
               <div className="flex items-center gap-2 mt-1">
-                <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-blue-100 text-blue-600' : 'text-gray-400'}`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded ${isCurrent ? 'bg-primary/15 text-primary' : 'text-muted-foreground'}`}>
                   第 {ann.pageNumber} 页
                 </span>
                 {ann.createdAt && (
-                  <span className="text-xs text-gray-400">{formatAnnotationTime(ann.createdAt)}</span>
+                  <span className="text-xs text-muted-foreground">{formatAnnotationTime(ann.createdAt)}</span>
                 )}
-                {ann.tags && <span className="text-xs text-gray-400 truncate">{ann.tags}</span>}
+                {ann.tags && <span className="text-xs text-muted-foreground truncate">{ann.tags}</span>}
               </div>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(ann.id); }}
-              className="flex-shrink-0 text-gray-300 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
+              className="flex-shrink-0 text-muted-foreground/60 transition opacity-0 hover:text-red-500 group-hover:opacity-100"
             >
               <Trash2 size={14} />
             </button>
@@ -1572,13 +1572,13 @@ function AnnotationSidePanel({
                 </span>
                 <span className={`text-xs font-medium ${color.text}`}>第 {ann.pageNumber} 页</span>
                 {ann.createdAt && (
-                  <span className="text-[10px] text-gray-400 ml-auto">{formatAnnotationTime(ann.createdAt)}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{formatAnnotationTime(ann.createdAt)}</span>
                 )}
               </div>
               {ann.type === 'note' && (
-                <p className="text-xs leading-relaxed text-gray-700 break-words whitespace-pre-wrap">{ann.contentJson.text}</p>
+                <p className="text-xs leading-relaxed text-foreground break-words whitespace-pre-wrap">{ann.contentJson.text}</p>
               )}
-              {ann.type === 'highlight' && <span className="text-xs text-gray-500">高亮区域</span>}
+              {ann.type === 'highlight' && <span className="text-xs text-muted-foreground">高亮区域</span>}
               {ann.type === 'crop' && <span className="text-xs text-blue-500">错题裁剪</span>}
             </div>
           );

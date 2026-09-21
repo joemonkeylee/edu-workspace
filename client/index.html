@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0" />
     <title>edu-workspace</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // 在 React 挂载前立即执行：清理旧的多主题残留 + 正确设置明暗模式
+      (function () {
+        try {
+          var root = document.documentElement;
+          // 1. 清理旧 4 主题版本的 data-theme / data-mode 残留
+          root.removeAttribute('data-theme');
+          root.removeAttribute('data-mode');
+          // 2. 读 localStorage
+          var mode = localStorage.getItem('ui-theme-mode');
+          var resolved = 'light';
+          if (mode === 'dark') resolved = 'dark';
+          else if (mode === 'system' || !mode) {
+            resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          // 3. 打 class
+          if (resolved === 'dark') root.classList.add('dark');
+          else root.classList.remove('dark');
+        } catch (e) {
+          // 忽略（localStorage 可能不可用）
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

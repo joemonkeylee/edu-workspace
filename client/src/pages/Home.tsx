@@ -16,6 +16,7 @@ import {
 import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { updateBook, deleteBook } from '../api/client';
 
 const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
@@ -58,10 +59,10 @@ function loadListPageSize(): number {
 const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST');
 const APP_COMMIT = import.meta.env.VITE_APP_COMMIT || '';
 const APP_ENV_CLASS = APP_ENV === 'PROD'
-  ? 'bg-emerald-500/20 text-emerald-200'
+  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
   : APP_ENV === 'TEST'
-    ? 'bg-amber-500/20 text-amber-200'
-    : 'bg-blue-500/20 text-blue-200';
+    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+    : 'bg-primary/15 text-primary dark:text-blue-300';
 
 const SUBJECT_ORDER = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '科学', '道法'];
 const GRADE_ORDER = ['七上', '七下', '八上', '八下', '九上', '九下'];
@@ -88,7 +89,7 @@ function ClearableSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-1.5 pl-2.5 pr-8 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full appearance-none rounded-lg border border-border bg-card py-1.5 pl-2.5 pr-8 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <option value="">{totalCount > 0 ? `${placeholder} (${totalCount})` : placeholder}</option>
         {opts.map((opt) => (
@@ -97,12 +98,12 @@ function ClearableSelect({
           </option>
         ))}
       </select>
-      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">▾</span>
+      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">▾</span>
       {value && (
         <button
           type="button"
           onClick={() => onChange('')}
-          className="absolute right-6 top-1/2 -translate-y-1/2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
+          className="absolute right-6 top-1/2 -translate-y-1/2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-muted-foreground/30 text-white hover:bg-muted-foreground/50"
           title="清除"
         >
           <X size={10} strokeWidth={3} />
@@ -123,20 +124,20 @@ function SavePrompt({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative w-80 rounded-xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/60">
+      <div className="relative w-80 rounded-xl bg-card p-6 shadow-xl">
         <button
           onClick={onCancel}
-          className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-muted-foreground"
           title="取消"
         >
           <X size={16} />
         </button>
-        <h3 className="text-base font-semibold text-gray-800">有未保存的修改</h3>
-        <p className="mt-2 text-sm text-gray-500">是否保存当前编辑？</p>
+        <h3 className="text-base font-semibold text-foreground">有未保存的修改</h3>
+        <p className="mt-2 text-sm text-muted-foreground">是否保存当前编辑？</p>
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onDiscard} className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">不保存</button>
-          <button onClick={onSave} className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primaryDark">保存</button>
+          <button onClick={onDiscard} className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted">不保存</button>
+          <button onClick={onSave} className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white opacity-90 hover:opacity-100">保存</button>
         </div>
       </div>
     </div>
@@ -643,20 +644,20 @@ export default function Home() {
   // 输入时不自动查询，回车或点旁边的「搜索」才生效
   const keywordSearchEl = (
     <div className="relative w-36">
-      <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
+      <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" size={13} />
       <input
         type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applySearch(); } }}
         placeholder="关键字..."
-        className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-7 pr-3 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full rounded-lg border border-border bg-card py-1.5 pl-7 pr-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
       />
       {search && (
         <button
           type="button"
           onClick={() => { setSearch(''); applySearch({ search: '' }); }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-white hover:bg-gray-400"
+          className="absolute right-2 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-muted-foreground/30 text-white hover:bg-muted-foreground/50"
           title="清除"
         >
           <X size={10} strokeWidth={3} />
@@ -673,7 +674,7 @@ export default function Home() {
       className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs transition ${
         pendingSearch
           ? 'border-primary bg-primary/5 text-primary font-medium hover:bg-primary/10'
-          : 'border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary'
+          : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
       }`}
       title={pendingSearch ? '有筛选条件未生效，点击查询' : '按当前条件查询'}
     >
@@ -685,7 +686,7 @@ export default function Home() {
 
   return (
     <div className="h-full flex flex-col bg-surface">
-      <header className="bg-sidebar text-white px-6 py-4 flex items-center justify-between flex-shrink-0 h-14">
+      <header className="bg-sidebar text-sidebar-foreground px-6 py-4 flex items-center justify-between flex-shrink-0 h-14">
         <div className="flex items-center gap-3">
           <BookOpen size={22} />
           <h1 className="text-lg font-bold">edu-workspace</h1>
@@ -693,31 +694,34 @@ export default function Home() {
             {APP_ENV}
           </span>
           {APP_ENV === 'TEST' && APP_COMMIT && (
-            <span className="font-mono text-[10px] text-gray-400" title={`构建版本 ${APP_COMMIT}`}>
+            <span className="font-mono text-[10px] text-muted-foreground" title={`构建版本 ${APP_COMMIT}`}>
               {APP_COMMIT}
             </span>
           )}
         </div>
-        <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理" className="flex items-center justify-center bg-primary hover:bg-primaryDark h-9 w-9 rounded-lg transition">
-          <Settings size={18} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher />
+          <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理" className="flex items-center justify-center bg-primary opacity-90 hover:opacity-100 h-9 w-9 rounded-lg transition">
+            <Settings size={18} />
+          </Link>
+        </div>
       </header>
 
       <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
         {/* Row 0: 资源类型切换（视频课程 / 必刷题 / 全部书籍） */}
-        <div className="mb-3 flex items-center gap-4 border-b border-gray-300">
+        <div className="mb-3 flex items-center gap-4 border-b border-border">
           <button
             type="button"
             onClick={() => safeSetResourceKind('course')}
             className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
               resourceKind === 'course'
                 ? 'border-primary text-primary font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             <Video size={14} />
             视频课程
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'course' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'course' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
               {kindCounts.course}
             </span>
           </button>
@@ -727,13 +731,13 @@ export default function Home() {
             className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
               resourceKind === 'exercise'
                 ? 'border-primary text-primary font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
             title="必刷题"
           >
             <ListChecks size={14} />
             必刷题
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'exercise' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'exercise' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
               {kindCounts.exercise}
             </span>
           </button>
@@ -743,12 +747,12 @@ export default function Home() {
             className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
               resourceKind === 'all'
                 ? 'border-primary text-primary font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-800'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             <BookOpen size={14} />
             全部书籍
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'all' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'all' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
               {kindCounts.book + kindCounts.course + kindCounts.exercise}
             </span>
           </button>
@@ -756,7 +760,7 @@ export default function Home() {
 
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          {/* <span className="text-xs text-gray-400 mr-1">筛选</span> */}
+          {/* <span className="text-xs text-muted-foreground mr-1">筛选</span> */}
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-18" />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-18" />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
@@ -768,7 +772,7 @@ export default function Home() {
             className={`flex items-center rounded-lg border px-2 py-1.5 text-xs transition ${
               hasActiveFilters
                 ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10'
-                : 'border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary'
+                : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
             }`}
             title={hasActiveFilters ? '重置所有筛选条件' : '刷新列表'}
           >
@@ -788,8 +792,8 @@ export default function Home() {
             }}
             className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${
               favoritesOnly
-                ? 'border-amber-400 bg-amber-50 text-amber-600 hover:bg-amber-100'
-                : 'border-gray-300 bg-white text-gray-600 hover:border-amber-400 hover:text-amber-500'
+                ? 'border-amber-400 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:border-amber-400/50 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25'
+                : 'border-border bg-card text-muted-foreground hover:border-amber-400 hover:text-amber-500'
             }`}
             title="只看收藏"
           >
@@ -810,8 +814,8 @@ export default function Home() {
             }}
             className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${
               pairsOnly
-                ? 'border-sky-400 bg-sky-50 text-sky-600 hover:bg-sky-100'
-                : 'border-gray-300 bg-white text-gray-600 hover:border-sky-400 hover:text-sky-500'
+                ? 'border-sky-400 bg-sky-50 text-sky-600 hover:bg-sky-100 dark:border-sky-400/50 dark:bg-sky-500/15 dark:text-sky-300 dark:hover:bg-sky-500/25'
+                : 'border-border bg-card text-muted-foreground hover:border-sky-400 hover:text-sky-500'
             }`}
             title="只看有答案"
           >
@@ -821,7 +825,7 @@ export default function Home() {
           <div className="flex-1" />
 
           {/* Sort controls (draggable, 3-state toggle) */}
-          {/* <span className="text-xs text-gray-400 mr-0.5">排序</span> */}
+          {/* <span className="text-xs text-muted-foreground mr-0.5">排序</span> */}
           {sortFields.map((s, idx) => {
             if (s.field === 'subject' || s.field === 'grade' || s.field === 'category') return null;
             const hasSort = s.dir !== null;
@@ -838,11 +842,11 @@ export default function Home() {
                 className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs cursor-grab transition ${
                   hasSort
                     ? 'border-primary/40 bg-primary/5 text-primary'
-                    : 'border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300'
+                    : 'border-border bg-muted text-muted-foreground hover:border-border'
                 } ${dragIndex === idx ? 'opacity-50' : ''}`}
                 title={hasSort ? `当前：${s.dir === 'asc' ? '升序' : '降序'}，点击切换` : '点击启用排序'}
               >
-                <GripVertical size={12} className="text-gray-300 pointer-events-none" />
+                <GripVertical size={12} className="text-muted-foreground pointer-events-none" />
                 <span className={hasSort ? 'font-medium' : '' + ' pointer-events-none'}>{SORT_LABELS[s.field]}</span>
                 <span className="ml-0.5 flex h-5 w-5 items-center justify-center pointer-events-none">
                   {s.dir === null ? (
@@ -862,7 +866,7 @@ export default function Home() {
             className={`flex items-center rounded-lg border px-2 py-1.5 text-xs transition ${
               sortString
                 ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10'
-                : 'border-gray-300 bg-white text-gray-600 hover:border-primary hover:text-primary'
+                : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
             }`}
             title="重置排序"
           >
@@ -877,15 +881,15 @@ export default function Home() {
           viewMode === 'preview' ? (
             <div className="relative flex flex-wrap gap-3">
               {Array.from({ length: pageSize }).map((_, i) => (
-                <div key={i} className="bg-gray-100 rounded-lg animate-pulse" style={{ aspectRatio: COVER_ASPECT, width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
+                <div key={i} className="bg-muted rounded-lg animate-pulse" style={{ aspectRatio: COVER_ASPECT, width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }} />
               ))}
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center bg-card/50">
+                <div className="h-8 w-8 rounded-full border-4 border-border border-t-primary animate-spin" />
               </div>
             </div>
           ) : (
             <div className="relative">
-              <div className="overflow-hidden rounded-lg border border-gray-200">
+              <div className="overflow-hidden rounded-lg border border-border">
                 <table className="w-full table-fixed text-sm">
                   <colgroup>
                     {editMode && <col style={{ width: '3%' }} />}
@@ -897,7 +901,7 @@ export default function Home() {
                     <col style={{ width: '8%' }} />
                     {editMode && <col style={{ width: '3%' }} />}
                   </colgroup>
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-muted text-xs text-muted-foreground">
                     <tr>
                       {editMode && <th className="px-2 py-2 text-left font-medium"></th>}
                       <th className="px-2 py-2 text-left font-medium">封面</th>
@@ -911,27 +915,27 @@ export default function Home() {
                   </thead>
                   <tbody>
                     {Array.from({ length: Math.min(pageSize, 12) }).map((_, i) => (
-                      <tr key={i} className="border-t border-gray-100">
-                        {editMode && <td className="px-2 py-2"><div className="h-4 w-4 rounded bg-gray-200 animate-pulse" /></td>}
-                        <td className="px-2 py-2"><div className="h-10 rounded bg-gray-200 animate-pulse" style={{ aspectRatio: COVER_ASPECT }} /></td>
-                        <td className="px-2 py-2"><div className="h-4 w-40 rounded bg-gray-200 animate-pulse" /></td>
-                        <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-gray-200 animate-pulse" /></td>
-                        <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-gray-200 animate-pulse" /></td>
-                        <td className="px-2 py-2"><div className="h-4 w-16 rounded bg-gray-200 animate-pulse" /></td>
-                        <td className="px-2 py-2"><div className="ml-auto h-4 w-8 rounded bg-gray-200 animate-pulse" /></td>
+                      <tr key={i} className="border-t border-border">
+                        {editMode && <td className="px-2 py-2"><div className="h-4 w-4 rounded bg-muted animate-pulse" /></td>}
+                        <td className="px-2 py-2"><div className="h-10 rounded bg-muted animate-pulse" style={{ aspectRatio: COVER_ASPECT }} /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-40 rounded bg-muted animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-muted animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-12 rounded bg-muted animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="h-4 w-16 rounded bg-muted animate-pulse" /></td>
+                        <td className="px-2 py-2"><div className="ml-auto h-4 w-8 rounded bg-muted animate-pulse" /></td>
                         {editMode && <td className="px-2 py-2"></td>}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center bg-card/50">
+                <div className="h-8 w-8 rounded-full border-4 border-border border-t-primary animate-spin" />
               </div>
             </div>
           )
         ) : total === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             {resourceKind === 'course' ? (
               <Video size={48} className="mb-4" />
             ) : resourceKind === 'exercise' ? (
@@ -957,14 +961,14 @@ export default function Home() {
               return (
                 <div
                   key={book.id}
-                  className={`relative group bg-white rounded-lg shadow overflow-hidden transition ${
+                  className={`relative group bg-card rounded-lg shadow overflow-hidden transition ${
                     isDeleted ? 'opacity-40 ring-2 ring-red-400' : ''
                   } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
                   style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})` }}
                 >
                   {/* Checkbox (edit mode) */}
                   {editMode && (
-                    <label className="absolute left-1.5 top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded bg-white/90 shadow">
+                    <label className="absolute left-1.5 top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded bg-card/90 shadow">
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -978,7 +982,7 @@ export default function Home() {
                     <button
                       onClick={() => toggleDelete(book.id)}
                       className={`absolute right-1.5 top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full shadow transition ${
-                        isDeleted ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-500 hover:bg-red-100 hover:text-red-500'
+                        isDeleted ? 'bg-destructive text-destructive-foreground' : 'bg-card/90 text-muted-foreground hover:bg-red-500/10 hover:text-red-500'
                       }`}
                       title={isDeleted ? '取消删除' : '标记删除'}
                     >
@@ -993,8 +997,8 @@ export default function Home() {
                       onClick={(e) => { e.stopPropagation(); handleToggleFavorite(book.id); }}
                       className={`absolute right-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full shadow-md transition ${
                         book.isFavorite
-                          ? 'bg-amber-400 text-white opacity-100'
-                          : 'bg-white/80 text-gray-400 hover:bg-amber-50 hover:text-amber-500'
+                          ? 'bg-amber-500 text-white opacity-100'
+                          : 'bg-card/80 text-muted-foreground hover:bg-amber-50 hover:text-amber-500 dark:hover:bg-amber-500/15'
                       }`}
                       title={book.isFavorite ? '取消收藏' : '收藏'}
                     >
@@ -1033,7 +1037,7 @@ export default function Home() {
                         // 课程资源但没匹配到视频 —— 留在课程页，同时让「没讲解」一眼可见
                         book.kind === 'course' && (
                           <div
-                            className="relative mt-0.5 flex items-center gap-0.5 bg-gray-500/90 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
+                            className="relative mt-0.5 flex items-center gap-0.5 bg-slate-600/90 text-white px-1.5 py-0.5 text-[10px] font-medium shadow-sm"
                             title="课程讲义，暂无配套讲解视频"
                           >
                             <VideoOff size={9} />
@@ -1045,7 +1049,7 @@ export default function Home() {
                     </div>
                     {/* 封面底部细进度条 */}
                     {book.videoProgress && book.videoProgress.total > 0 && (
-                      <div className="absolute inset-x-0 bottom-0 z-20 h-[3px] bg-white/20">
+                      <div className="absolute inset-x-0 bottom-0 z-20 h-[3px] bg-card/20">
                         <div
                           className="h-full bg-emerald-500 transition-all"
                           style={{ width: `${book.videoProgress.percent}%` }}
@@ -1059,7 +1063,7 @@ export default function Home() {
                             value={draft.title}
                             onChange={(e) => updateDraft(book.id, 'title', e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full rounded bg-black/40 px-1 py-0.5 text-xs font-medium text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-white/60"
+                            className="w-full rounded bg-black/40 dark:bg-black/55 px-1 py-0.5 text-xs font-medium text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-white/60"
                             placeholder="标题"
                           />
                           <div className="mt-1 flex gap-1">
@@ -1067,33 +1071,33 @@ export default function Home() {
                               value={draft.subject}
                               onChange={(e) => updateDraft(book.id, 'subject', e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
+                              className="flex-1 min-w-0 rounded bg-black/50 dark:bg-black/60 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
                             >
-                              <option value="" className="text-gray-800">&nbsp;</option>
+                              <option value="" className="text-foreground">&nbsp;</option>
                               {subjectOptions.map((s) => (
-                                <option key={s} value={s} className="text-gray-800">{s}</option>
+                                <option key={s} value={s} className="text-foreground">{s}</option>
                               ))}
                             </select>
                             <select
                               value={draft.grade}
                               onChange={(e) => updateDraft(book.id, 'grade', e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
+                              className="flex-1 min-w-0 rounded bg-black/50 dark:bg-black/60 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
                             >
-                              <option value="" className="text-gray-800">&nbsp;</option>
+                              <option value="" className="text-foreground">&nbsp;</option>
                               {gradeOptions.map((g) => (
-                                <option key={g} value={g} className="text-gray-800">{g}</option>
+                                <option key={g} value={g} className="text-foreground">{g}</option>
                               ))}
                             </select>
                             <select
                               value={draft.category}
                               onChange={(e) => updateDraft(book.id, 'category', e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              className="flex-1 min-w-0 rounded bg-black/50 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
+                              className="flex-1 min-w-0 rounded bg-black/50 dark:bg-black/60 px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-white/60"
                             >
-                              <option value="" className="text-gray-800">&nbsp;</option>
+                              <option value="" className="text-foreground">&nbsp;</option>
                               {categoryOptions.map((c) => (
-                                <option key={c.name} value={c.name} className="text-gray-800">{c.name}</option>
+                                <option key={c.name} value={c.name} className="text-foreground">{c.name}</option>
                               ))}
                             </select>
                           </div>
@@ -1103,7 +1107,7 @@ export default function Home() {
                           <h3 className="font-medium text-xs text-white line-clamp-2 leading-tight" title={book.title}>{book.title}</h3>
                           <div className="mt-1 flex flex-wrap gap-1">
                             {book.subject && <span className="bg-emerald-500/90 text-white rounded px-1 py-0.5 text-[9px]">{book.subject}</span>}
-                            {book.grade && <span className="bg-blue-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
+                            {book.grade && <span className="bg-primary/80 text-white rounded px-1 py-0.5 text-[9px]">{book.grade}</span>}
                             {book.category && <span className="bg-violet-500/80 text-white rounded px-1 py-0.5 text-[9px]">{book.category}</span>}
                           </div>
                         </>
@@ -1112,7 +1116,7 @@ export default function Home() {
                         {book.videoProgress && book.videoProgress.total > 0 ? (
                           <span
                             className={`flex items-center gap-1 rounded px-1 py-0.5 text-[9px] font-medium text-white ${
-                              book.videoProgress.done > 0 ? 'bg-emerald-500/90' : 'bg-gray-500/90'
+                              book.videoProgress.done > 0 ? 'bg-emerald-500/90' : 'bg-slate-600/90'
                             }`}
                             title={`已完成 ${book.videoProgress.done}/${book.videoProgress.total} 讲 · 完成度 ${book.videoProgress.percent}%`}
                           >
@@ -1122,7 +1126,7 @@ export default function Home() {
                         ) : (
                           <span />
                         )}
-                        <span className="whitespace-nowrap text-[10px] text-white/70">{book.totalPages} 页</span>
+                        <span className="whitespace-nowrap text-[10px] text-white/80">{book.totalPages} 页</span>
                       </div>
                     </div>
                   </div>
@@ -1131,14 +1135,14 @@ export default function Home() {
             })}
             {/* Placeholder cards to fill remaining grid slots */}
             {Array.from({ length: Math.max(0, pageSize - pagedBooks.length) }).map((_, i) => (
-              <div key={`ph-${i}`} className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center" style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: COVER_ASPECT }}>
-                <BookOpen size={24} className="text-gray-200" />
+              <div key={`ph-${i}`} className="rounded-lg border-2 border-dashed border-border bg-muted/50 flex items-center justify-center" style={{ width: `calc((100% - ${(booksPerRow - 1) * 12}px) / ${booksPerRow})`, aspectRatio: COVER_ASPECT }}>
+                <BookOpen size={24} className="text-muted-foreground/40" />
               </div>
             ))}
           </div>
         ) : (
           /* List view */
-          <div className="overflow-hidden rounded-lg border border-gray-200">
+          <div className="overflow-hidden rounded-lg border border-border">
             <table className="w-full table-fixed text-sm">
               <colgroup>
                 {editMode && <col style={{ width: '3%' }} />}
@@ -1150,7 +1154,7 @@ export default function Home() {
                 <col style={{ width: '8%' }} />
                 {editMode && <col style={{ width: '3%' }} />}
               </colgroup>
-              <thead className="bg-gray-50 text-xs text-gray-500">
+              <thead className="bg-muted text-xs text-muted-foreground">
                 <tr>
                   {editMode && <th className="px-2 py-2 text-left font-medium"></th>}
                   <th className="px-2 py-2 text-left font-medium">封面</th>
@@ -1170,9 +1174,9 @@ export default function Home() {
                   return (
                     <tr
                       key={book.id}
-                      className={`border-t border-gray-100 transition hover:bg-gray-50 ${
+                      className={`border-t border-border transition hover:bg-muted ${
                         isDeleted ? 'opacity-40' : ''
-                      } ${isSelected ? 'bg-blue-50' : ''}`}
+                      } ${isSelected ? 'bg-primary/10' : ''}`}
                       onClick={() => { if (editMode) toggleSelect(book.id); else window.open(`/book/${book.id}`, '_blank'); }}
                       style={{ cursor: editMode ? 'pointer' : 'pointer' }}
                     >
@@ -1197,7 +1201,7 @@ export default function Home() {
                             value={draft.title}
                             onChange={(e) => updateDraft(book.id, 'title', e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full rounded border border-gray-300 px-1.5 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded border border-border px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                             placeholder="书名"
                           />
                         ) : (
@@ -1205,12 +1209,12 @@ export default function Home() {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleToggleFavorite(book.id); }}
-                              className={`flex-shrink-0 transition ${book.isFavorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-400'}`}
+                              className={`flex-shrink-0 transition ${book.isFavorite ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400'}`}
                               title={book.isFavorite ? '取消收藏' : '收藏'}
                             >
                               <Star size={13} className={book.isFavorite ? 'fill-amber-400' : ''} />
                             </button>
-                            <span className="block text-xs text-gray-700 truncate" title={book.title}>{book.title}</span>
+                            <span className="block text-xs text-foreground truncate" title={book.title}>{book.title}</span>
                             {book.pairSummary?.role === 'textbook' && book.pairSummary.partnerCount > 0 && (
                               <span
                                 className="flex-shrink-0 rounded bg-sky-500 text-white px-1.5 py-0.5 text-[10px] font-medium"
@@ -1230,7 +1234,7 @@ export default function Home() {
                             ) : (
                               book.kind === 'course' && (
                                 <span
-                                  className="flex-shrink-0 flex items-center gap-0.5 rounded bg-gray-500/90 text-white px-1.5 py-0.5 text-[10px] font-medium"
+                                  className="flex-shrink-0 flex items-center gap-0.5 rounded bg-slate-600/90 text-white px-1.5 py-0.5 text-[10px] font-medium"
                                   title="课程讲义，暂无配套讲解视频"
                                 >
                                   <VideoOff size={9} />
@@ -1256,7 +1260,7 @@ export default function Home() {
                             value={draft.subject}
                             onChange={(e) => updateDraft(book.id, 'subject', e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded border border-border px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           >
                             <option value="">&nbsp;</option>
                             {subjectOptions.map((s) => (
@@ -1264,7 +1268,7 @@ export default function Home() {
                             ))}
                           </select>
                         ) : (
-                          book.subject && <span className="rounded bg-emerald-100 px-1 py-0.5 text-[10px] text-emerald-700">{book.subject}</span>
+                          book.subject && <span className="rounded bg-emerald-100 px-1 py-0.5 text-[10px] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{book.subject}</span>
                         )}
                       </td>
                       <td className="px-2 py-2">
@@ -1273,7 +1277,7 @@ export default function Home() {
                             value={draft.grade}
                             onChange={(e) => updateDraft(book.id, 'grade', e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded border border-border px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           >
                             <option value="">&nbsp;</option>
                             {gradeOptions.map((g) => (
@@ -1281,7 +1285,7 @@ export default function Home() {
                             ))}
                           </select>
                         ) : (
-                          book.grade && <span className="rounded bg-blue-100 px-1 py-0.5 text-[10px] text-blue-700">{book.grade}</span>
+                          book.grade && <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">{book.grade}</span>
                         )}
                       </td>
                       <td className="px-2 py-2">
@@ -1290,7 +1294,7 @@ export default function Home() {
                             value={draft.category}
                             onChange={(e) => updateDraft(book.id, 'category', e.target.value)}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded border border-border px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           >
                             <option value="">&nbsp;</option>
                             {categoryOptions.map((c) => (
@@ -1298,16 +1302,16 @@ export default function Home() {
                             ))}
                           </select>
                         ) : (
-                          book.category && <span className="rounded bg-violet-100 px-1 py-0.5 text-[10px] text-violet-700">{book.category}</span>
+                          book.category && <span className="rounded bg-violet-100 px-1 py-0.5 text-[10px] text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{book.category}</span>
                         )}
                       </td>
-                      <td className="px-2 py-2 text-right text-xs text-gray-500">{book.totalPages}</td>
+                      <td className="px-2 py-2 text-right text-xs text-muted-foreground">{book.totalPages}</td>
                       {editMode && (
                         <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => toggleDelete(book.id)}
                             className={`flex h-6 w-6 items-center justify-center rounded-full transition ${
-                              isDeleted ? 'bg-red-500 text-white' : 'text-gray-400 hover:bg-red-100 hover:text-red-500'
+                              isDeleted ? 'bg-destructive text-destructive-foreground' : 'text-muted-foreground hover:bg-red-500/10 hover:text-red-500'
                             }`}
                             title={isDeleted ? '取消删除' : '标记删除'}
                           >
@@ -1320,8 +1324,8 @@ export default function Home() {
                 })}
                 {/* Placeholder rows to fill remaining table height */}
                 {Array.from({ length: Math.max(0, listPageSize - pagedBooks.length) }).map((_, i) => (
-                  <tr key={`ph-${i}`} className="border-t border-dashed border-gray-200 bg-gray-50/30" style={{ height: '56px' }}>
-                    <td colSpan={editMode ? 8 : 6} className="text-center text-xs text-gray-300">— 空位 —</td>
+                  <tr key={`ph-${i}`} className="border-t border-dashed border-border bg-muted/30" style={{ height: '56px' }}>
+                    <td colSpan={editMode ? 8 : 6} className="text-center text-xs text-muted-foreground">— 空位 —</td>
                   </tr>
                 ))}
               </tbody>
@@ -1335,11 +1339,11 @@ export default function Home() {
             {/* Col 1: page size config + view toggle (left) */}
             <div className="flex items-center justify-start gap-1.5 w-1/3">
               {/* View toggle */}
-              <div className="flex items-center rounded-md border border-gray-300 bg-white overflow-hidden">
+              <div className="flex items-center rounded-md border border-border bg-card overflow-hidden">
                 <button
                   onClick={() => switchViewMode('preview')}
                   className={`flex items-center px-1.5 py-1 text-xs transition ${
-                    viewMode === 'preview' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'
+                    viewMode === 'preview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
                   }`}
                   title="预览视图"
                 >
@@ -1348,7 +1352,7 @@ export default function Home() {
                 <button
                   onClick={() => switchViewMode('list')}
                   className={`flex items-center px-1.5 py-1 text-xs transition ${
-                    viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'
+                    viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
                   }`}
                   title="列表视图"
                 >
@@ -1357,22 +1361,22 @@ export default function Home() {
               </div>
               {viewMode === 'preview' ? (
                 <>
-                  <label className="text-xs text-gray-500">每行</label>
+                  <label className="text-xs text-muted-foreground">每行</label>
                   <select
                     value={booksPerRow}
                     onChange={(e) => setBooksPerRow(parseInt(e.target.value, 10))}
-                    className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="rounded-md border border-border bg-card px-1.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     title="每行显示几本书"
                   >
                     {Array.from({ length: 8 }, (_, i) => i + 3).map(n => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
-                  <label className="text-xs text-gray-500">行数</label>
+                  <label className="text-xs text-muted-foreground">行数</label>
                   <select
                     value={rowsPerPage}
                     onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
-                    className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="rounded-md border border-border bg-card px-1.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     title="每页显示几行"
                   >
                     {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
@@ -1382,11 +1386,11 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <label className="text-xs text-gray-500">每页</label>
+                  <label className="text-xs text-muted-foreground">每页</label>
                   <select
                     value={listPageSize}
                     onChange={(e) => changeListPageSize(parseInt(e.target.value, 10))}
-                    className="rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="rounded-md border border-border bg-card px-1.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     title="每页显示几本"
                   >
                     {[10, 15, 20, 30, 50].map(n => (
@@ -1395,12 +1399,12 @@ export default function Home() {
                   </select>
                 </>
               )}
-              <span className="text-xs text-gray-400">({pageSize}本/页)</span>
+              <span className="text-xs text-muted-foreground">({pageSize}本/页)</span>
             </div>
             {/* Col 2: pager (center) */}
             <div className="flex items-center justify-center gap-1.5 w-1/3">
-              <button onClick={() => goPage(1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">第一页</button>
-              <button onClick={() => goPage(safePage - 1)} disabled={safePage <= 1} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronLeft size={14} /></button>
+              <button onClick={() => goPage(1)} disabled={safePage <= 1} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40">第一页</button>
+              <button onClick={() => goPage(safePage - 1)} disabled={safePage <= 1} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"><ChevronLeft size={14} /></button>
               <input
                 type="number"
                 min={1}
@@ -1409,25 +1413,25 @@ export default function Home() {
                 onChange={(e) => setPageInput(e.target.value)}
                 onBlur={() => goPage(parseInt(pageInput, 10) || 1)}
                 onKeyDown={(e) => { if (e.key === 'Enter') goPage(parseInt(pageInput, 10) || 1); }}
-                className="w-14 rounded-md border border-gray-300 px-2 py-1 text-center text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-14 rounded-md border border-border px-2 py-1 text-center text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
-              <span className="text-xs text-gray-500">/ {totalPages}</span>
-              <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40"><ChevronRight size={14} /></button>
-              <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40">最后一页</button>
-              {/* <span className="text-xs text-gray-500">共计 {total} 本</span> */}
+              <span className="text-xs text-muted-foreground">/ {totalPages}</span>
+              <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"><ChevronRight size={14} /></button>
+              <button onClick={() => goPage(totalPages)} disabled={safePage >= totalPages} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40">最后一页</button>
+              {/* <span className="text-xs text-muted-foreground">共计 {total} 本</span> */}
             </div>
             {/* Col 3: edit toggle + edit actions (right) */}
             <div className="flex items-center justify-end gap-2 w-1/3">
               {editMode && (
                 <>
-                  <button onClick={selectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全选</button>
-                  <button onClick={deselectAll} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">全不选</button>
-                  <button onClick={invertSelection} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">反选</button>
-                  <span className="text-xs text-gray-400">已选 {selectedIds.size}</span>
+                  <button onClick={selectAll} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted">全选</button>
+                  <button onClick={deselectAll} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted">全不选</button>
+                  <button onClick={invertSelection} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted">反选</button>
+                  <span className="text-xs text-muted-foreground">已选 {selectedIds.size}</span>
                   <button
                     onClick={deleteSelected}
                     disabled={selectedIds.size === 0}
-                    className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-500/10 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     删除选中
                   </button>
@@ -1437,8 +1441,8 @@ export default function Home() {
                 onClick={editMode ? requestExitEdit : () => setEditMode(true)}
                 className={`rounded-md border px-2 py-1 text-xs ${
                   editMode
-                    ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100'
-                    : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                    ? 'border-green-300 bg-green-50 text-green-600 hover:bg-green-100 dark:border-green-500/40 dark:bg-green-500/15 dark:text-green-300 dark:hover:bg-green-500/25'
+                    : 'border-border bg-card text-muted-foreground hover:bg-muted'
                 }`}
               >
                 {editMode ? '完成' : '编辑'}
@@ -1459,24 +1463,24 @@ export default function Home() {
 
       {/* Saving overlay */}
       {saving && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="rounded-lg bg-white px-6 py-4 text-sm text-gray-700 shadow-xl">保存中...</div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/55">
+          <div className="rounded-lg bg-card px-6 py-4 text-sm text-foreground shadow-xl">保存中...</div>
         </div>
       )}
 
       {/* Delete confirmation modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative w-80 rounded-xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/60">
+          <div className="relative w-80 rounded-xl bg-card p-6 shadow-xl">
             <button
               onClick={() => setDeleteConfirm(null)}
-              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-muted-foreground"
               title="取消"
             >
               <X size={16} />
             </button>
-            <h3 className="text-base font-semibold text-gray-800">确认删除</h3>
-            <p className="mt-2 text-sm text-gray-500">{deleteConfirm.message}</p>
+            <h3 className="text-base font-semibold text-foreground">确认删除</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{deleteConfirm.message}</p>
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={deleteConfirm.onConfirm} className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white hover:bg-red-600">删除</button>
             </div>

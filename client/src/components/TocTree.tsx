@@ -57,13 +57,13 @@ export default function TocTree({
 
   const tabClass = (active: boolean) =>
     `flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition ${
-      active ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'
+      active ? 'text-foreground border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'
     }`;
 
   return (
     <div className="h-full flex flex-col">
       {/* View tabs + close button on one line */}
-      <div className="flex items-center border-b border-black/20 flex-shrink-0">
+      <div className="flex items-center border-b border-border flex-shrink-0">
         <button onClick={() => onViewChange('thumbs')} className={tabClass(view === 'thumbs')}>
           <LayoutGrid size={14} />
           页码
@@ -97,7 +97,7 @@ export default function TocTree({
                 data-page={page}
                 onClick={() => onPageSelect(page)}
                 className={`cursor-pointer rounded overflow-hidden border-2 transition ${
-                  currentPage === page ? 'border-primary' : 'border-transparent hover:border-white/20'
+                  currentPage === page ? 'border-primary' : 'border-transparent hover:border-border'
                 }`}
               >
                 <img
@@ -107,7 +107,7 @@ export default function TocTree({
                   className="w-full h-auto block bg-white"
                 />
                 <div className={`text-[10px] text-center py-0.5 ${
-                  currentPage === page ? 'text-white bg-primary' : 'text-gray-500 bg-black/20'
+                  currentPage === page ? 'text-primary-foreground bg-primary' : 'text-muted-foreground bg-muted'
                 }`}>
                   {page}
                 </div>
@@ -149,7 +149,7 @@ function TocItem({
       <div
         data-active={isActive}
         className={`flex items-center gap-1 px-2 py-1.5 cursor-pointer text-sm transition ${
-          isActive ? 'bg-primary/30 text-white font-medium border-l-2 border-primary' : 'text-gray-300 hover:bg-white/5 border-l-2 border-transparent'
+          isActive ? 'bg-primary/15 text-primary font-medium border-l-2 border-primary' : 'text-muted-foreground hover:bg-muted border-l-2 border-transparent'
         }`}
         style={{ paddingLeft: `${depth * 12 + 8 - 2}px` }}
         onClick={() => {
@@ -167,7 +167,7 @@ function TocItem({
           <FileText size={14} className="flex-shrink-0 opacity-50" />
         )}
         <span className="truncate flex-1">{node.title}</span>
-        <span className="text-xs text-gray-500 flex-shrink-0">{node.page}</span>
+        <span className="text-xs text-muted-foreground flex-shrink-0">{node.page}</span>
       </div>
       {hasChildren && expanded && (
         <div>

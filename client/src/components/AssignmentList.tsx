@@ -79,11 +79,11 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
   };
 
   if (loading) {
-    return <div className="p-4 text-center text-gray-400 text-sm">加载中...</div>;
+    return <div className="p-4 text-center text-muted-foreground text-sm">加载中...</div>;
   }
 
   if (assignments.length === 0) {
-    return <div className="p-4 text-center text-gray-400 text-sm">暂无作业</div>;
+    return <div className="p-4 text-center text-muted-foreground text-sm">暂无作业</div>;
   }
 
   return (
@@ -99,25 +99,25 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
           <button
             key={a.id}
             onClick={() => onSelect(a)}
-            className={`w-full flex items-start gap-2 px-3 py-2.5 text-left border-b border-gray-100 transition ${
-              selectedId === a.id ? 'bg-[#006064]/10' : 'hover:bg-gray-50'
+            className={`w-full flex items-start gap-2 px-3 py-2.5 text-left border-b border-border transition ${
+              selectedId === a.id ? 'bg-primary/10' : 'hover:bg-muted'
             }`}
           >
-            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${isGraded ? 'text-green-500' : isSubmitted ? 'text-blue-500' : isReturned ? 'text-amber-500' : 'text-gray-400'}`} />
+            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${isGraded ? 'text-green-500' : isSubmitted ? 'text-blue-500' : isReturned ? 'text-amber-500' : 'text-muted-foreground'}`} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-gray-800 truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</span>
+                <span className="text-sm font-medium text-foreground truncate">{formatAssignmentTitle(a.title) || `作业 #${a.id}`}</span>
                 <span className={`flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                  isGraded ? 'bg-green-100 text-green-600'
-                    : isSubmitted ? 'bg-blue-100 text-blue-600'
-                    : isReturned ? 'bg-amber-100 text-amber-600'
-                    : 'bg-gray-100 text-gray-500'
+                  isGraded ? 'bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400'
+                    : isSubmitted ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400'
+                    : isReturned ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
+                    : 'bg-muted text-muted-foreground'
                 }`}>
                   {isGraded ? <CheckCircle size={9} /> : null}
                   {isGraded ? '已批改' : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-2 text-xs text-gray-400 mt-0.5">
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground mt-0.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="flex items-center gap-0.5 flex-shrink-0">
                     <Clock size={10} />
@@ -135,20 +135,20 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                     <span
                       onClick={(e) => handleSubmit(e, a)}
                       title="提交作业"
-                      className="p-1 rounded transition text-gray-300 hover:text-[#006064] hover:bg-[#006064]/10 cursor-pointer"
+                      className="p-1 rounded transition text-muted-foreground/60 hover:text-primary hover:bg-primary/10 cursor-pointer"
                     >
                       <Send size={14} />
                     </span>
                     <span
                       onClick={(e) => handleDelete(e, a)}
                       title="删除作业"
-                      className="p-1 rounded transition text-gray-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
+                      className="p-1 rounded transition text-muted-foreground/60 hover:text-red-500 hover:bg-red-500/10 cursor-pointer"
                     >
                       <Trash2 size={14} />
                     </span>
                   </div>
                 ) : (
-                  <span className="flex-shrink-0 p-1 text-gray-200">
+                  <span className="flex-shrink-0 p-1 text-muted-foreground/40">
                     <Trash2 size={14} />
                   </span>
                 )}

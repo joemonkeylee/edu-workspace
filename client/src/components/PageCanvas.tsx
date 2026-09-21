@@ -243,7 +243,7 @@ export default function PageCanvas({
       />
       {noteInput && (
         <div
-          className="absolute z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-2"
+          className="absolute z-10 bg-card rounded-lg shadow-lg border border-border p-2"
           style={{ left: noteInput.x, top: noteInput.y + 15 }}
         >
           <textarea
@@ -261,7 +261,7 @@ export default function PageCanvas({
               }
             }}
             placeholder="输入笔记..."
-            className="w-48 h-16 text-sm border border-gray-300 rounded px-2 py-1 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-48 h-16 text-sm border border-border bg-card text-foreground rounded px-2 py-1 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <div className="flex justify-end gap-1 mt-1">
             <button
@@ -269,13 +269,13 @@ export default function PageCanvas({
                 setNoteInput(null);
                 setNoteText('');
               }}
-              className="text-xs text-gray-500 px-2 py-1 hover:text-gray-700"
+              className="text-xs text-muted-foreground px-2 py-1 hover:text-foreground"
             >
               取消
             </button>
             <button
               onClick={submitNote}
-              className="text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primaryDark"
+              className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-primaryDark"
             >
               保存
             </button>
