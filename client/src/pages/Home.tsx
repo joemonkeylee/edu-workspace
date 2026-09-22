@@ -16,6 +16,7 @@ import {
 import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
+import ResourceKindMenu from '../components/ResourceKindMenu';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { updateBook, deleteBook } from '../api/client';
 
@@ -650,7 +651,7 @@ export default function Home() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applySearch(); } }}
-        placeholder="关键字..."
+        placeholder="请输入关键字..."
         className="w-full rounded-lg border border-border bg-card py-1.5 pl-7 pr-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
       />
       {search && (
@@ -698,6 +699,8 @@ export default function Home() {
               {APP_COMMIT}
             </span>
           )}
+          <span className="mx-1 h-5 w-px bg-sidebar-border" />
+          <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
         </div>
         <div className="flex items-center gap-2">
           <ThemeSwitcher />
@@ -707,57 +710,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className={`flex-1 p-6 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
-        {/* Row 0: 资源类型切换（视频课程 / 必刷题 / 全部书籍） */}
-        <div className="mb-3 flex items-center gap-4 border-b border-border">
-          <button
-            type="button"
-            onClick={() => safeSetResourceKind('course')}
-            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
-              resourceKind === 'course'
-                ? 'border-primary text-primary font-semibold'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Video size={14} />
-            视频课程
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'course' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-              {kindCounts.course}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => safeSetResourceKind('exercise')}
-            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
-              resourceKind === 'exercise'
-                ? 'border-primary text-primary font-semibold'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-            title="必刷题"
-          >
-            <ListChecks size={14} />
-            必刷题
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'exercise' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-              {kindCounts.exercise}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => safeSetResourceKind('all')}
-            className={`flex items-center gap-1.5 -mb-px border-b-2 pb-2 pt-1 text-sm transition ${
-              resourceKind === 'all'
-                ? 'border-primary text-primary font-semibold'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <BookOpen size={14} />
-            全部书籍
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${resourceKind === 'all' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-              {kindCounts.book + kindCounts.course + kindCounts.exercise}
-            </span>
-          </button>
-        </div>
-
+      <main className={`flex-1 px-6 pt-4 pb-3 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-muted-foreground mr-1">筛选</span> */}
@@ -1335,7 +1288,7 @@ export default function Home() {
 
         {/* Pager (below the list): select actions on left, pager on right */}
         {total > 0 && (
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-2 flex items-center gap-3">
             {/* Col 1: page size config + view toggle (left) */}
             <div className="flex items-center justify-start gap-1.5 w-1/3">
               {/* View toggle */}

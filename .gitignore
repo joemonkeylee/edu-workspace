@@ -5,6 +5,9 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+# tsc -b 会把 vite.config.ts 编译出同名 js,避免误提交并与 .ts 冲突
+client/vite.config.js
+client/vite.config.d.ts
 
 # Environment
 .env
