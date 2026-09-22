@@ -641,7 +641,7 @@ export default function Home() {
     applyPendingFilter();
   };
 
-  // 关键字搜索框：普通视图放在筛选区前部；只看收藏时移到行尾（弱化 页/关键字 这类次要筛选）
+  // 关键字搜索框：固定放在筛选区前部（不随「只看收藏」改变位置，保持位置记忆一致）
   // 输入时不自动查询，回车或点旁边的「搜索」才生效
   const keywordSearchEl = (
     <div className="relative w-36">
@@ -717,8 +717,8 @@ export default function Home() {
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-18" />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-18" />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
-          {!favoritesOnly && keywordSearchEl}
-          {!favoritesOnly && searchButtonEl}
+          {keywordSearchEl}
+          {searchButtonEl}
           <button
             type="button"
             onClick={hasActiveFilters ? resetFilters : refreshBooks}
@@ -825,9 +825,6 @@ export default function Home() {
           >
             <RotateCcw size={13} />
           </button>
-          {/* 只看收藏时，把「关键字」筛选移到行尾（弱化次要筛选，主排序为收藏时间） */}
-          {favoritesOnly && keywordSearchEl}
-          {favoritesOnly && searchButtonEl}
         </div>
 
         {loading ? (
