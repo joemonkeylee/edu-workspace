@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BookOpen, Check, ChevronDown, ListChecks, Video } from 'lucide-react';
+import { BookOpen, ChevronDown, ListChecks, Video } from 'lucide-react';
 import type { ResourceKind } from '../store/homeFilters';
 
 /**
@@ -108,12 +108,14 @@ export default function ResourceKindMenu({ value, onChange, counts }: Props) {
                   active ? 'text-primary' : ''
                 }`}
               >
-                <Icon size={14} className={active ? 'text-primary' : 'text-muted-foreground'} />
-                <span className={active ? 'font-semibold' : ''}>{item.label}</span>
-                <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Icon size={14} className={`flex-shrink-0 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`flex-1 ${active ? 'font-semibold' : ''}`}>{item.label}</span>
+                {/* 固定宽度右对齐 + tabular-nums；颜色跟随选中态，不用徽标背景、不加对勾 */}
+                <span className={`w-10 flex-shrink-0 text-right text-[10px] tabular-nums ${
+                  active ? 'font-medium text-primary' : 'text-muted-foreground'
+                }`}>
                   {countOf(item.key)}
                 </span>
-                {active && <Check size={13} className="text-primary" />}
               </button>
             );
           })}
