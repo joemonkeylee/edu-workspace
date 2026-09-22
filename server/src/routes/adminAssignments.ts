@@ -8,7 +8,9 @@ router.use(teacherOrAdminRequired);
 
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string) || 20));
+  // 200 matches the public assignments list so the grouped "by book" admin
+  // view can pull every assignment of a book in one request.
+  const pageSize = Math.max(1, Math.min(200, parseInt(req.query.pageSize as string) || 20));
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
   const status = typeof req.query.status === 'string' ? req.query.status : 'all';
   const bookId = parseInt(req.query.bookId as string);
@@ -30,6 +32,9 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
       include: {
         book: { select: { id: true, title: true } },
         _count: { select: { strokes: true } },
+        // Distinct page numbers, so the admin list can show which pages an
+        // assignment actually covers (same shape as GET /assignments).
+        strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * pageSize,
@@ -43,7 +48,8 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     }),
   ]);
 
-  res.json({ data, total, page, pageSize, books });
+  const rows = data.map(({ strokes, ...rest }) => ({ ...rest, pages: strokes.map(s => s.pageNumber) }));
+  res.json({ data: rows, total, page, pageSize, books });
 }));
 
 router.delete('/:id', adminRequired, asyncHandler(async (req: Request, res: Response) => {

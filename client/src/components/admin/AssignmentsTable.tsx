@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Trash2, CheckSquare, Square, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, Trash2, CheckSquare, Square, ExternalLink, ChevronLeft, ChevronRight, ChevronDown, BookOpen, Layers, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments } from '../../api/client';
 import { formatAssignmentTitle } from '../../utils/assignment';
@@ -13,8 +12,29 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false });
 }
 
+const STATUS_TEXT: Record<string, string> = {
+  graded: '已批改',
+  submitted: '已提交',
+  returned: '已打回',
+  draft: '待提交',
+};
+
+const STATUS_CLASS: Record<string, string> = {
+  graded: 'bg-green-100 text-green-700',
+  submitted: 'bg-blue-100 text-blue-700',
+  returned: 'bg-amber-100 text-amber-700',
+  draft: 'bg-gray-100 text-gray-600',
+};
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_CLASS[status] || STATUS_CLASS.draft}`}>
+      {STATUS_TEXT[status] || '待提交'}
+    </span>
+  );
+}
+
 export default function AssignmentsTable() {
-  const navigate = useNavigate();
   const confirm = useConfirm();
   const { user, authEnabled } = useAuthStore();
   const isAdmin = !authEnabled || user?.isAdmin || user?.role === 'admin';
@@ -27,11 +47,15 @@ export default function AssignmentsTable() {
   const [filterBook, setFilterBook] = useState('all');
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'book'>('book');
+  const [expandedBooks, setExpandedBooks] = useState<number[]>([]);
 
   const fetchAssignments = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, any> = { page, pageSize: PAGE_SIZE };
+      // The grouped view needs every match at once to group by book, so it
+      // asks for the maximum page size instead of paging through books.
+      const params: Record<string, any> = { page, pageSize: viewMode === 'book' ? 200 : PAGE_SIZE };
       if (search.trim()) params.search = search.trim();
       if (filterStatus !== 'all') params.status = filterStatus;
       if (filterBook !== 'all') params.bookId = filterBook;
@@ -43,9 +67,39 @@ export default function AssignmentsTable() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterStatus, filterBook]);
+  }, [page, search, filterStatus, filterBook, viewMode]);
 
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
+
+  // ── Grouped-by-book view ────────────────────────────────────────────
+  const groupedBooks = useMemo(() => {
+    const map = new Map<number, { bookId: number; title: string; items: any[] }>();
+    for (const item of items) {
+      const key = item.bookId;
+      if (!map.has(key)) {
+        map.set(key, { bookId: key, title: item.book?.title || `书籍 #${key}`, items: [] });
+      }
+      map.get(key)!.items.push(item);
+    }
+    // items already come back newest-first, so sort groups by latest attempt
+    return [...map.values()].sort(
+      (a, b) => new Date(b.items[0].createdAt).getTime() - new Date(a.items[0].createdAt).getTime()
+    );
+  }, [items]);
+
+  const countByStatus = (list: any[], status: string) => list.filter((i) => i.status === status).length;
+
+  const toggleBook = (bookId: number) => {
+    setExpandedBooks((current) =>
+      current.includes(bookId) ? current.filter((id) => id !== bookId) : [...current, bookId]
+    );
+  };
+
+  // Reader links open in a new tab so the admin list keeps its filters,
+  // expanded rows and scroll position instead of being navigated away.
+  const openInNewTab = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id));
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
@@ -97,6 +151,26 @@ export default function AssignmentsTable() {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+          <button
+            onClick={() => { setViewMode('book'); setPage(1); setSelectedIds([]); setExpandedBooks([]); }}
+            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${
+              viewMode === 'book' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            title="按书籍聚合展示每次作业"
+          >
+            <Layers size={14} /> 按书分组
+          </button>
+          <button
+            onClick={() => { setViewMode('list'); setPage(1); setSelectedIds([]); }}
+            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${
+              viewMode === 'list' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            title="平铺的作业列表"
+          >
+            <List size={14} /> 列表
+          </button>
+        </div>
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
@@ -150,6 +224,100 @@ export default function AssignmentsTable() {
         )}
       </div>
 
+      {viewMode === 'book' ? (
+        <div className="space-y-3">
+          {loading ? (
+            <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-lg shadow">加载中...</div>
+          ) : groupedBooks.length === 0 ? (
+            <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-lg shadow">暂无作业</div>
+          ) : (
+            <>
+              {total > items.length && (
+                <p className="px-3 py-2 text-xs rounded-lg text-amber-700 bg-amber-50 border border-amber-200">
+                  共匹配 {total} 条，分组视图一次最多加载 {items.length} 条，请缩小筛选范围以查看全部。
+                </p>
+              )}
+              <div className="flex items-center justify-end gap-3">
+                <button onClick={() => setExpandedBooks(groupedBooks.map((g) => g.bookId))} className="text-xs text-primary hover:underline">
+                  展开全部
+                </button>
+                <button onClick={() => setExpandedBooks([])} className="text-xs text-gray-500 hover:underline">
+                  收起全部
+                </button>
+              </div>
+              {groupedBooks.map((group) => {
+                const open = expandedBooks.includes(group.bookId);
+                const returned = countByStatus(group.items, 'returned');
+                return (
+                  <div key={group.bookId} className="overflow-hidden bg-white rounded-lg shadow">
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <button onClick={() => toggleBook(group.bookId)} className="text-gray-400 transition hover:text-primary" title={open ? '收起' : '展开'}>
+                        <ChevronDown size={18} className={`transition-transform ${open ? '' : '-rotate-90'}`} />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 truncate" title={group.title}>{group.title}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          共 {group.items.length} 次作业
+                          {' · '}待提交 {countByStatus(group.items, 'draft')}
+                          {' · '}已提交 {countByStatus(group.items, 'submitted')}
+                          {' · '}已批改 {countByStatus(group.items, 'graded')}
+                          {returned > 0 && ` · 已打回 ${returned}`}
+                          {' · '}最近 {formatDate(group.items[0].createdAt)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => openInNewTab(`/book/${group.bookId}`)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg text-primary hover:bg-primary/10"
+                        title="打开这本书的阅读页"
+                      >
+                        <BookOpen size={14} /> 打开书籍
+                      </button>
+                    </div>
+                    {open && (
+                      <div className="border-t divide-y divide-gray-100 border-gray-100">
+                        {group.items.map((item) => (
+                          <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 pl-12 transition hover:bg-gray-50">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-medium text-gray-800">
+                                  {formatAssignmentTitle(item.title) || `作业 #${item.id}`}
+                                </span>
+                                <StatusBadge status={item.status} />
+                                {item.pages?.length > 0 && (
+                                  <span className="text-xs text-gray-400">第 {item.pages.join('、')} 页</span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-xs text-gray-500">
+                                {formatDate(item.createdAt)} · {item._count?.strokes ?? 0} 笔
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => openInNewTab(`/book/${item.bookId}?assignmentId=${item.id}&grading=1&role=teacher`)}
+                              className="inline-flex items-center gap-1 p-1.5 rounded text-primary hover:bg-primary/10"
+                              title="进入批改"
+                            >
+                              <ExternalLink size={16} />
+                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                className="p-1.5 rounded text-red-400 hover:bg-red-50"
+                                title="删除"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      ) : (
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -192,19 +360,12 @@ export default function AssignmentsTable() {
                   <td className="px-4 py-3 text-gray-600">{item.subject || '-'}</td>
                   <td className="px-4 py-3 text-gray-600">{item._count?.strokes ?? 0}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                      item.status === 'graded' ? 'bg-green-100 text-green-700'
-                        : item.status === 'submitted' ? 'bg-blue-100 text-blue-700'
-                        : item.status === 'returned' ? 'bg-amber-100 text-amber-700'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {item.status === 'graded' ? '已批改' : item.status === 'submitted' ? '已提交' : item.status === 'returned' ? '已打回' : '待提交'}
-                    </span>
+                    <StatusBadge status={item.status} />
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(item.createdAt)}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button
-                      onClick={() => navigate(`/book/${item.bookId}?assignmentId=${item.id}&grading=1&role=teacher`)}
+                      onClick={() => openInNewTab(`/book/${item.bookId}?assignmentId=${item.id}&grading=1&role=teacher`)}
                       className="inline-flex items-center gap-1 p-1.5 text-primary hover:bg-primary/10 rounded"
                       title="进入批改"
                     >
@@ -237,6 +398,7 @@ export default function AssignmentsTable() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
