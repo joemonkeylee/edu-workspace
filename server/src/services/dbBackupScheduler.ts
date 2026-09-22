@@ -9,8 +9,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { listBackups, createBackup, resolveConnection } from './dbBackup.js';
-import { getStorageRoot } from './storage.js';
+import { listBackups, createBackup, resolveConnection, isBackupsAvailable, getBackupsRoot } from './dbBackup.js';
 import { setWriteListener } from '../prisma.js';
 import prisma from '../prisma.js';
 
@@ -27,6 +26,7 @@ const CHANGE_DEBOUNCE_MS = 5 * 60 * 1000; // 5 min debounce
 let periodicTimer: NodeJS.Timeout | null = null;
 let debounceTimer: NodeJS.Timeout | null = null;
 let startupDone = false;
+let unavailableWarned = false;
 
 // ── Public API ───────────────────────────────────────────────────
 
@@ -43,6 +43,12 @@ export async function startBackupScheduler(): Promise<void> {
 
   // 3. Pre-create a backup if none recent (gap > 6h)
   try {
+    if (!isBackupsAvailable()) {
+      // e.g. storage root on an unmounted / read-only external drive
+      console.warn(`[auto-backup] 备份目录不可用,跳过启动预备份: ${getBackupsRoot()}`);
+      console.log('[auto-backup] scheduler started (backups disabled until storage root is writable)');
+      return;
+    }
     const backups = listBackups();
     const sixHoursAgo = Date.now() - 6 * 60 * 60 * 1000;
     const latestPeriodic = backups.find((b) => b.filename.startsWith('backup-auto-'));
@@ -62,6 +68,7 @@ export function stopBackupScheduler(): void {
   if (periodicTimer) { clearInterval(periodicTimer); periodicTimer = null; }
   if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
   startupDone = false;
+  unavailableWarned = false;
 }
 
 /** Debounced trigger — called by Prisma write hooks. */
@@ -109,6 +116,15 @@ async function getIntSetting(key: string, fallback: number): Promise<number> {
 /** Fire a backup — completely detached, errors only log. */
 async function fireBackup(kind: 'auto' | 'change'): Promise<void> {
   try {
+    if (!isBackupsAvailable()) {
+      // Storage root unmounted / read-only — skip quietly, warn only once
+      if (!unavailableWarned) {
+        unavailableWarned = true;
+        console.warn(`[auto-backup] 备份目录不可用,已跳过 ${kind} 备份: ${getBackupsRoot()}`);
+      }
+      return;
+    }
+    unavailableWarned = false;
     const conn = await resolveConnection(null);
     const tag = kind === 'change' ? 'change' : 'auto';
     const meta = await createBackup({ compress: true, tag, connection: conn });
@@ -132,7 +148,7 @@ function cleanupOldBackups(): void {
 
     if (drop.length === 0) return;
 
-    const root = path.join(getStorageRoot(), 'db-backups');
+    const root = getBackupsRoot();
     for (const b of drop) {
       try {
         fs.unlinkSync(path.join(root, b.filename));

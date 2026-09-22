@@ -9,7 +9,9 @@ import {
   restoreBackup,
   deleteBackup,
   resolveSafePath,
-  ensureBackupsDir,
+  tryEnsureBackupsDir,
+  isBackupsAvailable,
+  getBackupsRoot,
   resolveConnection,
   getConnectionConfig,
   saveConnectionConfig,
@@ -25,7 +27,13 @@ router.use(adminRequired);
 // Upload config: disk storage into backups dir, keep original name, validate suffix.
 const upload = multer({
   storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, ensureBackupsDir()),
+    destination: (_req, _file, cb) => {
+      const dir = tryEnsureBackupsDir();
+      if (!dir) {
+        return cb(new Error(`备份目录不可用:${getBackupsRoot()}(存储根目录不存在或不可写)`), '');
+      }
+      cb(null, dir);
+    },
     filename: (_req, file, cb) => cb(null, Buffer.from(file.originalname, 'latin1').toString('utf8')),
   }),
   limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB
@@ -41,8 +49,9 @@ const upload = multer({
 // ── Backups: list / create / upload / download / delete / restore ─
 
 router.get('/', asyncHandler(async (_req: Request, res: Response) => {
+  const available = isBackupsAvailable();
   const data = listBackups();
-  res.json({ data });
+  res.json({ data, available, root: getBackupsRoot() });
 }));
 
 router.post('/', asyncHandler(async (req: Request, res: Response) => {

@@ -128,9 +128,38 @@ export function getBackupsRoot(): string {
   return path.join(getStorageRoot(), 'db-backups');
 }
 
-export function ensureBackupsDir(): string {
+/** errno codes meaning "the backup dir simply is not usable right now" */
+const DIR_UNAVAILABLE_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'EROFS', 'ENOTDIR', 'ENODEV']);
+
+/**
+ * Best-effort mkdir of the backups dir.
+ * Returns null instead of throwing when the storage root is missing / read-only
+ * (e.g. external drive unmounted or not writable) — callers can then degrade
+ * gracefully instead of crashing startup or scheduled jobs.
+ */
+export function tryEnsureBackupsDir(): string | null {
   const root = getBackupsRoot();
-  fs.mkdirSync(root, { recursive: true });
+  try {
+    fs.mkdirSync(root, { recursive: true });
+    return root;
+  } catch (e) {
+    if (DIR_UNAVAILABLE_CODES.has((e as any)?.code)) return null;
+    throw e;
+  }
+}
+
+/** Whether backups can currently be written/listed. Cheap probe, never throws. */
+export function isBackupsAvailable(): boolean {
+  return tryEnsureBackupsDir() !== null;
+}
+
+export function ensureBackupsDir(): string {
+  const root = tryEnsureBackupsDir();
+  if (!root) {
+    throw new Error(
+      `备份目录不可用:${getBackupsRoot()}(存储根目录不存在或不可写,请检查外置磁盘是否已挂载/有写权限)`
+    );
+  }
   return root;
 }
 
@@ -244,12 +273,14 @@ export function testConnection(conn: DbConnection): string {
 
 /** List all backup files, newest first. */
 export function listBackups(): BackupMeta[] {
-  const root = ensureBackupsDir();
+  // Storage root may be unmounted / read-only (external drive) — treat as "no backups"
+  const root = tryEnsureBackupsDir();
+  if (!root) return [];
   let files: string[];
   try {
     files = fs.readdirSync(root);
   } catch (e) {
-    if ((e as any).code === 'ENOENT') return [];
+    if (DIR_UNAVAILABLE_CODES.has((e as any)?.code)) return [];
     throw e;
   }
   const result: BackupMeta[] = [];
