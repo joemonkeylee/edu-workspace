@@ -61,6 +61,11 @@ export default function AssignmentMode({
   const modeRef = useRef<HTMLDivElement>(null);
   const lastSavedPageRef = useRef(currentPage);
   const autoRotatedRef = useRef(false);
+  // True right after the assignment changes, until we confirm the current
+  // assignment actually appears on the current page. Blocks the auto-switch
+  // below from swapping in another assignment before the jump to the target
+  // page has taken effect.
+  const switchGuardRef = useRef(false);
   const gestureScaleRef = useRef(1);
   const panOffsetRef = useRef({ x: 0, y: 0 });
   const touchPointsRef = useRef(new Map<number, { x: number; y: number }>());
@@ -241,13 +246,25 @@ export default function AssignmentMode({
     };
   };
 
+  // Arm the guard whenever we move to a different assignment.
+  useEffect(() => {
+    switchGuardRef.current = true;
+  }, [assignment?.id]);
+
   // Auto-switch assignment when page changes: find assignment on the new page
   useEffect(() => {
     if (pageAssignments.length === 0) return;
-    const onThisPage = pageAssignments.find(a => a.id === assignment?.id);
-    if (!onThisPage) {
-      onSwitchAssignment(pageAssignments[0]);
+    const onThisPage = pageAssignments.some(a => a.id === assignment?.id);
+    if (onThisPage) {
+      // Target page reached (or the assignment spans no page yet) — resume
+      // normal auto-switch behaviour.
+      switchGuardRef.current = false;
+      return;
     }
+    // Still waiting for the jump to land: don't hijack the assignment with
+    // whatever happens to be on the intermediate page.
+    if (switchGuardRef.current) return;
+    onSwitchAssignment(pageAssignments[0]);
   }, [pageAssignments, assignment?.id, onSwitchAssignment]);
 
   // Warn before unloading if there are unsaved strokes
@@ -287,6 +304,10 @@ export default function AssignmentMode({
 
   // Load natural image dimensions
   useEffect(() => {
+    // Drop the previous page's dimensions right away. Without this the canvas
+    // keeps the old page's aspect ratio for a frame or two and strokes get
+    // stretched onto a wrongly-sized surface while the new image loads.
+    setImgNatural({ w: 0, h: 0 });
     const img = new Image();
     img.onload = () => setImgNatural({ w: img.naturalWidth, h: img.naturalHeight });
     img.src = pageImageUrl(storagePath, currentPage);

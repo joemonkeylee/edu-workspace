@@ -61,6 +61,20 @@ export default function BookViewer() {
   const gradingEntry = searchParams.get('grading') === '1';
   const role = searchParams.get('role') || '';
   const { user, authEnabled } = useAuthStore();
+  // authEnabled === null means the status check hasn't resolved yet. Reading
+  // progress behaves differently depending on it (local only vs. cloud sync),
+  // so page restore must wait until it is known — otherwise a cloud-backed
+  // reader is restored from a stale local page. Never wait forever though:
+  // if the probe stalls, fall back to the local config so the book still opens.
+  const [authReady, setAuthReady] = useState(authEnabled !== null);
+  useEffect(() => {
+    if (authEnabled !== null) {
+      setAuthReady(true);
+      return;
+    }
+    const t = setTimeout(() => setAuthReady(true), 1500);
+    return () => clearTimeout(t);
+  }, [authEnabled]);
   const isTeacher = role === 'teacher' || gradingEntry;
   const canGrade = isTeacher && (!authEnabled || Boolean(user?.isAdmin || user?.role === 'teacher'));
 
@@ -235,6 +249,39 @@ export default function BookViewer() {
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
   const [assignmentPrompt, setAssignmentPrompt] = useState<Assignment | null>(null);
 
+  // ── Assignment page targeting ────────────────────────────────────────
+  // Entering an assignment must land on the page that holds its strokes.
+  // That jump has to survive two things that fight it:
+  //   1. fetchBook() unconditionally resets currentPage to 1
+  //   2. the reading-progress restore writes currentPage asynchronously
+  // So the target is stashed in a ref and applied only after the book loads.
+  const pendingAssignmentPageRef = useRef<number | null>(null);
+  const bookReadyRef = useRef(false);
+  // Mirrors currentAssignment.id so the URL effect can bail out without
+  // taking currentAssignment as a dependency (which would re-fetch in a loop).
+  const currentAssignmentIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    currentAssignmentIdRef.current = currentAssignment?.id ?? null;
+  }, [currentAssignment]);
+
+  // Enter an assignment and land on the first page that actually holds strokes.
+  // If the book is already loaded we jump right away; otherwise the target is
+  // parked in a ref and applied by the init effect once fetchBook resolves.
+  const enterAssignment = useCallback((a: Assignment) => {
+    setCurrentAssignment(a);
+    setAssignmentMode(true);
+    const target = Array.isArray(a.pages)
+      ? a.pages.find(p => Number.isInteger(p) && p > 0)
+      : undefined;
+    if (!target) return; // brand-new assignment: just start on the current page
+    if (bookReadyRef.current) {
+      setCurrentPage(target);
+      pendingAssignmentPageRef.current = null;
+    } else {
+      pendingAssignmentPageRef.current = target;
+    }
+  }, [setCurrentPage]);
+
   // Clear annotation selection when page changes via toolbar/keyboard
   useEffect(() => {
     if (skipClearRef.current) {
@@ -259,8 +306,9 @@ export default function BookViewer() {
   const [selectedDpi, setSelectedDpi] = useState<number>(0);
 
   useEffect(() => {
-    if (!bookId) return;
+    if (!bookId || !authReady) return;
     let cancelled = false;
+    bookReadyRef.current = false;
     (async () => {
       const cfg = await loadReadConfig(bookId);
       if (cancelled) return;
@@ -269,27 +317,38 @@ export default function BookViewer() {
       setPageLayout(cfg.pageLayout);
       setRotation(cfg.rotation);
       fetchBook(bookId).then(() => {
-        if (!cancelled && cfg.page > 1) setCurrentPage(cfg.page);
+        bookReadyRef.current = true;
+        if (cancelled) return;
+        // A pending assignment target always wins over the restored progress,
+        // otherwise the jump would be clobbered by the last-read page.
+        const pending = pendingAssignmentPageRef.current;
+        if (pending) {
+          setCurrentPage(pending);
+          pendingAssignmentPageRef.current = null;
+        } else if (cfg.page > 1) {
+          setCurrentPage(cfg.page);
+        }
       });
       fetchAnnotations(bookId);
     })();
-    return () => { cancelled = true; clearCurrent(); };
-  }, [bookId]);
+    return () => { cancelled = true; bookReadyRef.current = false; clearCurrent(); };
+  }, [bookId, authReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!currentBook || !Number.isInteger(assignmentId) || assignmentId <= 0) return;
+    // Already showing this assignment (e.g. it was just picked from the list
+    // and the URL was updated): don't re-fetch and don't re-jump the page.
+    if (currentAssignmentIdRef.current === assignmentId) return;
     let cancelled = false;
     api.getAssignment(assignmentId).then((assignment) => {
-      if (!cancelled && assignment.bookId === bookId) {
-        setCurrentAssignment(assignment);
-        setAssignmentMode(true);
-        setRightOpen(false);
-      }
+      if (cancelled || assignment.bookId !== bookId) return;
+      enterAssignment(assignment);
+      setRightOpen(false);
     }).catch(() => {
       if (!cancelled) navigate(`/book/${bookId}` , { replace: true });
     });
     return () => { cancelled = true; };
-  }, [currentBook, assignmentId, bookId, navigate]);
+  }, [currentBook, assignmentId, bookId, navigate, enterAssignment]);
 
   // Load all assignments when refresh counter changes
   useEffect(() => {
@@ -306,10 +365,14 @@ export default function BookViewer() {
     }).catch(() => {});
   }, [bookId, assignmentRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist config changes
+  // Persist config changes. Wait for the config to be read back first:
+  // otherwise this PUT races the GET above and, on a book with no saved
+  // progress yet, creates the cloud record with the default pageNumber (1),
+  // which then wins the restore and lands the reader on page 1.
   useEffect(() => {
-    if (bookId) saveReadConfig(bookId, { pageLayout, fitMode, rotation });
-  }, [bookId, pageLayout, fitMode, rotation]);
+    if (!bookId || !savedConfig) return;
+    saveReadConfig(bookId, { pageLayout, fitMode, rotation });
+  }, [bookId, savedConfig, pageLayout, fitMode, rotation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist last page (debounced via ref)
   const savePageTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -597,12 +660,11 @@ export default function BookViewer() {
     const pad = (n: number) => String(n).padStart(2, '0');
     const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
     const assignment = await api.createAssignment(bookId, title);
-    setCurrentAssignment(assignment);
-    setAssignmentMode(true);
+    enterAssignment(assignment);
     setRightTab('assignments');
     setAssignmentRefresh(v => v + 1);
     setSearchParams({ assignmentId: String(assignment.id), role: 'student' }, { replace: true });
-  }, [bookId, setSearchParams]);
+  }, [bookId, setSearchParams, enterAssignment]);
 
   // Assignment mode callbacks (memoized for stable references)
   const handleExitAssignmentMode = useCallback(() => {
@@ -1212,8 +1274,7 @@ export default function BookViewer() {
                 <AssignmentList
                   bookId={bookId}
                   onSelect={(a) => {
-                    setCurrentAssignment(a);
-                    setAssignmentMode(true);
+                    enterAssignment(a);
                     setRightTab('assignments');
                     setSearchParams({ assignmentId: String(a.id), role: isTeacher ? 'teacher' : 'student' }, { replace: true });
                   }}

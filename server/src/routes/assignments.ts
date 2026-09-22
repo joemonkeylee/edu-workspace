@@ -70,11 +70,15 @@ router.get('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
     where: { id },
     include: {
       book: { select: { id: true, title: true, storagePath: true, totalPages: true } },
+      // Distinct page numbers let the client jump straight to the first page
+      // that actually contains strokes (same shape as the list endpoint).
+      strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
     },
   });
   if (!assignment) return res.status(404).json({ error: 'not found' });
   if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to view this assignment' });
-  res.json({ data: assignment });
+  const { strokes, ...rest } = assignment;
+  res.json({ data: { ...rest, pages: strokes.map(s => s.pageNumber) } });
 }));
 
 // ── Create assignment ──────────────────────────────────────────────

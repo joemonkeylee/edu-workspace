@@ -42,11 +42,19 @@ export default function PageCanvas({
   const render = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
-    if (!canvas || !img || !img.complete || img.clientWidth === 0) return;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // The new page's image hasn't decoded yet. Clear the canvas instead of
+    // bailing out — otherwise the previous page's annotations stay painted on
+    // top of the new page until (or unless) the load event fires.
+    if (!img || !img.complete || img.naturalWidth === 0 || img.clientWidth === 0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
 
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
-    const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     for (const ann of annotations) {
@@ -113,6 +121,10 @@ export default function PageCanvas({
     const img = imgRef.current;
     if (!img) return;
     const handler = () => render();
+    // A cached image can finish decoding and fire `load` before this effect
+    // attaches its listener. In that case the event is missed forever and the
+    // annotations never repaint, so re-render here if it is already decoded.
+    if (img.complete && img.naturalWidth > 0) render();
     img.addEventListener('load', handler);
     window.addEventListener('resize', handler);
     return () => {
