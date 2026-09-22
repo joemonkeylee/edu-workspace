@@ -11,6 +11,10 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 const execFileAsync = promisify(execFile);
 const router = Router();
 
+// How long a freshly created, still-empty assignment is reused instead of
+// creating another one. See the double-submit guard in POST /.
+const DUPLICATE_CREATE_WINDOW_MS = 30_000;
+
 function canAccessAssignment(req: AuthedRequest, assignment: { userId: number | null }): boolean {
   if (!req.user) return true; // standalone mode: no restrictions
   if (req.user.isAdmin || req.user.roles.includes('teacher')) return true;
@@ -93,6 +97,23 @@ router.post('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Resp
 
   const book = await prisma.book.findUnique({ where: { id: bookId } });
   if (!book) return res.status(404).json({ error: 'book not found' });
+
+  // Double-submit guard. A brand new assignment has no strokes yet, so it does
+  // not show up on any page — the client's "is there already an assignment on
+  // this page?" check cannot see it, and a rapid second click (or a second
+  // request from another tab) creates a duplicate empty assignment that is
+  // only cleaned up later. Reuse the pending one instead.
+  const pending = await prisma.assignment.findFirst({
+    where: {
+      bookId,
+      userId,
+      status: 'draft',
+      createdAt: { gte: new Date(Date.now() - DUPLICATE_CREATE_WINDOW_MS) },
+      strokes: { none: {} },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (pending) return res.json({ data: pending });
 
   const assignment = await prisma.assignment.create({
     data: { bookId, userId, title: title || book.title, subject: subject || book.subject },

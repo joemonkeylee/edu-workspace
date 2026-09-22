@@ -263,6 +263,11 @@ export default function BookViewer() {
   useEffect(() => {
     currentAssignmentIdRef.current = currentAssignment?.id ?? null;
   }, [currentAssignment]);
+  // Blocks a second create while one is in flight. Entering assignment mode
+  // awaits the assignment list first, so two quick clicks both see an empty
+  // page and both create — that is what produced duplicate empty assignments.
+  const creatingAssignmentRef = useRef(false);
+  const [enteringAssignment, setEnteringAssignment] = useState(false);
 
   // Enter an assignment and land on the first page that actually holds strokes.
   // If the book is already loaded we jump right away; otherwise the target is
@@ -630,8 +635,16 @@ export default function BookViewer() {
     [currentBook, currentPage, fetchAnnotations, setTool]
   );
 
+  const buildAssignmentTitle = useCallback(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  }, []);
+
   const handleEnterAssignmentMode = useCallback(async () => {
-    if (!currentBook) return;
+    if (!currentBook || creatingAssignmentRef.current) return;
+    creatingAssignmentRef.current = true;
+    setEnteringAssignment(true);
     try {
       const { data: all } = await getAssignments(bookId, { pageSize: 200 });
       const pageAssignments = all.filter(a => a.pages?.includes(currentPage));
@@ -640,10 +653,7 @@ export default function BookViewer() {
         setAssignmentPrompt(ungraded[0]);
         return;
       }
-      const d = new Date();
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-      const assignment = await api.createAssignment(bookId, title);
+      const assignment = await api.createAssignment(bookId, buildAssignmentTitle());
       setCurrentAssignment(assignment);
       setAssignmentMode(true);
       setRightTab('assignments');
@@ -652,19 +662,30 @@ export default function BookViewer() {
     } catch (err: any) {
       console.error('Failed to enter assignment mode:', err);
       toast.error('进入做题模式失败: ' + (err?.message || ''));
+    } finally {
+      creatingAssignmentRef.current = false;
+      setEnteringAssignment(false);
     }
-  }, [currentBook, bookId, currentPage, setSearchParams]);
+  }, [currentBook, bookId, currentPage, setSearchParams, buildAssignmentTitle]);
 
   const createNewAssignment = useCallback(async () => {
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const title = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-    const assignment = await api.createAssignment(bookId, title);
-    enterAssignment(assignment);
-    setRightTab('assignments');
-    setAssignmentRefresh(v => v + 1);
-    setSearchParams({ assignmentId: String(assignment.id), role: 'student' }, { replace: true });
-  }, [bookId, setSearchParams, enterAssignment]);
+    if (creatingAssignmentRef.current) return;
+    creatingAssignmentRef.current = true;
+    setEnteringAssignment(true);
+    try {
+      const assignment = await api.createAssignment(bookId, buildAssignmentTitle());
+      enterAssignment(assignment);
+      setRightTab('assignments');
+      setAssignmentRefresh(v => v + 1);
+      setSearchParams({ assignmentId: String(assignment.id), role: 'student' }, { replace: true });
+    } catch (err: any) {
+      console.error('Failed to create assignment:', err);
+      toast.error('新建作业失败: ' + (err?.message || ''));
+    } finally {
+      creatingAssignmentRef.current = false;
+      setEnteringAssignment(false);
+    }
+  }, [bookId, setSearchParams, enterAssignment, buildAssignmentTitle]);
 
   // Assignment mode callbacks (memoized for stable references)
   const handleExitAssignmentMode = useCallback(() => {
@@ -897,8 +918,13 @@ export default function BookViewer() {
           ))}
           <button
             onClick={handleEnterAssignmentMode}
+            disabled={enteringAssignment}
             data-tooltip="做题"
-            className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition flex-shrink-0"
+            className={`relative p-1.5 rounded transition flex-shrink-0 ${
+              enteringAssignment
+                ? 'text-muted-foreground opacity-40 cursor-wait'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
           >
             <PenLine size={16} />
           </button>
@@ -1375,11 +1401,12 @@ export default function BookViewer() {
                 复用
               </button>
               <button
+                disabled={enteringAssignment}
                 onClick={async () => {
                   setAssignmentPrompt(null);
                   await createNewAssignment();
                 }}
-                className="px-3 py-1.5 text-sm rounded-lg border border-border text-muted-foreground hover:bg-muted"
+                className="px-3 py-1.5 text-sm rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-wait"
               >
                 新建
               </button>

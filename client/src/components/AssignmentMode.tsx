@@ -7,6 +7,7 @@ import {
 import DrawingCanvas, { DrawingCanvasHandle, Stroke } from './DrawingCanvas';
 import { pageImageUrl, getStrokes, saveStrokes, deleteAssignment, getAssignments, updateAssignment, type Assignment, type AssignmentStroke } from '../api/client';
 import { formatAssignmentTitle } from '../utils/assignment';
+import { isDesktopBrowser } from '../utils/device';
 import { toast } from 'sonner';
 import { useConfirm } from './ConfirmDialog';
 
@@ -35,6 +36,26 @@ const COLORS = [
 
 const HIGHLIGHT_COLOR = 'rgba(250, 204, 21, 0.5)';
 
+// Autosave waits this long after the last stroke, so a burst of strokes costs
+// one request instead of one per stroke.
+const AUTOSAVE_DEBOUNCE_MS = 1500;
+// Upper bound between saves while drawing continuously — bounds how much work
+// a crash or a killed renderer can take with it.
+const AUTOSAVE_MAX_INTERVAL_MS = 10000;
+
+// DrawingCanvas updates the stroke array immutably, so untouched strokes keep
+// their identity and a reference walk is enough to detect a change. Comparing
+// by JSON.stringify instead serialised every point of the assignment on every
+// single stroke, which gets expensive fast on a heavily annotated page.
+function strokesEqual(a: Stroke[], b: Stroke[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 export default function AssignmentMode({
   bookId, bookTitle, canGrade = false, totalPages, storagePath, currentPage, setCurrentPage,
   assignment, onExit, onAssignmentUpdate, pageAssignments, onSwitchAssignment,
@@ -61,6 +82,14 @@ export default function AssignmentMode({
   const modeRef = useRef<HTMLDivElement>(null);
   const lastSavedPageRef = useRef(currentPage);
   const autoRotatedRef = useRef(false);
+  // Latest strokes, readable from timers and unload handlers without making
+  // them depend on re-created callbacks.
+  const strokesRef = useRef<Stroke[]>([]);
+  // Timestamp of the last save attempt (optimistic, set when it starts).
+  const lastSaveAttemptRef = useRef(0);
+  // Serialises saves: autosave, manual save, page change and exit all queue up
+  // here so two requests can never overlap and reintroduce lost updates.
+  const saveChainRef = useRef<Promise<unknown>>(Promise.resolve());
   // True right after the assignment changes, until we confirm the current
   // assignment actually appears on the current page. Blocks the auto-switch
   // below from swapping in another assignment before the jump to the target
@@ -302,6 +331,10 @@ export default function AssignmentMode({
     return () => { cancelled = true; };
   }, [assignment, currentPage]);
 
+  // Mirror strokes into a ref so autosave timers and unload handlers can read
+  // the newest value without being re-created on every stroke.
+  useEffect(() => { strokesRef.current = strokes; }, [strokes]);
+
   // Load natural image dimensions
   useEffect(() => {
     // Drop the previous page's dimensions right away. Without this the canvas
@@ -313,10 +346,15 @@ export default function AssignmentMode({
     img.src = pageImageUrl(storagePath, currentPage);
   }, [storagePath, currentPage]);
 
-  // Auto-rotate on first image load: align page long edge with screen long edge
+  // Auto-rotate on first image load: align page long edge with screen long edge.
+  // Desktop browsers are excluded — a PC screen is landscape while a textbook
+  // page is portrait, so the rule would rotate on essentially every entry and
+  // fight the mouse-driven workflow. The page stays at 0° there; touch devices
+  // keep the existing behaviour.
   useEffect(() => {
     if (autoRotatedRef.current || imgNatural.w === 0) return;
     autoRotatedRef.current = true;
+    if (isDesktopBrowser()) return;
     const isScreenLandscape = window.innerWidth > window.innerHeight;
     const isPageLandscape = imgNatural.w > imgNatural.h;
     if (isScreenLandscape !== isPageLandscape) {
@@ -347,70 +385,113 @@ export default function AssignmentMode({
     return () => observer.disconnect();
   }, [calcLocalZoom]);
 
+  /**
+   * Single write path for strokes. Every save (autosave, manual, page change,
+   * exit) goes through here so they serialise on one chain — an autosave can
+   * never overwrite a newer manual save, and two requests never overlap.
+   *
+   * `silent` suppresses the error toast for background autosaves: a transient
+   * failure there is retried on the next tick and should not nag the user.
+   */
+  const persist = useCallback((page: number, data: Stroke[], silent = true): Promise<boolean> => {
+    if (!assignment || isGraded) return Promise.resolve(true);
+    lastSaveAttemptRef.current = Date.now();
+    const run = saveChainRef.current.then(async () => {
+      try {
+        await saveStrokes(assignment.id, page, layer, data);
+        setSavedStrokes(data);
+        // Only clear the dirty flag if nothing new was drawn while the request
+        // was in flight — otherwise those strokes would never get saved.
+        if (strokesRef.current === data) setDirty(false);
+        return true;
+      } catch (err: any) {
+        console.error('Save failed:', err);
+        if (!silent) toast.error('保存失败: ' + (err?.message || '网络错误'));
+        return false;
+      }
+    });
+    saveChainRef.current = run.catch(() => undefined);
+    return run;
+  }, [assignment, isGraded, layer]);
+
+  // Autosave: debounce after the last stroke, but never go longer than
+  // AUTOSAVE_MAX_INTERVAL_MS without a save even while drawing continuously.
+  useEffect(() => {
+    if (!assignment || isGraded || !dirty || !strokesLoaded) return;
+    const sinceLast = Date.now() - lastSaveAttemptRef.current;
+    const delay = sinceLast >= AUTOSAVE_MAX_INTERVAL_MS ? 0 : AUTOSAVE_DEBOUNCE_MS;
+    const timer = window.setTimeout(() => {
+      void persist(lastSavedPageRef.current, strokesRef.current);
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [assignment, isGraded, dirty, strokesLoaded, strokes, persist]);
+
+  // Flush as soon as the page may be going away. `beforeunload` alone is not
+  // enough: it never fires when a tab is discarded or the renderer dies, which
+  // is exactly the case where strokes used to be lost.
+  useEffect(() => {
+    const flush = () => {
+      if (!assignment || isGraded || !dirty) return;
+      void persist(lastSavedPageRef.current, strokesRef.current);
+    };
+    const onVisibilityChange = () => { if (document.hidden) flush(); };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [assignment, isGraded, dirty, persist]);
+
   // Save current page, returns success
   const saveCurrentPage = useCallback(async (showToast = false): Promise<boolean> => {
     if (!assignment || isGraded) return true;
     if (!dirty) return true;
     setSaving(true);
-    try {
-      await saveStrokes(assignment.id, lastSavedPageRef.current, layer, strokes);
-      setSavedStrokes(strokes);
-      setDirty(false);
-      if (showToast) toast.success('保存成功');
-      return true;
-    } catch (err: any) {
-      console.error('Save failed:', err);
-      toast.error('保存失败: ' + (err?.message || '网络错误'));
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [assignment, isGraded, dirty, strokes, layer]);
+    const ok = await persist(lastSavedPageRef.current, strokes, !showToast);
+    setSaving(false);
+    if (ok && showToast) toast.success('保存成功');
+    return ok;
+  }, [assignment, isGraded, dirty, strokes, persist]);
 
   // Save before page change; if saved strokes are empty, delete the assignment
   const handlePageChange = useCallback(async (newPage: number) => {
     if (assignment && dirty && !isGraded) {
       setSaving(true);
-      try {
-        await saveStrokes(assignment.id, currentPage, layer, strokes);
-        setSavedStrokes(strokes);
-        setDirty(false);
-        if (strokes.length === 0 && strokesLoaded) {
+      const ok = await persist(currentPage, strokes, false);
+      setSaving(false);
+      if (!ok) {
+        toast.error('保存失败，无法翻页');
+        return; // Block page change on save failure
+      }
+      if (strokes.length === 0 && strokesLoaded) {
+        try {
           const { strokes: allStrokes } = await getStrokes(assignment.id);
           if (allStrokes.length === 0) {
             await deleteAssignment(assignment.id);
             onExit();
             return;
           }
+        } catch (err: any) {
+          console.error('Empty assignment cleanup failed:', err);
         }
-      } catch (err: any) {
-        console.error('Save before page change failed:', err);
-        toast.error('保存失败，无法翻页: ' + (err?.message || '网络错误'));
-        setSaving(false);
-        return; // Block page change on save failure
       }
-      setSaving(false);
     }
     lastSavedPageRef.current = newPage;
     setCurrentPage(newPage);
     onAssignmentUpdate();
-  }, [assignment, dirty, isGraded, strokes, strokesLoaded, currentPage, layer, setCurrentPage, onExit, onAssignmentUpdate]);
+  }, [assignment, dirty, isGraded, strokes, strokesLoaded, currentPage, persist, setCurrentPage, onExit, onAssignmentUpdate]);
 
   // On exit: save current page first, block exit on save failure
   const handleExit = useCallback(async () => {
     if (assignment && dirty && !isGraded) {
       setSaving(true);
-      try {
-        await saveStrokes(assignment.id, lastSavedPageRef.current, layer, strokes);
-        setSavedStrokes(strokes);
-        setDirty(false);
-      } catch (err: any) {
-        console.error('Save on exit failed:', err);
-        toast.error('保存失败，无法退出: ' + (err?.message || '网络错误'));
-        setSaving(false);
+      const ok = await persist(lastSavedPageRef.current, strokes, false);
+      setSaving(false);
+      if (!ok) {
+        toast.error('保存失败，无法退出');
         return; // Block exit on save failure
       }
-      setSaving(false);
     }
     // Exit after successful save
     onExit();
@@ -428,12 +509,11 @@ export default function AssignmentMode({
     } catch (err) {
       console.error('Cleanup empty assignments failed:', err);
     }
-  }, [assignment, dirty, isGraded, strokes, layer, bookId, onExit, onAssignmentUpdate]);
+  }, [assignment, dirty, isGraded, strokes, persist, bookId, onExit, onAssignmentUpdate]);
 
   const handleStrokesChange = useCallback((newStrokes: Stroke[]) => {
     setStrokes(newStrokes);
-    const changed = JSON.stringify(newStrokes) !== JSON.stringify(savedStrokes);
-    setDirty(changed);
+    setDirty(!strokesEqual(newStrokes, savedStrokes));
     setCanUndo(canvasRef.current?.canUndo() ?? false);
     setCanRedo(canvasRef.current?.canRedo() ?? false);
   }, [savedStrokes]);

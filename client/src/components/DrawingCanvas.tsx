@@ -41,29 +41,76 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
     const redoStackRef = useRef<Stroke[][]>([]);
     const [, forceRender] = useState(0);
     const isPencilActiveRef = useRef(false);
+    // Offscreen layer holding every committed stroke. It is repainted only when
+    // the stroke array or the canvas size changes, so moving the pointer costs
+    // one bitmap blit plus the stroke in progress instead of re-walking every
+    // point of the whole assignment on every single move event.
+    const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const baseStrokesRef = useRef<Stroke[] | null>(null);
 
-    const redraw = useCallback(() => {
+    // Callers hand us width/height derived from `naturalSize * zoom`, which is
+    // fractional. Both canvases must end up at the exact same integer size or
+    // the blit would rescale, so round once and use it everywhere.
+    const pixelWidth = Math.max(1, Math.round(width));
+    const pixelHeight = Math.max(1, Math.round(height));
+
+    /**
+     * Repaint the cached layer from strokesRef. Skipped when it already mirrors
+     * the current stroke array at the current size, so a parent re-render that
+     * hands back the same array does not redo the work.
+     */
+    const rebuildBase = useCallback(() => {
+      let base = baseCanvasRef.current;
+      if (!base) {
+        base = document.createElement('canvas');
+        baseCanvasRef.current = base;
+      }
+      const resized = base.width !== pixelWidth || base.height !== pixelHeight;
+      if (!resized && baseStrokesRef.current === strokesRef.current) return;
+      if (resized) {
+        // Assigning width/height also clears the canvas.
+        base.width = pixelWidth;
+        base.height = pixelHeight;
+      }
+      const bctx = base.getContext('2d');
+      if (!bctx) return;
+      bctx.clearRect(0, 0, pixelWidth, pixelHeight);
+      for (const stroke of strokesRef.current) {
+        drawStroke(bctx, stroke, pixelWidth, pixelHeight);
+      }
+      baseStrokesRef.current = strokesRef.current;
+    }, [pixelWidth, pixelHeight]);
+
+    /** Blit the committed strokes, then draw the stroke in progress on top. */
+    const composite = useCallback(() => {
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
       if (!canvas || !ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (const stroke of strokesRef.current) {
-        drawStroke(ctx, stroke, width, height);
+      const base = baseCanvasRef.current;
+      if (base && base.width === canvas.width && base.height === canvas.height) {
+        ctx.drawImage(base, 0, 0);
       }
       if (currentStrokeRef.current) {
-        drawStroke(ctx, currentStrokeRef.current, width, height);
+        drawStroke(ctx, currentStrokeRef.current, pixelWidth, pixelHeight);
       }
-    }, [width, height]);
+    }, [pixelWidth, pixelHeight]);
+
+    /** Full repaint — rebuild the cached layer, then blit it. */
+    const redraw = useCallback(() => {
+      rebuildBase();
+      composite();
+    }, [rebuildBase, composite]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
       ctxRef.current = canvas.getContext('2d');
       strokesRef.current = strokes;
       redraw();
-    }, [width, height, strokes, redraw]);
+    }, [pixelWidth, pixelHeight, strokes, redraw]);
 
     const pushUndo = () => {
       undoStackRef.current.push([...strokesRef.current]);
@@ -164,7 +211,8 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
         width: penWidth,
         points: [pt],
       };
-      redraw();
+      // The cached layer is unchanged here — only the in-progress stroke moves.
+      composite();
     };
 
     const onPointerMove = (e: React.PointerEvent) => {
@@ -177,7 +225,9 @@ const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(
       // Skip tiny movements to reduce point count
       if (Math.abs(pt.x - last.x) < 0.002 && Math.abs(pt.y - last.y) < 0.002) return;
       pts.push(pt);
-      redraw();
+      // Committed strokes come from the offscreen bitmap; only the stroke being
+      // drawn is re-walked, so cost stays flat as the assignment grows.
+      composite();
     };
 
     const onPointerUp = (e: React.PointerEvent) => {
