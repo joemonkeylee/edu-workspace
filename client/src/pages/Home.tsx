@@ -1363,7 +1363,7 @@ export default function Home() {
                 onChange={(e) => setPageInput(e.target.value)}
                 onBlur={() => goPage(parseInt(pageInput, 10) || 1)}
                 onKeyDown={(e) => { if (e.key === 'Enter') goPage(parseInt(pageInput, 10) || 1); }}
-                className="w-14 rounded-md border border-border px-2 py-1 text-center text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-14 rounded-md border border-border bg-card px-2 py-1 text-center text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <span className="text-xs text-muted-foreground">/ {totalPages}</span>
               <button onClick={() => goPage(safePage + 1)} disabled={safePage >= totalPages} className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"><ChevronRight size={14} /></button>
