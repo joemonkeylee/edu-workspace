@@ -243,14 +243,14 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
             </div>
             <div>
               <label className="text-sm text-muted-foreground">状态</label>
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-3 py-2 border rounded text-sm">
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                 <option value="normal">正常</option>
                 <option value="disabled">禁用</option>
               </select>
             </div>
             <div>
               <label className="text-sm text-muted-foreground">最大设备数</label>
-              <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="w-full px-3 py-2 border rounded text-sm" />
+              <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
             </div>
             <button
               onClick={async () => {
@@ -283,7 +283,7 @@ function ResetPasswordButton({ userId }: { userId: number }) {
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShow(false)}>
           <div className="bg-background rounded-lg p-6 w-80" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">重置密码</h3>
-            <input type="password" placeholder="新密码" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border rounded text-sm mb-3" />
+            <input type="password" placeholder="新密码" value={password} onChange={(e) => setPassword(e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring mb-3" />
             <button
               onClick={async () => {
                 if (!password || password.length < 4) { toast.warning('密码至少4位'); return; }
@@ -343,7 +343,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           </div>
           <div>
             <label className="text-sm text-muted-foreground">最大设备数</label>
-            <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="w-full px-3 py-2 border rounded text-sm" />
+            <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <button
@@ -391,7 +391,7 @@ function Field({ label, value, onChange, type = 'text' }: { label: string; value
   return (
     <div>
       <label className="text-sm text-muted-foreground">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full px-3 py-2 border rounded text-sm" />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
     </div>
   );
 }
