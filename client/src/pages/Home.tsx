@@ -13,7 +13,7 @@ import {
   type SortFieldDef,
   type SortFieldName,
 } from '../store/homeFilters';
-import { BookOpen, Settings, ArrowLeft, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
+import { GraduationCap, BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import ResourceKindMenu from '../components/ResourceKindMenu';
@@ -690,15 +690,11 @@ export default function Home() {
       <header className="bg-sidebar text-sidebar-foreground px-6 py-4 flex items-center justify-between flex-shrink-0 h-14">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
-            <BookOpen size={22} />
-            <span className="text-lg font-normal">Books</span>
+            <GraduationCap size={22} />
+            <span className="text-lg font-normal">edu-workspace</span>
           </Link>
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
           <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
-          <span className="mx-1 h-5 w-px bg-sidebar-border" />
-          <Link to="/" title="返回首页" className="flex items-center justify-center h-8 w-8 rounded-md text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent transition">
-            <ArrowLeft size={16} />
-          </Link>
         </div>
         <AppHeaderRight />
       </header>
