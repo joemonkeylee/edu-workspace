@@ -32,7 +32,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
 }, ref) => {
   const renderBlindHintWord = (word: string, i: number) => (
     <span key={i} className="relative mr-2.5 mt-2.5 inline-block cursor-default outline-none" tabIndex={0} aria-label={word}>
-      <span className="inline-block whitespace-nowrap border-b-2 border-foreground pb-[3px] font-semibold tracking-[0.15ch] text-transparent select-none" style={{ minWidth: `${word.length * 0.9}ch` }}>.</span>
+      <span className="inline-block whitespace-nowrap border-b-2 border-foreground pb-[3px] font-medium tracking-[0.15ch] text-transparent select-none" style={{ minWidth: `${word.length * 0.9}ch` }}>.</span>
       <span
         className="absolute left-1/2 bottom-[calc(100%-10px)] -translate-x-1/2 rounded bg-primary/80 px-1.5 py-0.5 text-base whitespace-nowrap opacity-0 transition-opacity hover:opacity-100 z-10"
         onClick={(e) => { e.stopPropagation(); onWordClick(word.replace(/[.,!?;:]/g, '')) }}
@@ -42,14 +42,14 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
 
   const renderSentenceText = (sentence: SentenceItem) => {
     if (!sentence) return null
-    // 第一行（英文）保持原有字重不变，中文行与英文行同字号，仅用颜色区分主次
+    // 与顶栏「播放模式」保持同一字重（font-medium），英文行不再加粗
     const commonStyle = { lineHeight: '1.6', display: 'inline-block' as const }
     const enStyle = commonStyle
     const zhStyle = { ...commonStyle, marginTop: '4px' }
     const renderEn = () => {
       const wordsArr = sentence.Sentence ? sentence.Sentence.split(' ') : []
       return (
-        <span className="font-semibold" style={enStyle}>
+        <span className="font-medium" style={enStyle}>
           {wordsArr.map((w, i) => (
             <span key={i} className="cursor-pointer" onClick={(e) => { e.stopPropagation(); onWordClick(w.replace(/[.,!?;:]/g, '')) }}>
               {w}{i !== wordsArr.length - 1 ? ' ' : ''}
@@ -66,7 +66,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
         return <span className="select-none" style={commonStyle}>{wordsArr.map((w, i) => renderBlindHintWord(w.replace(/[.,!?;:]/g, ''), i))}</span>
       }
       case SubtitleModes.CHINESE:
-        return <span className="text-muted-foreground" style={enStyle}>{sentence.Trans || '(No translation)'}</span>
+        return <span className="font-medium text-muted-foreground" style={enStyle}>{sentence.Trans || '(No translation)'}</span>
       case SubtitleModes.ENGLISH:
         return renderEn()
       case SubtitleModes.FULL:
@@ -74,7 +74,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
           <>
             {renderEn()}
             <br />
-            <span className="text-muted-foreground" style={zhStyle}>{sentence.Trans || '(No translation)'}</span>
+            <span className="font-medium text-muted-foreground" style={zhStyle}>{sentence.Trans || '(No translation)'}</span>
           </>
         )
       default:

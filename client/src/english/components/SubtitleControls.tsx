@@ -46,7 +46,7 @@ export default function SubtitleControls({
   ]
 
   return (
-    // 左（听写/打字）· 中（播放控制 + 倍速）· 右（播放模式）
+    // 三分组：左（听写/打字）· 中（播放控制 + 倍速）· 右（播放模式）
     <div className="flex items-center justify-between gap-4 border-b border-border bg-card px-4 py-2">
       {/* 左侧：模式切换 */}
       <WorkModeToggle workMode={workMode} onChangeWorkMode={onChangeWorkMode} />

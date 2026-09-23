@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type UIEvent } from 'react'
 import CopyTextButton from './CopyTextButton'
-import { List, Play, CheckCircle2 } from 'lucide-react'
+import { List, Play, CheckCircle2, Type, AlignLeft, Clock } from 'lucide-react'
 import type { VocabWord } from '../constants'
 import { cn } from '@/lib/utils'
 
@@ -162,11 +162,20 @@ export default function VirtualizedLessonSelector({
                   )}>
                     {lesson.title}
                   </div>
-                  {/* 三列：词数 / 句数 / 时长，各列对齐 */}
-                  <div className="mt-1 grid grid-cols-[1fr_1fr_auto] items-center gap-x-2 text-[11px] text-muted-foreground">
-                    <span className="truncate tabular-nums">{lesson.words}</span>
-                    <span className="truncate tabular-nums">{lesson.lines}</span>
-                    <span className="tabular-nums">{lesson.time}</span>
+                  {/* 词数 / 句数 / 时长：正常排列，各项前带图标 */}
+                  <div className="mt-1 flex items-center gap-2.5 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1 whitespace-nowrap tabular-nums">
+                      <Type size={11} className="flex-shrink-0 opacity-70" />
+                      {lesson.words}
+                    </span>
+                    <span className="flex items-center gap-1 whitespace-nowrap tabular-nums">
+                      <AlignLeft size={11} className="flex-shrink-0 opacity-70" />
+                      {lesson.lines}
+                    </span>
+                    <span className="flex items-center gap-1 whitespace-nowrap tabular-nums">
+                      <Clock size={11} className="flex-shrink-0 opacity-70" />
+                      {lesson.time}
+                    </span>
                   </div>
                 </div>
 

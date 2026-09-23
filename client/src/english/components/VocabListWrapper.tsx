@@ -35,29 +35,29 @@ export default function VocabListWrapper({
         style={{ display: showVocab ? 'none' : 'flex', transition: 'opacity 0.3s' }}
         aria-hidden={showVocab}
       >
-        <BookSelector
-          books={books}
-          currentBookIdx={currentBookIdx}
-          setCurrentBookIdx={(idx) => {
-            if (idx !== currentBookIdx) {
-              setCurrentBookIdx(idx)
-              setCurrentLessonIdx(0)
-            }
-          }}
-        />
-        <div className="flex flex-shrink-0 items-center gap-2 border-b border-sidebar-border px-3 py-1 text-[11px] text-muted-foreground">
-          <span>共 {lessons.length} 课</span>
-          <span className="tabular-nums">
-            {currentLessonIdx >= 0 ? `当前 第 ${currentLessonIdx + 1} 课` : '未选择'}
-          </span>
+        {/* 一行：教材下拉（缩短）+ 收起按钮 */}
+        <div className="flex flex-shrink-0 items-center gap-2 border-b border-sidebar-border px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <BookSelector
+              bare
+              books={books}
+              currentBookIdx={currentBookIdx}
+              setCurrentBookIdx={(idx) => {
+                if (idx !== currentBookIdx) {
+                  setCurrentBookIdx(idx)
+                  setCurrentLessonIdx(0)
+                }
+              }}
+            />
+          </div>
           {onToggleSidebar && (
             <button
               type="button"
               onClick={onToggleSidebar}
-              className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
               title="收起课程列表"
             >
-              <PanelLeftClose size={13} />
+              <PanelLeftClose size={14} />
             </button>
           )}
         </div>
