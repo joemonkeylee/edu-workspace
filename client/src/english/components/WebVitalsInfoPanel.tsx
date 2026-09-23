@@ -68,6 +68,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">值</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">状态</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">理想范围</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">体验影响</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">改进</th>
                   <th className="w-10 px-3 py-2"></th>
                 </tr>
@@ -78,6 +79,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                     name,
                     meaning,
                     idealRange,
+                    userImpact,
                     improvementNeeded,
                     referenceLink,
                     rawMetric,
@@ -107,6 +109,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                           </td>
                           <td className="px-3 py-2">{ratingBadge(rawMetric.rating)}</td>
                           <td className="px-3 py-2 text-muted-foreground">{idealRange}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{userImpact}</td>
                           <td className="px-3 py-2 text-muted-foreground">{improvementNeeded}</td>
                           <td className="px-3 py-2">
                             <Button
@@ -122,7 +125,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                         </tr>
                         {expanded && (
                           <tr className="bg-muted/40">
-                            <td colSpan={5} className="px-3 py-2">
+                            <td colSpan={6} className="px-3 py-2">
                               <pre className="max-h-60 overflow-auto rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
                                 {JSON.stringify(rawMetric, null, 2)}
                               </pre>
