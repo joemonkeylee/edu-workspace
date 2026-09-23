@@ -1,5 +1,5 @@
 import { useState, Fragment } from 'react'
-import { BarChart, ChevronDown, ChevronRight } from 'lucide-react'
+import { BarChart, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -80,13 +80,24 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                     meaning,
                     idealRange,
                     improvementNeeded,
+                    referenceLink,
                     rawMetric,
                   }) => {
                     const expanded = expandedName === name
                     return (
                       <Fragment key={name}>
                         <tr className="border-b border-border/50 last:border-b-0 hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2 font-medium text-foreground">{name}</td>
+                          <td className="px-3 py-2 font-medium text-foreground">
+                            <div className="flex items-center gap-1">
+                              <span>{name}</span>
+                              {referenceLink && (
+                                <a href={referenceLink} target="_blank" rel="noopener noreferrer"
+                                  className="text-muted-foreground hover:text-primary transition-colors">
+                                  <ExternalLink size={12} />
+                                </a>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-2 text-muted-foreground">{meaning}</td>
                           <td className="px-3 py-2 font-mono text-xs text-foreground">
                             {rawMetric.value.toFixed(rawMetric.value < 1000 ? 1 : 0)}
