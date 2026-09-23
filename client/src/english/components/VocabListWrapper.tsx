@@ -35,8 +35,8 @@ export default function VocabListWrapper({
         style={{ display: showVocab ? 'none' : 'flex', transition: 'opacity 0.3s' }}
         aria-hidden={showVocab}
       >
-        {/* 一行：教材下拉 + 收起按钮（行高与课程条目、生词表标题一致：48px） */}
-        <div className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
+        {/* 一行：教材下拉 + 收起按钮 */}
+        <div className="flex h-[60px] flex-shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
           <div className="min-w-0 flex-1">
             <BookSelector
               bare

@@ -34,7 +34,7 @@ export default function VocabList({ words, toggle }: VocabListProps) {
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground" role="list" aria-label="生词表">
-      <div className="flex h-12 items-center justify-between border-b border-sidebar-border px-3">
+      <div className="flex h-[60px] flex-shrink-0 items-center justify-between border-b border-sidebar-border px-3">
         <h3 className="text-sm font-normal">生词表</h3>
         <button
           type="button"
