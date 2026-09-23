@@ -179,7 +179,7 @@ export default function AssignmentsTable() {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             onKeyDown={(e) => e.key === 'Enter' && fetchAssignments()}
             placeholder="搜索作业、书名或学科..."
-            className="w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">

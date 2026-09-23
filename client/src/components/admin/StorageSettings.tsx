@@ -76,7 +76,7 @@ export default function StorageSettings() {
         <input
           value={path}
           onChange={(e) => setPath(e.target.value)}
-          className="w-full px-3 py-2.5 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full px-3 py-2.5 border border-input rounded-lg text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="/Users/username/Documents/edu-storage"
         />
         <div className="mt-4 flex items-center gap-3">
