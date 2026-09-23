@@ -32,7 +32,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
 }, ref) => {
   const renderBlindHintWord = (word: string, i: number) => (
     <span key={i} className="relative mr-2.5 mt-2.5 inline-block cursor-default outline-none" tabIndex={0} aria-label={word}>
-      <span className="inline-block whitespace-nowrap border-b-2 border-foreground pb-[3px] font-medium tracking-[0.15ch] text-transparent select-none" style={{ minWidth: `${word.length * 0.9}ch` }}>.</span>
+      <span className="inline-block whitespace-nowrap border-b-2 border-foreground pb-[3px] font-normal tracking-[0.15ch] text-transparent select-none" style={{ minWidth: `${word.length * 0.9}ch` }}>.</span>
       <span
         className="absolute left-1/2 bottom-[calc(100%-10px)] -translate-x-1/2 rounded bg-primary/80 px-1.5 py-0.5 text-base whitespace-nowrap opacity-0 transition-opacity hover:opacity-100 z-10"
         onClick={(e) => { e.stopPropagation(); onWordClick(word.replace(/[.,!?;:]/g, '')) }}
@@ -42,14 +42,14 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
 
   const renderSentenceText = (sentence: SentenceItem) => {
     if (!sentence) return null
-    // 与顶栏「播放模式」保持同一字重（font-medium），英文行不再加粗
-    const commonStyle = { lineHeight: '1.6', display: 'inline-block' as const }
+    // 英文 14px 中文 12px,都不加粗,紧凑行高
+    const commonStyle = { lineHeight: '1.2', display: 'inline-block' as const, fontSize: '14px' }
     const enStyle = commonStyle
-    const zhStyle = { ...commonStyle, marginTop: '4px' }
+    const zhStyle = { ...commonStyle, fontSize: '12px', marginTop: '-3px' }
     const renderEn = () => {
       const wordsArr = sentence.Sentence ? sentence.Sentence.split(' ') : []
       return (
-        <span className="font-medium" style={enStyle}>
+        <span className="font-normal" style={enStyle}>
           {wordsArr.map((w, i) => (
             <span key={i} className="cursor-pointer" onClick={(e) => { e.stopPropagation(); onWordClick(w.replace(/[.,!?;:]/g, '')) }}>
               {w}{i !== wordsArr.length - 1 ? ' ' : ''}
@@ -66,7 +66,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
         return <span className="select-none" style={commonStyle}>{wordsArr.map((w, i) => renderBlindHintWord(w.replace(/[.,!?;:]/g, ''), i))}</span>
       }
       case SubtitleModes.CHINESE:
-        return <span className="font-medium text-muted-foreground" style={enStyle}>{sentence.Trans || '(No translation)'}</span>
+        return <span className="font-normal text-muted-foreground" style={zhStyle}>{sentence.Trans || '(No translation)'}</span>
       case SubtitleModes.ENGLISH:
         return renderEn()
       case SubtitleModes.FULL:
@@ -74,7 +74,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
           <>
             {renderEn()}
             <br />
-            <span className="font-medium text-muted-foreground" style={zhStyle}>{sentence.Trans || '(No translation)'}</span>
+            <span className="font-normal text-muted-foreground" style={zhStyle}>{sentence.Trans || '(No translation)'}</span>
           </>
         )
       default:
@@ -91,7 +91,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
     )
 
   return (
-    <div ref={ref} className={cn('flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin transition-opacity', dimmed && 'opacity-35 pointer-events-none')}>
+    <div ref={ref} className={cn('flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin transition-opacity text-base', dimmed && 'opacity-35 pointer-events-none')}>
       {Array.isArray(data) && data.map((sentence, index) => {
         const seconds = Math.floor(parseFloat(sentence.Start.toString()) || 0)
         const mm = String(Math.floor(seconds / 60)).padStart(2, '0')
@@ -104,7 +104,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
           <div
             key={index}
             className={cn(
-              'sentence group flex items-center gap-3 border-b border-l-2 border-border px-4 py-3 transition-colors',
+              'sentence group flex gap-3 border-b border-l-2 border-border px-3 py-1 transition-colors',
               isActive ? 'border-l-primary bg-primary/5 active' : 'border-l-transparent',
               'hover:bg-muted/50',
             )}
@@ -116,7 +116,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
             aria-current={isActive ? 'true' : undefined}
           >
             {/* 播放按钮 + 时间 */}
-            <div className="flex flex-col items-center gap-1 shrink-0">
+            <div className="flex flex-col items-center gap-0.5 shrink-0 self-center">
               <button
                 type="button"
                 className={cn(iconBtn(isActive), 'active:scale-95')}
@@ -125,21 +125,21 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
               >
                 <Play size={14} className={isActive ? 'fill-current' : ''} />
               </button>
-              <span className="text-[11px] font-mono text-muted-foreground">{`${mm}:${ss}`}</span>
+              <span className="text-[10px] font-mono text-muted-foreground leading-none">{`${mm}:${ss}`}</span>
               {isPassed && (
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
-                  <Check size={12} strokeWidth={3} />
+                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                  <Check size={10} strokeWidth={3} />
                 </div>
               )}
             </div>
 
             {/* 句子内容 */}
-            <div className="flex flex-1 flex-col pr-2">
+            <div className="flex flex-1 flex-col pr-1 self-center">
               {renderSentenceText(sentence)}
             </div>
 
             {/* 右侧操作按钮 */}
-            <div className="flex items-center gap-1 shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex items-center gap-1 shrink-0 self-center opacity-0 transition-opacity group-hover:opacity-100">
               <button
                 type="button"
                 className={cn('flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground', copyActiveIndex.bi === index && 'text-emerald-500')}
@@ -160,7 +160,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
           </div>
         )
       })}
-      <div className="py-8 text-center text-sm font-medium text-muted-foreground/50 select-none tracking-wider" aria-label="End of article" role="contentinfo">— The End —</div>
+      <div className="py-8 text-center text-sm font-normal text-muted-foreground/50 select-none tracking-wider" aria-label="End of article" role="contentinfo">— The End —</div>
     </div>
   )
 })
