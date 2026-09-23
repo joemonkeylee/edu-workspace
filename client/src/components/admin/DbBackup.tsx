@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Database, Download, Upload, Plus, RotateCcw, Trash2, FileText, FileArchive, Loader2, Plug, Check, X, Save, Star } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from "@/components/ui/button"
 import {
   listDbBackups,
   createDbBackup,
@@ -312,14 +313,14 @@ export default function DbBackup() {
                 <button
                   onClick={handleCreate}
                   disabled={creating || uploading}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 rounded-md text-sm disabled:opacity-50"
                 >
                   {creating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} 创建备份
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={creating || uploading}
-                  className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50"
+                  className="inline-flex items-center gap-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 rounded-md text-sm disabled:opacity-50"
                 >
                   {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />} 上传备份
                 </button>
@@ -468,10 +469,10 @@ export default function DbBackup() {
                   <Field label="密码" type="password" value={editingConn.password} onChange={(v) => setEditingConn({ ...editingConn, password: v })} placeholder="留空显示为 •••• 表示不修改" />
                 </div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button onClick={handleTestConn} disabled={testing} className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50">
+                  <button onClick={handleTestConn} disabled={testing} className="inline-flex items-center gap-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 rounded-md text-sm disabled:opacity-50">
                     {testing ? <Loader2 size={15} className="animate-spin" /> : <Plug size={15} />} 测试连接
                   </button>
-                  <button onClick={handleSaveConn} disabled={savingConn} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50">
+                  <button onClick={handleSaveConn} disabled={savingConn} className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 rounded-md text-sm disabled:opacity-50">
                     {savingConn ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} 保存
                   </button>
                 </div>

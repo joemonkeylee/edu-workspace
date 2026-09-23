@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminGetMistakes, adminUpdateMistake, adminDeleteMistake, withAuthToken } from '../../api/client';
 import { Search, Trash2, ChevronLeft, ChevronRight, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from "@/components/ui/button"
 import { useAuthStore } from '../../store/authStore';
 
 const PAGE_SIZE = 10;

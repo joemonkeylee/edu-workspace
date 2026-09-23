@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminGetAnnotations, adminDeleteAnnotation } from '../../api/client';
 import { Search, Trash2, ChevronLeft, ChevronRight, Highlighter, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from "@/components/ui/button"
 
 const PAGE_SIZE = 10;
 

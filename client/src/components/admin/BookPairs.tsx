@@ -19,6 +19,7 @@ import {
   type PairRules,
 } from '../../api/client';
 import { toast } from 'sonner';
+import { Button } from "@/components/ui/button"
 import { useConfirm } from '../ConfirmDialog';
 import { Loader2 } from 'lucide-react';
 
@@ -528,8 +529,8 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
             <option value="duplicates">仅多选项</option>
           </select>
         </label>
-        <button onClick={fetch} disabled={batchBinding} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted disabled:opacity-50">刷新</button>
-        <button onClick={handleExport} disabled={exporting || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted disabled:opacity-50">
+        <Button onClick={fetch} disabled={batchBinding}  variant="secondary" size="sm">刷新</Button>
+        <button onClick={handleExport} disabled={exporting || batchBinding} className="inline-flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-4 rounded-md text-sm disabled:opacity-50">
           {exporting ? <Loader2 size={14} className="animate-spin" /> : null}
           {exporting ? '导出中...' : '导出 TXT'}
         </button>
@@ -840,7 +841,7 @@ function BoundTab() {
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-input rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
-        <button onClick={fetch} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted">搜索</button>
+        <Button onClick={fetch}  variant="secondary" size="sm">搜索</Button>
         <button
           onClick={handleBatchUnbind}
           disabled={selected.size === 0 || batchUnbinding}
@@ -1111,8 +1112,8 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="px-3 py-2 border border-input rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
-        <button onClick={fetch} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted">刷新</button>
-        <button onClick={handleExport} disabled={exporting || deleting} className="flex items-center gap-1.5 px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted disabled:opacity-50">
+        <Button onClick={fetch}  variant="secondary" size="sm">刷新</Button>
+        <button onClick={handleExport} disabled={exporting || deleting} className="inline-flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 px-4 rounded-md text-sm disabled:opacity-50">
           {exporting ? <Loader2 size={14} className="animate-spin" /> : null}
           {exporting ? '导出中...' : selected.size > 0 ? `导出选中 (${selected.size})` : '导出全部'}
         </button>

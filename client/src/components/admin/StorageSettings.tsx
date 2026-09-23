@@ -80,13 +80,13 @@ export default function StorageSettings() {
           placeholder="/Users/username/Documents/edu-storage"
         />
         <div className="mt-4 flex items-center gap-3">
-          <button onClick={inspect} disabled={checking || !path.trim()} className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50">
+          <button onClick={inspect} disabled={checking || !path.trim()} className="inline-flex items-center gap-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 rounded-md text-sm disabled:opacity-50">
             <RefreshCw size={15} /> 检查目录
           </button>
-          <button onClick={save} disabled={saving || !path.trim()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-50">
+          <button onClick={save} disabled={saving || !path.trim()} className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 rounded-md text-sm disabled:opacity-50">
             <Save size={15} /> 保存并切换
           </button>
-          <button onClick={open} disabled={!path.trim()} className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50">
+          <button onClick={open} disabled={!path.trim()} className="inline-flex items-center gap-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 rounded-md text-sm disabled:opacity-50">
             <FolderOpen size={15} /> 打开目录
           </button>
         </div>

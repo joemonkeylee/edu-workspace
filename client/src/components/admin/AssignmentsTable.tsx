@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Trash2, CheckSquare, Square, ExternalLink, ChevronLeft, ChevronRight, ChevronDown, BookOpen, Layers, List } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from "@/components/ui/button"
 import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments } from '../../api/client';
 import { formatAssignmentTitle } from '../../utils/assignment';
 import { useConfirm } from '../ConfirmDialog';
@@ -391,9 +392,9 @@ export default function AssignmentsTable() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
             <span className="text-sm text-muted-foreground">共 {total} 条</span>
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="p-1.5 rounded hover:bg-muted disabled:opacity-30"><ChevronLeft size={18} /></button>
+              <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground"><ChevronLeft size={18} /></button>
               <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
-              <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="p-1.5 rounded hover:bg-muted disabled:opacity-30"><ChevronRight size={18} /></button>
+              <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground"><ChevronRight size={18} /></button>
             </div>
           </div>
         )}

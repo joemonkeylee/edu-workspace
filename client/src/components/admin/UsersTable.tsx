@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from "@/components/ui/button"
 import { adminGetUsers, adminCreateUser, adminUpdateUser, adminResetPassword, adminDeleteUser, adminGetUserDevices, adminKickDevice } from '../../api/client';
 import { toast } from 'sonner';
 import { useConfirm } from '../ConfirmDialog';
@@ -82,7 +83,7 @@ export default function UsersTable() {
             <option value="teacher">教师</option>
             <option value="admin">管理员</option>
           </select>
-          <button onClick={fetchUsers} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted">搜索</button>
+          <Button onClick={fetchUsers}  variant="secondary" size="sm">搜索</Button>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:opacity-90">添加用户</button>
