@@ -13,7 +13,7 @@ import {
   type SortFieldDef,
   type SortFieldName,
 } from '../store/homeFilters';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
+import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks, Languages } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import ResourceKindMenu from '../components/ResourceKindMenu';
@@ -703,6 +703,10 @@ export default function Home() {
           <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
         </div>
         <div className="flex items-center gap-2">
+          <Link to="/english" className="flex items-center gap-1.5 bg-primary opacity-90 hover:opacity-100 h-9 px-3 rounded-lg transition text-sm text-primary-foreground">
+            <Languages size={16} />
+            <span className="hidden sm:inline">English</span>
+          </Link>
           <ThemeSwitcher />
           <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理" className="flex items-center justify-center bg-primary opacity-90 hover:opacity-100 h-9 w-9 rounded-lg transition">
             <Settings size={18} />
