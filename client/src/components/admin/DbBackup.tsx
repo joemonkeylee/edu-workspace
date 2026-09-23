@@ -310,13 +310,12 @@ export default function DbBackup() {
                   <option value="gzip">gzip 压缩 (.sql.gz)</option>
                   <option value="sql">纯 SQL (.sql)</option>
                 </select>
-                <button
+                <Button
                   onClick={handleCreate}
                   disabled={creating || uploading}
-                  className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 rounded-md text-sm disabled:opacity-50"
-                >
+                 variant="default">
                   {creating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} 创建备份
-                </button>
+                </Button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={creating || uploading}
@@ -469,12 +468,12 @@ export default function DbBackup() {
                   <Field label="密码" type="password" value={editingConn.password} onChange={(v) => setEditingConn({ ...editingConn, password: v })} placeholder="留空显示为 •••• 表示不修改" />
                 </div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button onClick={handleTestConn} disabled={testing} className="inline-flex items-center gap-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 rounded-md text-sm disabled:opacity-50">
+                  <Button onClick={handleTestConn} disabled={testing} variant="outline">
                     {testing ? <Loader2 size={15} className="animate-spin" /> : <Plug size={15} />} 测试连接
-                  </button>
-                  <button onClick={handleSaveConn} disabled={savingConn} className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 rounded-md text-sm disabled:opacity-50">
+                  </Button>
+                  <Button onClick={handleSaveConn} disabled={savingConn} variant="default">
                     {savingConn ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} 保存
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

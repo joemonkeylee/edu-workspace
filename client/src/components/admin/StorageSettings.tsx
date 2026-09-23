@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { FolderOpen, RefreshCw, Save } from 'lucide-react';
 import { getStorageSettings, inspectStorageSettings, openStorageDirectory, updateStorageSettings } from '../../api/client';
 import { useConfirm } from '../ConfirmDialog';
+import { Button } from "@/components/ui/button";
 
 export default function StorageSettings() {
   const confirm = useConfirm();
@@ -80,15 +81,15 @@ export default function StorageSettings() {
           placeholder="/Users/username/Documents/edu-storage"
         />
         <div className="mt-4 flex items-center gap-3">
-          <button onClick={inspect} disabled={checking || !path.trim()} className="inline-flex items-center gap-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 rounded-md text-sm disabled:opacity-50">
+          <Button onClick={inspect} disabled={checking || !path.trim()} variant="outline">
             <RefreshCw size={15} /> 检查目录
-          </button>
-          <button onClick={save} disabled={saving || !path.trim()} className="inline-flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 rounded-md text-sm disabled:opacity-50">
+          </Button>
+          <Button onClick={save} disabled={saving || !path.trim()} variant="default">
             <Save size={15} /> 保存并切换
-          </button>
-          <button onClick={open} disabled={!path.trim()} className="inline-flex items-center gap-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 rounded-md text-sm disabled:opacity-50">
+          </Button>
+          <Button onClick={open} disabled={!path.trim()} variant="outline">
             <FolderOpen size={15} /> 打开目录
-          </button>
+          </Button>
         </div>
         <p className="mt-4 text-sm text-muted-foreground">当前检查结果：匹配 {matchedBooks}/{totalBooks} 本书。切换后立即生效，无需重启服务。</p>
         {message && <p className="mt-2 text-sm text-primary">{message}</p>}
