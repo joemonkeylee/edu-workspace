@@ -68,11 +68,6 @@ if [[ "$(git branch --show-current)" != "main" ]]; then
   exit 0
 fi
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  info "Skipped: working tree is not clean"
-  exit 0
-fi
-
 info "Checking origin/main..."
 git fetch origin main >> "$LOG_FILE" 2>&1 || fail "Unable to fetch origin/main"
 LOCAL_COMMIT="$(git rev-parse main)"
@@ -96,8 +91,8 @@ fi
 
 if [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]]; then
   info "New commit found: ${LOCAL_COMMIT:0:8} -> ${REMOTE_COMMIT:0:8}"
-  info "Pulling main..."
-  git pull --ff-only origin main >> "$LOG_FILE" 2>&1 || fail "Git pull failed"
+  info "Pulling main (local changes will be auto-stashed and restored)..."
+  git pull --ff-only --autostash origin main >> "$LOG_FILE" 2>&1 || fail "Git pull failed"
 fi
 info "Building server and client..."
 npm run build >> "$LOG_FILE" 2>&1 || fail "Build failed"
