@@ -96,7 +96,7 @@ export default function CropTool({ storagePath, pageNumber, onSave, onCancel }: 
           </button>
           <button
             onClick={onCancel}
-            className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+            className="flex items-center gap-2 bg-muted hover:bg-accent text-accent-foreground px-4 py-2 rounded-lg text-sm font-medium transition"
           >
             取消裁剪
           </button>
@@ -104,7 +104,7 @@ export default function CropTool({ storagePath, pageNumber, onSave, onCancel }: 
       )}
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow-lg border border-border p-3 mt-3 flex flex-wrap items-center gap-3">
+        <div className="bg-card rounded-lg shadow-lg border border-border p-3 mt-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label className="text-sm text-foreground">学科</label>
             <input
@@ -133,7 +133,7 @@ export default function CropTool({ storagePath, pageNumber, onSave, onCancel }: 
           <div className="flex gap-2 ml-auto">
             <button
               onClick={() => setShowForm(false)}
-              className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm transition"
+              className="flex items-center gap-1 bg-muted hover:bg-accent text-accent-foreground px-3 py-1.5 rounded text-sm transition"
             >
               <X size={14} /> 取消
             </button>

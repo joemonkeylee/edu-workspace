@@ -1,4 +1,15 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 interface ConfirmOptions {
   title: string;
@@ -42,47 +53,42 @@ export function ConfirmProvider({ children }: ConfirmProviderProps) {
     setState({ open: false, options: null, resolve: null });
   }, [state]);
 
-  const handleCancel = useCallback(() => {
-    state.resolve?.(false);
-    setState({ open: false, options: null, resolve: null });
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      // User cancelled (ESC, overlay click, or Cancel button)
+      state.resolve?.(false);
+      setState({ open: false, options: null, resolve: null });
+    }
   }, [state]);
 
   return (
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
-      {state.open && state.options && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
-          onClick={handleCancel}
-        >
-          <div
-            className="bg-card rounded-xl border border-border shadow-2xl w-80 p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-base font-semibold text-foreground mb-2">
-              {state.options.title}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4 whitespace-pre-line">
-              {state.options.message}
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1.5 text-sm rounded-lg border border-input text-foreground hover:bg-muted transition"
-              >
+      {state.options && (
+        <AlertDialog open={state.open} onOpenChange={handleOpenChange}>
+          <AlertDialogContent className="max-w-sm w-[22rem] p-6">
+            <AlertDialogHeader className="text-left">
+              <AlertDialogTitle>{state.options.title}</AlertDialogTitle>
+              <AlertDialogDescription className="whitespace-pre-line">
+                {state.options.message}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => handleOpenChange(false)}>
                 {state.options.cancelText || '取消'}
-              </button>
-              <button
+              </AlertDialogCancel>
+              <AlertDialogAction
                 onClick={handleConfirm}
-                className={`px-3 py-1.5 text-sm rounded-lg transition ${
-                  state.options.confirmClass || 'bg-primary text-primary-foreground hover:bg-primary/90'
-                }`}
+                className={cn(
+                  !state.options.confirmClass && 'bg-primary text-primary-foreground hover:bg-primary/90',
+                  state.options.confirmClass
+                )}
               >
                 {state.options.confirmText || '确认'}
-              </button>
-            </div>
-          </div>
-        </div>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </ConfirmContext.Provider>
   );

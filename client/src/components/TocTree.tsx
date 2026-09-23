@@ -104,7 +104,7 @@ export default function TocTree({
                   src={pageUrl(page)}
                   alt={`第 ${page} 页`}
                   loading="lazy"
-                  className="w-full h-auto block bg-white"
+                  className="w-full h-auto block bg-background"
                 />
                 <div className={`text-[10px] text-center py-0.5 ${
                   currentPage === page ? 'text-primary-foreground bg-primary' : 'text-muted-foreground bg-muted'
