@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import type { TocNode } from '../../types';
 import { adminGetBooks, adminGetBatches, adminUpdateBook, adminSoftDeleteBook, adminSoftDeleteBooksBatch, adminClearBooks } from '../../api/client';
 import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
@@ -770,25 +771,22 @@ export default function BooksTable() {
         </div>
       )}
 
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative w-80 rounded-xl bg-background p-6 shadow-xl">
-            <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(null)} className="absolute right-3 top-3 h-6 w-6" title="取消">
-              <X size={16} />
+      <Dialog open={deleteConfirm !== null} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
+        <DialogContent className="max-w-sm p-6">
+          <DialogHeader>
+            <DialogTitle>{deleteConfirm?.title}</DialogTitle>
+            <DialogDescription>{deleteConfirm?.message}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)}>
+              取消
             </Button>
-            <h3 className="text-base font-semibold text-foreground">{deleteConfirm.title}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">{deleteConfirm.message}</p>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)}>
-                取消
-              </Button>
-              <Button variant="destructive" size="sm" onClick={deleteConfirm.onConfirm}>
-                删除
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            <Button variant="destructive" size="sm" onClick={deleteConfirm?.onConfirm}>
+              删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
