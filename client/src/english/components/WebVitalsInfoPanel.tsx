@@ -107,8 +107,11 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                               ) : (
                                 <span className="text-foreground">{name}</span>
                               )}
-                              <span title={tooltip} className="inline-flex cursor-help">
+                              <span className="group relative inline-flex cursor-help">
                                 <HelpCircle size={13} className="text-muted-foreground" />
+                                <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md ring-1 ring-border opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                                  {tooltip}
+                                </span>
                               </span>
                             </div>
                           </td>
