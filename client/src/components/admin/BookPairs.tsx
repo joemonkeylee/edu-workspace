@@ -389,7 +389,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
         alreadyBound ? `已绑定 ${alreadyBound} 组将跳过。` : ''
       }此操作会写入教材与答案的配对关系到 attributes.pair。`,
       confirmText: '确认批量绑定',
-      confirmClass: 'bg-primary hover:bg-primary/90',
+      confirmClass: 'bg-primary text-primary-foreground hover:bg-primary/90',
     });
     if (!confirmed) return;
     setBatchBinding(true);
@@ -452,7 +452,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
       title: '解绑确认',
       message: `确认解绑「${c.baseTitle}」及其全部答案？`,
       confirmText: '确认解绑',
-      confirmClass: 'bg-destructive hover:bg-destructive/90',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     });
     if (!confirmed) return;
     setActionKey(c.key);
@@ -570,7 +570,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
               <th className="px-3 py-2 text-left">操作</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {candidates.map((c, idx) => {
               const hc = highlightColor(idx);
               return (
@@ -699,7 +699,7 @@ function BoundTab() {
       title: '解绑确认',
       message: `确认解绑「${title}」及其全部答案？`,
       confirmText: '确认解绑',
-      confirmClass: 'bg-destructive hover:bg-destructive/90',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     });
     if (confirmed) {
       try {
@@ -719,7 +719,7 @@ function BoundTab() {
       title: '联合软删除',
       message: `将「${g.textbook.title}」及 ${g.answers.length} 本答案一起移到已删除？可恢复。`,
       confirmText: '软删除',
-      confirmClass: 'bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-8000 hover:bg-amber-600',
+      confirmClass: 'bg-amber-600 text-white hover:bg-amber-700',
     });
     if (!confirmed) return;
     try {
@@ -737,7 +737,7 @@ function BoundTab() {
       title: '联合恢复',
       message: `将「${g.textbook.title}」及 ${g.answers.length} 本答案一起恢复？`,
       confirmText: '恢复',
-      confirmClass: 'bg-green-600 hover:bg-green-700',
+      confirmClass: 'bg-green-600 text-white hover:bg-green-700',
     });
     if (!confirmed) return;
     try {
@@ -762,7 +762,7 @@ function BoundTab() {
       title: '批量解绑确认',
       message: `确认解绑选中的 ${selected.size} 组？将解绑: ${titles}`,
       confirmText: '确认批量解绑',
-      confirmClass: 'bg-destructive hover:bg-destructive/90',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     });
     if (!confirmed) return;
     setBatchUnbinding(true);
@@ -786,7 +786,7 @@ function BoundTab() {
       title: '批量软删除确认',
       message: `将选中的 ${selected.size} 组（共 ${ids.length} 本）移到已删除？可恢复。`,
       confirmText: '批量软删',
-      confirmClass: 'bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-8000 hover:bg-amber-600',
+      confirmClass: 'bg-amber-600 text-white hover:bg-amber-700',
     });
     if (!confirmed) return;
     try {
@@ -807,7 +807,7 @@ function BoundTab() {
       title: '批量恢复确认',
       message: `将选中的 ${selected.size} 组（共 ${ids.length} 本）恢复？`,
       confirmText: '批量恢复',
-      confirmClass: 'bg-green-600 hover:bg-green-700',
+      confirmClass: 'bg-green-600 text-white hover:bg-green-700',
     });
     if (!confirmed) return;
     try {
@@ -845,7 +845,7 @@ function BoundTab() {
         <button
           onClick={handleBatchUnbind}
           disabled={selected.size === 0 || batchUnbinding}
-          className="flex items-center gap-1.5 px-4 py-2 bg-destructive text-white rounded-lg text-sm hover:bg-destructive disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm hover:bg-destructive disabled:opacity-50"
         >
           {batchUnbinding ? <Loader2 size={14} className="animate-spin" /> : null}
           {batchUnbinding ? `解绑中...` : `批量解绑 (${selected.size})`}
@@ -886,7 +886,7 @@ function BoundTab() {
                 <th className="px-3 py-2 text-left w-16">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {groups.map((g, idx) => {
                 const checked = selected.has(g.textbook.id);
                 const allDeleted = g.textbook.isDeleted && g.answers.every((a: any) => a.isDeleted);
@@ -1040,7 +1040,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
       title: '软删除确认',
       message: `确认将选中的 ${ids.length} 本孤儿书移到「已删除」？资源文件会搬至 books-deleted 目录，可随时恢复。`,
       confirmText: '软删除',
-      confirmClass: 'bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-8000 hover:bg-amber-600',
+      confirmClass: 'bg-amber-600 text-white hover:bg-amber-700',
     });
     if (!confirmed) return;
     setDeleting(true);
@@ -1068,7 +1068,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
       title: '批量恢复确认',
       message: `将选中的 ${ids.length} 本书恢复？`,
       confirmText: '批量恢复',
-      confirmClass: 'bg-green-600 hover:bg-green-700',
+      confirmClass: 'bg-green-600 text-white hover:bg-green-700',
     });
     if (!confirmed) return;
     try {
@@ -1120,7 +1120,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
         <button
           onClick={handleBatchDelete}
           disabled={selected.size === 0 || deleting}
-          className="flex items-center gap-1.5 px-4 py-2 bg-destructive text-white rounded-lg text-sm hover:bg-destructive disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2 bg-destructive text-destructive-foreground rounded-lg text-sm hover:bg-destructive disabled:opacity-50"
         >
           {deleting ? <Loader2 size={14} className="animate-spin" /> : null}
           {deleting ? `删除中...` : `批量软删 (${selected.size})`}
@@ -1154,7 +1154,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                 <th className="px-3 py-2 text-left w-20">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {orphans.map((o, idx) => {
                 const checked = selected.has(o.id);
                 return (
@@ -1192,7 +1192,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                             title: '软删除确认',
                             message: `将「${o.title}」移到已删除？可恢复。`,
                             confirmText: '软删除',
-                            confirmClass: 'bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-8000 hover:bg-amber-600',
+                            confirmClass: 'bg-amber-600 text-white hover:bg-amber-700',
                           });
                           if (!confirmed) return;
                           try { await adminSoftDeleteBook(o.id); toast.success('已软删除'); fetch(); }

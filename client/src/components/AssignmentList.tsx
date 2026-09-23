@@ -38,7 +38,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
       title: '确认删除',
       message: `确认删除作业「${title}」吗？此操作不可撤销。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-red-600 text-white hover:bg-red-700',
     });
     if (!confirmed) return;
     try {
@@ -58,7 +58,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
       title: '确认提交',
       message: `确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`,
       confirmText: '确认提交',
-      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+      confirmClass: 'bg-blue-600 text-white hover:bg-blue-700',
     });
     if (!confirmed) return;
     try {

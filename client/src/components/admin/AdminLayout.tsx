@@ -26,7 +26,7 @@ const MENU_GROUPS: MenuGroup[] = [
     label: '数据',
     icon: BookOpen,
     items: [
-      { path: '/admin/scan', label: 'PDF 扫描导入', icon: Scan, roles: ['admin'] },
+      { path: '/admin/scan', label: 'PDF切图', icon: Scan, roles: ['admin'] },
       { path: '/admin/books', label: '书籍资产', icon: BookOpen },
       { path: '/admin/book-pairs', label: '教材配对', icon: Link2 },
       { path: '/admin/annotations', label: '批注数据', icon: Highlighter },

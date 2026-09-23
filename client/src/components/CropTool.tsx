@@ -104,15 +104,15 @@ export default function CropTool({ storagePath, pageNumber, onSave, onCancel }: 
       )}
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 mt-3 flex flex-wrap items-center gap-3">
+        <div className="bg-white rounded-lg shadow-lg border border-border p-3 mt-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">学科</label>
+            <label className="text-sm text-foreground">学科</label>
             <input
               list="subjects"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="选择或输入"
-              className="w-28 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-28 px-2 py-1.5 border border-input rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <datalist id="subjects">
               {SUBJECTS.map((s) => (
@@ -121,13 +121,13 @@ export default function CropTool({ storagePath, pageNumber, onSave, onCancel }: 
             </datalist>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">标签</label>
+            <label className="text-sm text-foreground">标签</label>
             <input
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="逗号分隔"
-              className="w-32 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-32 px-2 py-1.5 border border-input rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div className="flex gap-2 ml-auto">

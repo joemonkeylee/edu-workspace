@@ -57,16 +57,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-lg shadow-md p-8">
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">登录</h1>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-sm bg-card border border-border rounded-lg shadow-md p-8">
+        <h1 className="text-2xl font-bold text-center text-foreground mb-6">登录</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="tel"
             placeholder="手机号"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+            className="w-full px-4 py-2.5 border border-input rounded-lg focus:outline-none focus:border-primary"
             autoComplete="tel"
           />
           <input
@@ -74,7 +74,7 @@ export default function Login() {
             placeholder="密码"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+            className="w-full px-4 py-2.5 border border-input rounded-lg focus:outline-none focus:border-primary"
             autoComplete="current-password"
           />
           <div className="flex gap-2">
@@ -83,11 +83,11 @@ export default function Login() {
               placeholder="验证码"
               value={captchaText}
               onChange={(e) => setCaptchaText(e.target.value)}
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+              className="flex-1 px-4 py-2.5 border border-input rounded-lg focus:outline-none focus:border-primary"
               autoComplete="off"
             />
             <div
-              className="h-11 w-28 border border-gray-300 rounded-lg cursor-pointer flex items-center justify-center bg-gray-50"
+              className="h-11 w-28 border border-input rounded-lg cursor-pointer flex items-center justify-center bg-background"
               onClick={refreshCaptcha}
               dangerouslySetInnerHTML={{ __html: captchaSvg }}
             />
@@ -96,12 +96,12 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-primary text-white rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50"
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50"
           >
             {loading ? '登录中...' : '登录'}
           </button>
         </form>
-        <div className="flex justify-between mt-4 text-sm text-gray-500">
+        <div className="flex justify-between mt-4 text-sm text-muted-foreground">
           <span className="cursor-pointer hover:text-primary" onClick={() => navigate('/register')}>注册</span>
           <span className="cursor-pointer hover:text-primary" onClick={() => navigate('/forgot-password')}>忘记密码</span>
         </div>

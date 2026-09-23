@@ -43,7 +43,7 @@ export default function StorageSettings() {
       title: '确认切换资源目录',
       message: `确定切换资源目录？\n\n${path}\n\n检测到 ${matchedBooks}/${totalBooks} 本书资源匹配。`,
       confirmText: '确认切换',
-      confirmClass: 'bg-primary hover:bg-primary/90',
+      confirmClass: 'bg-primary text-primary-foreground hover:bg-primary/90',
     });
     if (!confirmed) return;
     setSaving(true);

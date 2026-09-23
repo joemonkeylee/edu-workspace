@@ -105,7 +105,7 @@ export default function UsersTable() {
               <th className="px-4 py-3 text-left">操作</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {users.map((u) => (
               <tr key={u.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3">{u.id}</td>
@@ -140,7 +140,7 @@ export default function UsersTable() {
                         title: '确认删除',
                         message: '确认删除该用户？',
                         confirmText: '确认删除',
-                        confirmClass: 'bg-destructive hover:bg-destructive/90',
+                        confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
                       });
                       if (confirmed) {
                         adminDeleteUser(u.id).then(() => { toast.success('用户已删除'); fetchUsers(); }).catch((e: any) => toast.error('删除失败: ' + (e?.message || '')));

@@ -121,7 +121,7 @@ export default function DbBackup() {
       title: '还原数据库',
       message: `将用 "${filename}" 覆盖目标连接「${targetName}」的数据库,系统会先自动备份该连接的当前数据。确定继续?`,
       confirmText: '确认还原',
-      confirmClass: 'bg-primary hover:bg-primary/90',
+      confirmClass: 'bg-primary text-primary-foreground hover:bg-primary/90',
     });
     if (!ok) return;
     setBusy(filename);
@@ -142,7 +142,7 @@ export default function DbBackup() {
       title: '删除备份',
       message: `确定删除 "${filename}"?此操作不可撤销。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-destructive hover:bg-destructive/90',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     });
     if (!ok) return;
     setBusy(filename);
@@ -228,7 +228,7 @@ export default function DbBackup() {
       title: '删除连接',
       message: `确定删除连接「${c?.name || id}」?仅删除配置,不影响数据库。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-destructive hover:bg-destructive/90',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     });
     if (!ok) return;
     const next: ConnectionConfig = {
@@ -345,7 +345,7 @@ export default function DbBackup() {
                     <th className="px-4 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {backups.length === 0 && !loading ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">

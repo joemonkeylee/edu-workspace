@@ -288,7 +288,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
             </button>
             <button
               onClick={() => onConfirm(buildItems())}
-              className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary/90 transition"
+              className="px-5 py-2 rounded-lg text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition"
             >
               确认并开始导入
             </button>

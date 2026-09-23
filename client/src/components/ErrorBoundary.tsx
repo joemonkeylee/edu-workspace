@@ -19,13 +19,13 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="text-center max-w-md p-8">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">页面出错了</h1>
-            <p className="text-gray-500 mb-6">{this.state.error?.message || '未知错误'}</p>
+            <h1 className="text-2xl font-bold text-foreground mb-4">页面出错了</h1>
+            <p className="text-muted-foreground mb-6">{this.state.error?.message || '未知错误'}</p>
             <button
               onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/'; }}
-              className="px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:opacity-90 transition"
+              className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition"
             >
               返回首页
             </button>

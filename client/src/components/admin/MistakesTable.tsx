@@ -115,7 +115,7 @@ export default function MistakesTable() {
                 <th className="text-right px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
               ) : items.length === 0 ? (

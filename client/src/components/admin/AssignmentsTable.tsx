@@ -118,7 +118,7 @@ export default function AssignmentsTable() {
       title: '确认删除',
       message: '确认删除此作业吗？学生笔迹和教师批改笔迹都会被删除，且无法恢复。',
       confirmText: '确认删除',
-      confirmClass: 'bg-destructive hover:bg-destructive/90',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     });
     if (!confirmed) return;
     try {
@@ -136,7 +136,7 @@ export default function AssignmentsTable() {
       title: '确认批量删除',
       message: `确认删除选中的 ${selectedIds.length} 个作业吗？相关笔迹都会被删除，且无法恢复。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-destructive hover:bg-destructive/90',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
     });
     if (!confirmed) return;
     try {
@@ -218,7 +218,7 @@ export default function AssignmentsTable() {
           <button
             onClick={handleBatchDelete}
             disabled={selectedIds.length === 0}
-            className="ml-auto inline-flex items-center gap-1 bg-destructive text-white px-3 py-2 rounded-lg text-sm hover:bg-destructive disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ml-auto inline-flex items-center gap-1 bg-destructive text-destructive-foreground px-3 py-2 rounded-lg text-sm hover:bg-destructive disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Trash2 size={15} /> 批量删除 ({selectedIds.length})
           </button>
@@ -275,7 +275,7 @@ export default function AssignmentsTable() {
                       </button>
                     </div>
                     {open && (
-                      <div className="border-t divide-y divide-gray-100 border-border/50">
+                      <div className="border-t divide-y divide-border border-border/50">
                         {group.items.map((item) => (
                           <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 pl-12 transition hover:bg-muted/50">
                             <div className="flex-1 min-w-0">
@@ -340,7 +340,7 @@ export default function AssignmentsTable() {
                 <th className="text-right px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 <tr><td colSpan={isAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
               ) : items.length === 0 ? (

@@ -692,7 +692,7 @@ export default function PdfScanImport() {
           {scanning && (
             <button
               onClick={stopScan}
-              className="flex items-center gap-2 bg-destructive hover:bg-destructive text-white px-4 py-2.5 rounded-lg transition text-sm font-medium"
+              className="flex items-center gap-2 bg-destructive hover:bg-destructive text-destructive-foreground px-4 py-2.5 rounded-lg transition text-sm font-medium"
             >
               <StopCircle size={18} /> 停止
             </button>
@@ -807,10 +807,10 @@ export default function PdfScanImport() {
       )}
 
       {/* Log console */}
-      <div className="bg-foreground rounded-lg shadow overflow-hidden">
+      <div className="bg-zinc-900 rounded-lg shadow overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-          <span className="text-muted-foreground text-xs font-mono">实时日志控制台</span>
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+          <span className="text-zinc-400 text-xs font-mono">实时日志控制台</span>
+          <label className="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={autoScroll}
@@ -820,23 +820,23 @@ export default function PdfScanImport() {
             自动滚动
           </label>
         </div>
-        <div ref={scrollContainerRef} className="font-mono text-sm p-4 h-80 overflow-auto scrollbar-thin">
-          {logs.length === 0 && !scanning && <div className="text-muted-foreground">等待开始扫描...</div>}
+        <div ref={scrollContainerRef} className="font-mono text-sm p-4 h-80 overflow-auto scrollbar-thin text-zinc-100">
+          {logs.length === 0 && !scanning && <div className="text-zinc-500">等待开始扫描...</div>}
           {logs.map((log) => (
             <div
               key={log.id}
               className={
                 log.text.startsWith('✓') ? 'text-green-400'
-                  : log.text.startsWith('✗') ? 'text-destructive/70'
-                    : log.text.includes('总进度') ? 'text-primary'
-                      : log.text.includes('预计') || log.text.includes('耗时') ? 'text-yellow-400'
-                        : 'text-muted-foreground'
+                  : log.text.startsWith('✗') ? 'text-red-400'
+                    : log.text.includes('总进度') ? 'text-sky-400'
+                      : log.text.includes('预计') || log.text.includes('耗时') ? 'text-yellow-300'
+                        : 'text-zinc-300'
               }
             >
               {log.text}
             </div>
           ))}
-          {scanning && <div className="text-yellow-400 animate-pulse">▌</div>}
+          {scanning && <div className="text-yellow-300 animate-pulse">▌</div>}
           <div ref={logEndRef} />
         </div>
       </div>
@@ -885,7 +885,7 @@ export default function PdfScanImport() {
               </button>
               <button
                 onClick={confirmScan}
-                className="px-6 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary/90 transition"
+                className="px-6 py-2 rounded-lg text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition"
               >
                 确认扫描
               </button>

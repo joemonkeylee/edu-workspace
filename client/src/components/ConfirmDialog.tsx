@@ -56,26 +56,26 @@ export function ConfirmProvider({ children }: ConfirmProviderProps) {
           onClick={handleCancel}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-80 p-5"
+            className="bg-card rounded-xl border border-border shadow-2xl w-80 p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold text-gray-800 mb-2">
+            <h3 className="text-base font-semibold text-foreground mb-2">
               {state.options.title}
             </h3>
-            <p className="text-sm text-gray-500 mb-4 whitespace-pre-line">
+            <p className="text-sm text-muted-foreground mb-4 whitespace-pre-line">
               {state.options.message}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={handleCancel}
-                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                className="px-3 py-1.5 text-sm rounded-lg border border-input text-foreground hover:bg-muted transition"
               >
                 {state.options.cancelText || '取消'}
               </button>
               <button
                 onClick={handleConfirm}
-                className={`px-3 py-1.5 text-sm rounded-lg text-white transition ${
-                  state.options.confirmClass || 'bg-blue-600 hover:bg-blue-700'
+                className={`px-3 py-1.5 text-sm rounded-lg transition ${
+                  state.options.confirmClass || 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
               >
                 {state.options.confirmText || '确认'}

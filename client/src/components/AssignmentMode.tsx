@@ -524,7 +524,7 @@ export default function AssignmentMode({
       title: '确认批改',
       message: '确认将此作业标记为已批改吗？标记后将不能继续编辑笔迹。',
       confirmText: '确认批改',
-      confirmClass: 'bg-green-600 hover:bg-green-700',
+      confirmClass: 'bg-green-600 text-white hover:bg-green-700',
     });
     if (!confirmed) return;
     const ok = await saveCurrentPage();
@@ -545,7 +545,7 @@ export default function AssignmentMode({
       title: '确认打回',
       message: `确认打回作业「${title}」吗？\n打回后学生可继续修改，不会保存任何批改笔迹。`,
       confirmText: '确认打回',
-      confirmClass: 'bg-amber-600 hover:bg-amber-700',
+      confirmClass: 'bg-amber-600 text-white hover:bg-amber-700',
     });
     if (!confirmed) return;
     try {
@@ -564,7 +564,7 @@ export default function AssignmentMode({
       title: '确认提交',
       message: `确认提交作业「${title}」吗？\n提交后作业将变为只读，无法再修改或删除。`,
       confirmText: '确认提交',
-      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+      confirmClass: 'bg-blue-600 text-white hover:bg-blue-700',
     });
     if (!confirmed) return;
     const ok = await saveCurrentPage();
@@ -585,7 +585,7 @@ export default function AssignmentMode({
       title: '确认删除',
       message: `确认删除作业「${title}」吗？\n此操作不可撤销，所有页面的笔迹都将被删除。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-red-600 text-white hover:bg-red-700',
     });
     if (!confirmed) return;
     try {
@@ -849,21 +849,21 @@ export default function AssignmentMode({
           <div className={`flex items-center gap-0.5 ${isRotated ? rotatedDir : ''}`}>
             <button
               onClick={() => setTool('pen')}
-              className={`p-2 rounded transition ${tool === 'pen' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+              className={`p-2 rounded transition ${tool === 'pen' ? 'bg-primary text-primary-foreground' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
               title="钢笔"
             >
               <Pen size={18} />
             </button>
             <button
               onClick={() => { setTool('highlighter'); setColor(HIGHLIGHT_COLOR); setPenWidth(12); }}
-              className={`p-2 rounded transition ${tool === 'highlighter' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+              className={`p-2 rounded transition ${tool === 'highlighter' ? 'bg-primary text-primary-foreground' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
               title="高亮笔"
             >
               <Highlighter size={18} />
             </button>
             <button
               onClick={() => setTool('eraser')}
-              className={`p-2 rounded transition ${tool === 'eraser' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
+              className={`p-2 rounded transition ${tool === 'eraser' ? 'bg-primary text-primary-foreground' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
               title="橡皮擦 (点选删除)"
             >
               <Eraser size={18} />
@@ -917,7 +917,7 @@ export default function AssignmentMode({
                 title: '确认清除',
                 message: '确认清除当前页所有笔迹？',
                 confirmText: '确认清除',
-                confirmClass: 'bg-red-600 hover:bg-red-700',
+                confirmClass: 'bg-red-600 text-white hover:bg-red-700',
               });
               if (confirmed) {
                 canvasRef.current?.clear();
