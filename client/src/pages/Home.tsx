@@ -644,7 +644,7 @@ export default function Home() {
   // 关键字搜索框：固定放在筛选区前部（不随「只看收藏」改变位置，保持位置记忆一致）
   // 输入时不自动查询，回车或点旁边的「搜索」才生效
   const keywordSearchEl = (
-    <div className="relative w-36">
+    <div className="relative flex-1 min-w-[110px] max-w-[320px]">
       <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" size={13} />
       <input
         type="text"
@@ -703,9 +703,9 @@ export default function Home() {
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-muted-foreground mr-1">筛选</span> */}
-          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-18" />
-          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-18" />
-          <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} />
+          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-16 sm:w-20" />
+          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-16 sm:w-20" />
+          <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} className="w-24 sm:w-36" />
           {keywordSearchEl}
           {searchButtonEl}
           <button
