@@ -689,8 +689,10 @@ export default function Home() {
     <div className="h-full flex flex-col bg-surface">
       <header className="bg-sidebar text-sidebar-foreground px-6 py-4 flex items-center justify-between flex-shrink-0 h-14">
         <div className="flex items-center gap-3">
-          <BookOpen size={22} />
-          <h1 className="text-lg font-bold">edu-workspace</h1>
+          <Link to="/" className="flex items-center gap-2">
+            <BookOpen size={22} />
+            <span className="text-lg font-normal">edu-workspace</span>
+          </Link>
           <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${APP_ENV_CLASS}`}>
             {APP_ENV}
           </span>
