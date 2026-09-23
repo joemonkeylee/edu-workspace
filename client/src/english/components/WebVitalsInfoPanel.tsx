@@ -1,5 +1,5 @@
 import { useState, Fragment } from 'react'
-import { BarChart, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { BarChart, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -70,7 +70,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">状态</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">理想范围</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">改进</th>
-                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">详情</th>
+                  <th className="w-10 px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -80,7 +80,6 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                     meaning,
                     idealRange,
                     improvementNeeded,
-                    referenceLink,
                     rawMetric,
                   }) => {
                     const expanded = expandedName === name
@@ -97,29 +96,20 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                           <td className="px-3 py-2 text-muted-foreground">{idealRange}</td>
                           <td className="px-3 py-2 text-muted-foreground">{improvementNeeded}</td>
                           <td className="px-3 py-2">
-                            <div className="flex items-center gap-1">
-                              {referenceLink && (
-                                <Button variant="link" size="sm" className="h-auto px-0 py-0 text-xs font-normal" asChild>
-                                  <a href={referenceLink} target="_blank" rel="noopener noreferrer">
-                                    参考 <ExternalLink size={12} />
-                                  </a>
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs font-normal"
-                                onClick={() => toggleExpand(name)}
-                              >
-                                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                {expanded ? '收起' : '展开'}
-                              </Button>
-                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => toggleExpand(name)}
+                              title={expanded ? '收起' : '展开'}
+                            >
+                              {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </Button>
                           </td>
                         </tr>
                         {expanded && (
                           <tr className="bg-muted/40">
-                            <td colSpan={7} className="px-3 py-2">
+                            <td colSpan={6} className="px-3 py-2">
                               <pre className="max-h-60 overflow-auto rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
                                 {JSON.stringify(rawMetric, null, 2)}
                               </pre>
