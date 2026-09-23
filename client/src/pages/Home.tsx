@@ -693,23 +693,12 @@ export default function Home() {
             <BookOpen size={22} />
             <span className="text-lg font-normal">Books</span>
           </Link>
-          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${APP_ENV_CLASS}`}>
-            {APP_ENV}
-          </span>
-          {APP_ENV === 'TEST' && APP_COMMIT && (
-            <span className="font-mono text-[10px] text-muted-foreground" title={`构建版本 ${APP_COMMIT}`}>
-              {APP_COMMIT}
-            </span>
-          )}
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
-          <Link
-            to="/"
-            className="flex items-center gap-1 text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground transition"
-          >
-            <ArrowLeft size={14} />
-            首页
-          </Link>
           <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
+          <span className="mx-1 h-5 w-px bg-sidebar-border" />
+          <Link to="/" title="返回首页" className="flex items-center justify-center h-8 w-8 rounded-md text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent transition">
+            <ArrowLeft size={16} />
+          </Link>
         </div>
         <AppHeaderRight />
       </header>

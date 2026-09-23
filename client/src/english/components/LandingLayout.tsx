@@ -2,14 +2,6 @@ import { Link, useLocation } from 'react-router-dom'
 import AppHeaderRight from '@/components/AppHeaderRight'
 import { BookOpen, ArrowLeft } from 'lucide-react'
 
-const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST')
-const APP_COMMIT = import.meta.env.VITE_APP_COMMIT || ''
-const APP_ENV_CLASS = APP_ENV === 'PROD'
-  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-  : APP_ENV === 'TEST'
-  ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-  : 'bg-primary/15 text-primary dark:text-blue-300'
-
 export default function LandingLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
 
@@ -33,21 +25,9 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
             <BookOpen size={22} />
             <span className="text-lg font-normal">English</span>
           </Link>
-          <span className={`rounded px-1.5 py-0.5 text-[10px] font-normal tracking-wide ${APP_ENV_CLASS}`}>
-            {APP_ENV}
-          </span>
-          {APP_ENV === 'TEST' && APP_COMMIT && (
-            <span className="font-mono text-[10px] text-muted-foreground" title={`构建版本 ${APP_COMMIT}`}>
-              {APP_COMMIT}
-            </span>
-          )}
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
-          <Link
-            to="/"
-            className="flex items-center gap-1 text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground transition"
-          >
-            <ArrowLeft size={14} />
-            首页
+          <Link to="/" title="返回首页" className="flex items-center justify-center h-8 w-8 rounded-md text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent transition">
+            <ArrowLeft size={16} />
           </Link>
         </div>
         <AppHeaderRight />
