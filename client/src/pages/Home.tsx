@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import {
   loadKindFilters,
@@ -14,6 +14,7 @@ import {
   type SortFieldName,
 } from '../store/homeFilters';
 import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks, Languages } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import ResourceKindMenu from '../components/ResourceKindMenu';
@@ -146,6 +147,9 @@ function SavePrompt({
 }
 
 export default function Home() {
+  const location = useLocation();
+  const isBookActive = location.pathname.startsWith('/books');
+  const isEnglishActive = location.pathname.startsWith('/english');
   const { books, total, subjectOptions: rawSubjectOptions, gradeOptions: rawGradeOptions, categoryOptions: rawCategoryOptions, kindCounts, fetchBooks, loading, booksPerRow, setBooksPerRow, toggleFavorite } = useStore();
   const [resourceKind, setResourceKind] = useState<ResourceKind>(loadResourceKind);
   // 三个 Tab 各有一套筛选/排序/关键字：初始值取自当前 Tab 的那一套
@@ -703,10 +707,18 @@ export default function Home() {
           <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/english" className="flex items-center gap-1.5 bg-primary opacity-90 hover:opacity-100 h-9 px-3 rounded-lg transition text-sm text-primary-foreground">
-            <Languages size={16} />
-            <span className="hidden sm:inline">English</span>
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link to="/books" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
+              isBookActive ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted')}>
+              <BookOpen size={16} />
+              <span className="hidden sm:inline">Book</span>
+            </Link>
+            <Link to="/english" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
+              isEnglishActive ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted')}>
+              <Languages size={16} />
+              <span className="hidden sm:inline">English</span>
+            </Link>
+          </div>
           <ThemeSwitcher />
           <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理" className="flex items-center justify-center bg-primary opacity-90 hover:opacity-100 h-9 w-9 rounded-lg transition">
             <Settings size={18} />

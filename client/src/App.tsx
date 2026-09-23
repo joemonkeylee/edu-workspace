@@ -40,7 +40,8 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/books" replace />} />
+          <Route path="/books" element={<Home />} />
           <Route path="/book/:id" element={<BookViewer />} />
 
           <Route path="/admin" element={<AuthGuard allowedRoles={['admin', 'teacher']} redirectTo="/" />}>
