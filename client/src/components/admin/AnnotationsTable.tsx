@@ -52,15 +52,15 @@ export default function AnnotationsTable() {
     try {
       const c = typeof item.contentJson === 'string' ? JSON.parse(item.contentJson) : item.contentJson;
       if (item.type === 'note' && c.text) {
-        return <span className="text-gray-700 text-sm line-clamp-2">{c.text}</span>;
+        return <span className="text-foreground text-sm line-clamp-2">{c.text}</span>;
       }
       if (item.type === 'highlight') {
-        return <span className="text-gray-500 text-xs">高亮区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
+        return <span className="text-muted-foreground text-xs">高亮区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
       }
       if (item.type === 'crop') {
-        return <span className="text-gray-500 text-xs">裁剪区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
+        return <span className="text-muted-foreground text-xs">裁剪区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
       }
-      return <span className="text-gray-400 text-xs">{JSON.stringify(c).slice(0, 80)}</span>;
+      return <span className="text-muted-foreground text-xs">{JSON.stringify(c).slice(0, 80)}</span>;
     } catch {
       return '-';
     }
@@ -71,36 +71,36 @@ export default function AnnotationsTable() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="relative w-40">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <input
             type="number"
             value={filterBookId}
             onChange={(e) => setFilterBookId(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
             placeholder="书籍ID..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <select
           value={filterType}
           onChange={(e) => { setFilterType(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+          className="px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background"
         >
           <option value="all">全部类型</option>
           <option value="highlight">高亮</option>
           <option value="note">批注</option>
           <option value="crop">裁剪</option>
         </select>
-        <button onClick={handleFilter} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
+        <button onClick={handleFilter} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
           筛选
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-background rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-muted/50 text-foreground/70">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">ID</th>
                 <th className="text-left px-4 py-3 font-medium">书名</th>
@@ -114,36 +114,36 @@ export default function AnnotationsTable() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">加载中...</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">暂无数据</td></tr>
               ) : items.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition">
-                  <td className="px-4 py-3 text-gray-500">{item.id}</td>
+                <tr key={item.id} className="hover:bg-muted/50 transition">
+                  <td className="px-4 py-3 text-muted-foreground">{item.id}</td>
                   <td className="px-4 py-3 max-w-[160px]">
-                    <span className="truncate block text-gray-700" title={item.book?.title}>
+                    <span className="truncate block text-foreground" title={item.book?.title}>
                       {item.book?.title || `Book#${item.bookId}`}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">P{item.pageNumber}</td>
+                  <td className="px-4 py-3 text-foreground/70">P{item.pageNumber}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
                       ${item.type === 'highlight' ? 'bg-yellow-100 text-yellow-700'
-                        : item.type === 'note' ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-600'}`}>
+                        : item.type === 'note' ? 'bg-primary/10 text-primary'
+                        : 'bg-muted text-foreground/70'}`}>
                       {item.type === 'highlight' ? <Highlighter size={12} /> : <FileText size={12} />}
                       {TYPE_LABELS[item.type] || item.type}
                     </span>
                   </td>
                   <td className="px-4 py-3 max-w-[200px]">{renderContent(item)}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{item.tags || '-'}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{item.tags || '-'}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
                     {new Date(item.createdAt).toLocaleString('zh-CN')}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => handleDelete(item.id)}
-                      className="p-1.5 text-red-400 hover:bg-red-50 rounded"
+                      className="p-1.5 text-destructive/70 hover:bg-destructive/10 rounded"
                       title="删除"
                     >
                       <Trash2 size={16} />
@@ -157,21 +157,21 @@ export default function AnnotationsTable() {
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <span className="text-sm text-gray-500">共 {total} 条</span>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+            <span className="text-sm text-muted-foreground">共 {total} 条</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
               >
                 <ChevronLeft size={18} />
               </button>
-              <span className="text-sm text-gray-600">{page} / {totalPages}</span>
+              <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
               >
                 <ChevronRight size={18} />
               </button>

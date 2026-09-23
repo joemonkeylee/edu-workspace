@@ -345,13 +345,13 @@ export default function BooksTable() {
               }
             }}
             className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm transition cursor-pointer ${
-              dropPath === pathText ? 'border-primary bg-blue-50' : node.ignored ? 'border-transparent bg-gray-100 opacity-60' : 'border-transparent bg-white hover:bg-gray-50'
+              dropPath === pathText ? 'border-primary bg-primary/10' : node.ignored ? 'border-transparent bg-muted opacity-60' : 'border-transparent bg-background hover:bg-muted/50'
             }`}
             style={{ marginLeft: `${parentPath.length * 16}px` }}
           >
-            <GripVertical size={14} className="text-gray-400" />
-            <span className="flex-1 truncate font-medium text-gray-700">{node.title}</span>
-            <span className="text-xs text-gray-500">{node.page}</span>
+            <GripVertical size={14} className="text-muted-foreground" />
+            <span className="flex-1 truncate font-medium text-foreground">{node.title}</span>
+            <span className="text-xs text-muted-foreground">{node.page}</span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -359,7 +359,7 @@ export default function BooksTable() {
                   event.stopPropagation();
                   toggleIgnoreTocNode(currentPath);
                 }}
-                className={`p-1 rounded ${node.ignored ? 'text-amber-600 hover:bg-amber-50' : 'text-gray-500 hover:bg-gray-100'}`}
+                className={`p-1 rounded ${node.ignored ? 'text-amber-600 hover:bg-amber-50' : 'text-muted-foreground hover:bg-muted'}`}
                 title={node.ignored ? '显示页面' : '隐藏页面'}
               >
                 {node.ignored ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -377,23 +377,23 @@ export default function BooksTable() {
       {/* Search bar */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="搜索书名或分类..."
-            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-9 pr-4 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
-        <button onClick={handleSearch} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
+        <button onClick={handleSearch} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
           搜索
         </button>
         <select
           value={batchFilter}
           onChange={(e) => { setBatchFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          className="px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">全部批次</option>
           {batches.map(b => (
@@ -402,12 +402,12 @@ export default function BooksTable() {
         </select>
         <div className="flex-1" />
         {isAdmin && selectedIds.size > 0 && (
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
-            <span className="text-sm text-blue-700">已选 {selectedIds.size} 本</span>
+          <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
+            <span className="text-sm text-primary">已选 {selectedIds.size} 本</span>
             <button
               onClick={handleBatchDelete}
               disabled={deleting}
-              className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
+              className="flex items-center gap-1 text-sm text-destructive hover:text-destructive disabled:opacity-50"
             >
               <Trash2 size={14} />
               {deleting ? '删除中...' : '批量删除'}
@@ -418,7 +418,7 @@ export default function BooksTable() {
           <button
             onClick={handleClearAll}
             disabled={deleting || total === 0}
-            className="flex items-center gap-1 border border-red-200 text-red-500 px-3 py-2 rounded-lg text-sm hover:bg-red-50 disabled:opacity-40"
+            className="flex items-center gap-1 border border-destructive/30 text-destructive px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 disabled:opacity-40"
           >
             <Trash2 size={14} />
             一键清空
@@ -427,10 +427,10 @@ export default function BooksTable() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-background rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-muted/50 text-foreground/70">
               <tr>
                 <th className="w-10 px-4 py-3">
                   <input
@@ -453,11 +453,11 @@ export default function BooksTable() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">加载中...</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
               ) : books.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">暂无数据</td></tr>
               ) : books.map((book) => (
-                <tr key={book.id} className={`transition ${selectedIds.has(book.id) ? 'bg-blue-50/60' : 'hover:bg-gray-50'}`}>
+                <tr key={book.id} className={`transition ${selectedIds.has(book.id) ? 'bg-primary/10/60' : 'hover:bg-muted/50'}`}>
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
@@ -470,7 +470,7 @@ export default function BooksTable() {
                     <BookCover
                       book={book}
                       fit="contain"
-                      className="aspect-[210/297] h-16 rounded border border-gray-200"
+                      className="aspect-[210/297] h-16 rounded border border-border"
                     />
                   </td>
                   <td className="px-4 py-3 max-w-xs">
@@ -479,7 +479,7 @@ export default function BooksTable() {
                         <input
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full px-2 py-1 border border-input rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                         />
                         <div className="grid grid-cols-2 gap-2">
                           <input
@@ -487,7 +487,7 @@ export default function BooksTable() {
                             value={editGrade}
                             onChange={(e) => setEditGrade(e.target.value)}
                             placeholder="阶段 (如 7上)"
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            className="w-full px-2 py-1 border border-input rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                           <datalist id="grade-presets">
                             {GRADE_PRESETS.map((g) => <option key={g} value={g} />)}
@@ -497,7 +497,7 @@ export default function BooksTable() {
                             value={editSubject}
                             onChange={(e) => setEditSubject(e.target.value)}
                             placeholder="学科 (如 语文)"
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            className="w-full px-2 py-1 border border-input rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                           <datalist id="subject-presets">
                             {SUBJECT_PRESETS.map((s) => <option key={s} value={s} />)}
@@ -507,7 +507,7 @@ export default function BooksTable() {
                           value={editCategory}
                           onChange={(e) => setEditCategory(e.target.value)}
                           placeholder="分类"
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full px-2 py-1 border border-input rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                         />
                         <input
                           type="number"
@@ -515,7 +515,7 @@ export default function BooksTable() {
                           value={editCoverPage}
                           onChange={(e) => setEditCoverPage(Number(e.target.value) || 1)}
                           placeholder="封皮页"
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="w-full px-2 py-1 border border-input rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                         />
                         <div className="space-y-2">
                           {getCategoryPresetFields(editCategory).length === 0 && (
@@ -540,13 +540,13 @@ export default function BooksTable() {
                                       setEditAttributes(next);
                                     }}
                                     placeholder="字段名"
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className="w-full px-2 py-1 border border-input rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                   />
                                   <input
                                     value={value}
                                     onChange={(e) => setEditAttributes((prev) => ({ ...prev, [key]: e.target.value }))}
                                     placeholder="字段值"
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className="w-full px-2 py-1 border border-input rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                   />
                                   <button
                                     type="button"
@@ -555,7 +555,7 @@ export default function BooksTable() {
                                       delete next[key];
                                       return next;
                                     })}
-                                    className="px-2 py-1 text-red-500 hover:bg-red-50 rounded"
+                                    className="px-2 py-1 text-destructive hover:bg-destructive/10 rounded"
                                   >
                                     删除
                                   </button>
@@ -577,7 +577,7 @@ export default function BooksTable() {
                         <span className="truncate block" title={book.title}>{book.title}</span>
                         <div className="flex flex-wrap gap-1 text-[11px]">
                           {book.subject && <span className="bg-emerald-50 text-emerald-600 rounded px-1.5 py-0.5">{book.subject}</span>}
-                          {book.grade && <span className="bg-blue-50 text-blue-600 rounded px-1.5 py-0.5">{book.grade}</span>}
+                          {book.grade && <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5">{book.grade}</span>}
                           {book.category && <span className="bg-violet-50 text-violet-600 rounded px-1.5 py-0.5">{book.category}</span>}
                           {(() => {
                             const pair = (book.attributes as any)?.pair;
@@ -590,29 +590,29 @@ export default function BooksTable() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{book.totalPages}</td>
+                  <td className="px-4 py-3 text-foreground/70">{book.totalPages}</td>
                   <td className="px-4 py-3">
                     {book.availableDpis?.length ? (
                       <div className="flex flex-wrap gap-1">
                         {book.availableDpis.map((d: number) => (
-                          <span key={d} className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-xs font-medium">
+                          <span key={d} className="inline-block px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
                             {d}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-400 text-xs">无</span>
+                      <span className="text-muted-foreground text-xs">无</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{book.coverPage || 1}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-4 py-3 text-foreground/70">{book.coverPage || 1}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
                     {book.batchId ? (
                       <span className="inline-block px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-xs font-mono">{book.batchId}</span>
                     ) : (
-                      <span className="text-gray-300">-</span>
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
                     {new Date(book.createdAt).toLocaleDateString('zh-CN')}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -621,7 +621,7 @@ export default function BooksTable() {
                         <button onClick={() => saveEdit(book.id)} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="保存">
                           <Check size={16} />
                         </button>
-                        <button onClick={cancelEdit} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded" title="取消">
+                        <button onClick={cancelEdit} className="p-1.5 text-muted-foreground hover:bg-muted rounded" title="取消">
                           <X size={16} />
                         </button>
                       </div>
@@ -633,12 +633,12 @@ export default function BooksTable() {
                           </button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => startEdit(book)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="编辑信息">
+                          <button onClick={() => startEdit(book)} className="p-1.5 text-primary hover:bg-primary/10 rounded" title="编辑信息">
                             <Edit3 size={16} />
                           </button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => handleDelete(book.id, book.title)} className="p-1.5 text-red-400 hover:bg-red-50 rounded" title="删除">
+                          <button onClick={() => handleDelete(book.id, book.title)} className="p-1.5 text-destructive/70 hover:bg-destructive/10 rounded" title="删除">
                             <Trash2 size={16} />
                           </button>
                         )}
@@ -653,21 +653,21 @@ export default function BooksTable() {
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <span className="text-sm text-gray-500">共 {total} 条</span>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+            <span className="text-sm text-muted-foreground">共 {total} 条</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
               >
                 <ChevronLeft size={18} />
               </button>
-              <span className="text-sm text-gray-600">{page} / {totalPages}</span>
+              <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
               >
                 <ChevronRight size={18} />
               </button>
@@ -678,21 +678,21 @@ export default function BooksTable() {
 
       {deleteProgress && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl p-6">
+          <div className="w-full max-w-md rounded-xl bg-background shadow-xl p-6">
             <div className="flex items-center gap-3 mb-3">
-              <Trash2 size={20} className="text-red-500" />
-              <h3 className="font-semibold text-gray-800">正在删除书籍</h3>
+              <Trash2 size={20} className="text-destructive" />
+              <h3 className="font-semibold text-foreground">正在删除书籍</h3>
             </div>
-            <div className="mb-2 text-sm text-gray-600 truncate" title={deleteProgress.title}>
+            <div className="mb-2 text-sm text-foreground/70 truncate" title={deleteProgress.title}>
               {deleteProgress.title || '准备中...'}
             </div>
-            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
               <div
-                className="h-full bg-red-500 transition-all duration-200"
+                className="h-full bg-destructive transition-all duration-200"
                 style={{ width: `${deleteProgress.total > 0 ? (deleteProgress.current / deleteProgress.total) * 100 : 0}%` }}
               />
             </div>
-            <div className="text-xs text-gray-500 text-right">
+            <div className="text-xs text-muted-foreground text-right">
               {deleteProgress.current} / {deleteProgress.total}
               {deleteProgress.total > 0 && ` (${Math.round((deleteProgress.current / deleteProgress.total) * 100)}%)`}
             </div>
@@ -702,13 +702,13 @@ export default function BooksTable() {
 
       {tocBookId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div className="w-full max-w-4xl rounded-xl bg-background shadow-xl">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
                 <BookOpen size={18} className="text-violet-500" />
-                <h3 className="font-semibold text-gray-800">目录排序 · 预览 · 跳过</h3>
+                <h3 className="font-semibold text-foreground">目录排序 · 预览 · 跳过</h3>
               </div>
-              <button onClick={closeTocEditor} className="text-gray-500 hover:text-gray-700">关闭</button>
+              <button onClick={closeTocEditor} className="text-muted-foreground hover:text-foreground">关闭</button>
             </div>
 
             <div className="p-4">
@@ -717,23 +717,23 @@ export default function BooksTable() {
               </div>
 
               <div className="grid grid-cols-[1.4fr_0.9fr] gap-4">
-                <div className="max-h-[60vh] overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
+                <div className="max-h-[60vh] overflow-auto rounded-lg border border-border bg-muted/50 p-2">
                   {tocDraft.length === 0 ? (
-                    <div className="text-sm text-gray-400 py-10 text-center">暂无目录</div>
+                    <div className="text-sm text-muted-foreground py-10 text-center">暂无目录</div>
                   ) : (
                     renderTocRows(tocDraft)
                   )}
                 </div>
 
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
                   {previewPage ? (
                     (() => {
                       const activeBook = books.find((book) => book.id === previewPage.bookId);
                       const imageUrl = activeBook ? getPageImageUrl(activeBook, previewPage.page) : '';
                       return (
                         <div className="space-y-3">
-                          <div className="text-xs font-medium text-gray-500">页面预览</div>
-                          <div className="flex min-h-[220px] items-start justify-center overflow-auto rounded border border-gray-200 bg-white p-2">
+                          <div className="text-xs font-medium text-muted-foreground">页面预览</div>
+                          <div className="flex min-h-[220px] items-start justify-center overflow-auto rounded border border-border bg-background p-2">
                             {imageUrl ? (
                               <img
                                 src={imageUrl}
@@ -743,15 +743,15 @@ export default function BooksTable() {
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                               />
                             ) : (
-                              <div className="text-xs text-gray-400 py-10">无可预览图片</div>
+                              <div className="text-xs text-muted-foreground py-10">无可预览图片</div>
                             )}
                           </div>
-                          <div className="text-sm text-gray-700">第 {previewPage.page} 页</div>
+                          <div className="text-sm text-foreground">第 {previewPage.page} 页</div>
                         </div>
                       );
                     })()
                   ) : (
-                    <div className="flex h-full min-h-[220px] items-center justify-center text-sm text-gray-400 text-center">
+                    <div className="flex h-full min-h-[220px] items-center justify-center text-sm text-muted-foreground text-center">
                       选择目录项即可预览对应页码
                     </div>
                   )}
@@ -759,10 +759,10 @@ export default function BooksTable() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+            <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
               <button
                 onClick={() => setTocDraft(Array.isArray(books.find((book) => book.id === tocBookId)?.tocJson) ? JSON.parse(JSON.stringify(books.find((book) => book.id === tocBookId)?.tocJson)) : [])}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                className="inline-flex items-center gap-1 rounded-lg border border-input px-3 py-2 text-sm text-foreground/70 hover:bg-muted/50"
               >
                 <RotateCcw size={15} />
                 重置
@@ -770,7 +770,7 @@ export default function BooksTable() {
               <button
                 onClick={saveTocEdit}
                 disabled={tocSaving}
-                className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primaryDark disabled:opacity-60"
+                className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-60"
               >
                 <Save size={15} />
                 {tocSaving ? '保存中...' : '保存目录'}
@@ -782,26 +782,26 @@ export default function BooksTable() {
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative w-80 rounded-xl bg-white p-6 shadow-xl">
+          <div className="relative w-80 rounded-xl bg-background p-6 shadow-xl">
             <button
               onClick={() => setDeleteConfirm(null)}
-              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground/70"
               title="取消"
             >
               <X size={16} />
             </button>
-            <h3 className="text-base font-semibold text-gray-800">{deleteConfirm.title}</h3>
-            <p className="mt-2 text-sm text-gray-500">{deleteConfirm.message}</p>
+            <h3 className="text-base font-semibold text-foreground">{deleteConfirm.title}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{deleteConfirm.message}</p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground/70 hover:bg-muted/50"
               >
                 取消
               </button>
               <button
                 onClick={deleteConfirm.onConfirm}
-                className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white hover:bg-red-600"
+                className="rounded-lg bg-destructive px-3 py-1.5 text-sm text-white hover:bg-destructive"
               >
                 删除
               </button>

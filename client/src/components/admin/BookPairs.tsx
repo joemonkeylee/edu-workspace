@@ -73,7 +73,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`px-4 py-2 rounded-t-lg text-sm font-medium border-b-2 ${
-        active ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+        active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
       }`}
     >
       {children}
@@ -115,15 +115,15 @@ function Pagination({
   unit?: string;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t bg-white shrink-0">
-      <span className="text-sm text-gray-500">共 {total} {unit}</span>
+    <div className="flex items-center justify-between px-4 py-3 border-t bg-background shrink-0">
+      <span className="text-sm text-muted-foreground">共 {total} {unit}</span>
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1 text-sm text-gray-600">
+        <label className="flex items-center gap-1 text-sm text-foreground/70">
           每页
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary bg-white"
+            className="px-2 py-1 border border-input rounded text-sm focus:outline-none focus:border-primary bg-background"
           >
             {PAGE_SIZE_OPTIONS.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -132,9 +132,9 @@ function Pagination({
           条
         </label>
         <div className="flex gap-1 items-center">
-          <button disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50">上一页</button>
+          <button disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-muted/50">上一页</button>
           <span className="px-3 py-1 text-sm">{page} / {totalPages || 1}</span>
-          <button disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-gray-50">下一页</button>
+          <button disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-50 hover:bg-muted/50">下一页</button>
         </div>
       </div>
     </div>
@@ -162,14 +162,14 @@ function StatsCard({
 }) {
   if (!stats) return null;
   const boxes: StatBoxConfig[] = [
-    { label: '总书数', value: stats.totalBooks, color: 'text-gray-700', desc: '数据库中所有书籍的总数量（含已配对/未配对/无版本关键词）' },
-    { label: '候选配对', value: stats.candidatePairs, color: 'text-blue-600', desc: '按基础标题相等匹配到的教材+答案组合数（含已绑定和待绑定）' },
+    { label: '总书数', value: stats.totalBooks, color: 'text-foreground', desc: '数据库中所有书籍的总数量（含已配对/未配对/无版本关键词）' },
+    { label: '候选配对', value: stats.candidatePairs, color: 'text-primary', desc: '按基础标题相等匹配到的教材+答案组合数（含已绑定和待绑定）' },
     { label: '已绑定', value: stats.boundPairs, color: 'text-green-600', desc: '已确认配对并写入 attributes.pair 的组数（点击查看已配对列表）', filterKey: 'bound' },
     { label: '待绑定', value: stats.unboundPairs, color: 'text-orange-600', desc: '候选配对中尚未确认绑定的组数（点击切换"仅未绑定"筛选）', filterKey: 'unbound' },
-    { label: '多选项组', value: stats.duplicateGroups, color: 'text-red-600', desc: '同组有多个教材或多个答案，存在多种配对可能（点击筛选）', filterKey: 'duplicates' },
+    { label: '多选项组', value: stats.duplicateGroups, color: 'text-destructive', desc: '同组有多个教材或多个答案，存在多种配对可能（点击筛选）', filterKey: 'duplicates' },
     { label: '孤儿教材', value: stats.orphanTextbooks, color: 'text-amber-600', desc: '有教材关键词但没有匹配到答案的书（点击查看）', filterKey: 'orphanTextbook' },
     { label: '孤儿答案', value: stats.orphanAnswers, color: 'text-amber-600', desc: '有答案关键词但没有匹配到教材的书（点击查看）', filterKey: 'orphanAnswer' },
-    { label: '无版本关键词', value: stats.noVersionKeyword, color: 'text-gray-400', desc: '标题不含"原卷版/解析版/答案"等关键词，不参与自动配对（点击查看）', filterKey: 'noVersion' },
+    { label: '无版本关键词', value: stats.noVersionKeyword, color: 'text-muted-foreground', desc: '标题不含"原卷版/解析版/答案"等关键词，不参与自动配对（点击查看）', filterKey: 'noVersion' },
   ];
   return (
     <div className="flex flex-wrap gap-2 mb-4">
@@ -189,21 +189,21 @@ function StatBox({ label, value, color, desc, filterKey, onFilter, active }: Sta
   const clickable = !!onFilter;
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm px-3 py-2 flex-1 min-w-[120px] relative group ${clickable ? 'cursor-pointer hover:shadow-md transition' : ''} ${active ? 'border-2 border-primary -m-px' : 'border'}`}
+      className={`bg-background rounded-lg shadow-sm px-3 py-2 flex-1 min-w-[120px] relative group ${clickable ? 'cursor-pointer hover:shadow-md transition' : ''} ${active ? 'border-2 border-primary -m-px' : 'border'}`}
       onClick={onFilter}
       title={desc}
     >
       <div className="flex items-center gap-1">
-        <p className="text-xs text-gray-500 truncate flex-1">{label}</p>
+        <p className="text-xs text-muted-foreground truncate flex-1">{label}</p>
         <span
-          className="text-gray-300 hover:text-gray-500 cursor-help text-xs"
+          className="text-muted-foreground hover:text-muted-foreground cursor-help text-xs"
           onClick={(e) => { if (clickable) e.stopPropagation(); }}
           title={desc}
         >?</span>
       </div>
       <p className={`text-lg font-bold ${color}`}>{value}</p>
       {/* hover tooltip */}
-      <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-normal w-48 shadow-lg">
+      <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover:block bg-foreground text-white text-xs rounded px-2 py-1 whitespace-normal w-48 shadow-lg">
         {desc}
       </div>
     </div>
@@ -217,15 +217,15 @@ function StatBox({ label, value, color, desc, filterKey, onFilter, active }: Sta
 function HighlightedTitle({ title, baseTitle, highlightClass = '' }: { title: string; baseTitle: string; highlightClass?: string }) {
   const idx = title.indexOf(baseTitle);
   if (idx === -1 || !baseTitle) {
-    return <span className="text-gray-700">{title}</span>;
+    return <span className="text-foreground">{title}</span>;
   }
   const before = title.slice(0, idx);
   const after = title.slice(idx + baseTitle.length);
   return (
     <span>
-      {before && <span className="text-gray-400">{before}</span>}
-      <span className={`text-gray-800 font-medium px-1 rounded ${highlightClass}`}>{baseTitle}</span>
-      {after && <span className="text-gray-400">{after}</span>}
+      {before && <span className="text-muted-foreground">{before}</span>}
+      <span className={`text-foreground font-medium px-1 rounded ${highlightClass}`}>{baseTitle}</span>
+      {after && <span className="text-muted-foreground">{after}</span>}
     </span>
   );
 }
@@ -245,48 +245,48 @@ function RulesModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-background rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b">
           <h3 className="font-bold text-base">教材答案配对规则</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground/70 text-xl leading-none">×</button>
         </div>
         {loading ? (
-          <div className="p-8 text-center text-gray-400">加载中...</div>
+          <div className="p-8 text-center text-muted-foreground">加载中...</div>
         ) : rules ? (
           <div className="px-5 py-4 space-y-4 text-sm">
             <div>
-              <h4 className="font-semibold text-gray-700 mb-1">核心规则</h4>
-              <p className="text-gray-600 bg-gray-50 rounded p-2">{rules.rule}</p>
+              <h4 className="font-semibold text-foreground mb-1">核心规则</h4>
+              <p className="text-foreground/70 bg-muted/50 rounded p-2">{rules.rule}</p>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-700 mb-1">示例</h4>
+              <h4 className="font-semibold text-foreground mb-1">示例</h4>
               <ul className="space-y-1">
                 {rules.examples.map((ex, i) => (
-                  <li key={i} className="text-gray-600 bg-gray-50 rounded p-2 font-mono text-xs">{ex}</li>
+                  <li key={i} className="text-foreground/70 bg-muted/50 rounded p-2 font-mono text-xs">{ex}</li>
                 ))}
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-700 mb-1">括号匹配模式</h4>
+              <h4 className="font-semibold text-foreground mb-1">括号匹配模式</h4>
               <ul className="space-y-1">
                 {rules.bracketPatterns.map((p) => (
                   <li key={p.pattern} className="flex gap-3 items-center">
-                    <code className="bg-gray-100 px-2 py-0.5 rounded text-xs">{p.pattern}</code>
-                    <span className="text-gray-600 text-xs">{p.desc}</span>
+                    <code className="bg-muted px-2 py-0.5 rounded text-xs">{p.pattern}</code>
+                    <span className="text-foreground/70 text-xs">{p.desc}</span>
                   </li>
                 ))}
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-700 mb-1">教材关键词（识别为"教材侧"）</h4>
+              <h4 className="font-semibold text-foreground mb-1">教材关键词（识别为"教材侧"）</h4>
               <div className="flex flex-wrap gap-1">
                 {rules.textbookKeywords.map((kw) => (
-                  <span key={kw} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">{kw}</span>
+                  <span key={kw} className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs">{kw}</span>
                 ))}
               </div>
             </div>
             <div>
-              <h4 className="font-semibold text-gray-700 mb-1">答案关键词（识别为"答案侧"）</h4>
+              <h4 className="font-semibold text-foreground mb-1">答案关键词（识别为"答案侧"）</h4>
               <div className="flex flex-wrap gap-1">
                 {rules.answerKeywords.map((kw) => (
                   <span key={kw} className="bg-teal-50 text-teal-700 px-2 py-0.5 rounded text-xs">{kw}</span>
@@ -299,7 +299,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         ) : (
-          <div className="p-8 text-center text-gray-400">加载失败</div>
+          <div className="p-8 text-center text-muted-foreground">加载失败</div>
         )}
       </div>
     </div>
@@ -388,7 +388,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
         alreadyBound ? `已绑定 ${alreadyBound} 组将跳过。` : ''
       }此操作会写入教材与答案的配对关系到 attributes.pair。`,
       confirmText: '确认批量绑定',
-      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+      confirmClass: 'bg-primary hover:bg-primary/90',
     });
     if (!confirmed) return;
     setBatchBinding(true);
@@ -451,7 +451,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
       title: '解绑确认',
       message: `确认解绑「${c.baseTitle}」及其全部答案？`,
       confirmText: '确认解绑',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-destructive hover:bg-destructive/90',
     });
     if (!confirmed) return;
     setActionKey(c.key);
@@ -488,12 +488,12 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
       />
 
       <div className="flex items-center gap-3 mb-4 flex-wrap shrink-0">
-        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+        <label className="flex items-center gap-1.5 text-sm text-foreground/70">
           算法:
           <select
             value={algorithm}
             onChange={(e) => { setAlgorithm(e.target.value as any); setPage(1); }}
-            className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
+            className="px-2 py-1.5 border border-input rounded-lg text-sm focus:outline-none focus:border-primary bg-background"
             title="mode1=关键词匹配(两侧都要有版本词)，mode2=Clean Title补漏(含一侧无版本词的书)，both=合并(零交叉)"
           >
             <option value="mode1">关键词匹配</option>
@@ -506,9 +506,9 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
           placeholder="搜索基础标题或分类"
           value={filters.search}
           onChange={(e) => { setFilters({ ...filters, search: e.target.value }); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
+          className="px-3 py-2 border border-input rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
-        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+        <label className="flex items-center gap-1.5 text-sm text-foreground/70">
           筛选:
           <select
             value={filters.unbound ? (filters.excludeDuplicates ? 'cleanUnbound' : 'unbound') : filters.duplicates ? 'duplicates' : 'all'}
@@ -520,7 +520,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
               else if (v === 'duplicates') setFilters({ unbound: false, duplicates: true, excludeDuplicates: false, search: filters.search });
               setPage(1);
             }}
-            className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
+            className="px-2 py-1.5 border border-input rounded-lg text-sm focus:outline-none focus:border-primary bg-background"
           >
             <option value="all">全部</option>
             <option value="unbound">仅未绑定</option>
@@ -528,18 +528,18 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
             <option value="duplicates">仅多选项</option>
           </select>
         </label>
-        <button onClick={fetch} disabled={batchBinding} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">刷新</button>
-        <button onClick={handleExport} disabled={exporting || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">
+        <button onClick={fetch} disabled={batchBinding} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted disabled:opacity-50">刷新</button>
+        <button onClick={handleExport} disabled={exporting || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted disabled:opacity-50">
           {exporting ? <Loader2 size={14} className="animate-spin" /> : null}
           {exporting ? '导出中...' : '导出 TXT'}
         </button>
-        <button onClick={handleBatchBind} disabled={selected.size === 0 || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50">
+        <button onClick={handleBatchBind} disabled={selected.size === 0 || batchBinding} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:opacity-90 disabled:opacity-50">
           {batchBinding ? <Loader2 size={15} className="animate-spin" /> : null}
           {batchBinding ? `批量绑定中... (${selected.size})` : `批量绑定 (${selected.size})`}
         </button>
         <button
           onClick={() => setShowRules(true)}
-          className="ml-auto px-3 py-2 text-xs text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="ml-auto px-3 py-2 text-xs text-muted-foreground border border-input rounded-lg hover:bg-muted/50"
           title="查看当前匹配规则和关键词"
         >
           ? 匹配规则说明
@@ -548,15 +548,15 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
 
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
 
-      <div className="relative bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
+      <div className="relative bg-background rounded-lg shadow flex flex-col flex-1 overflow-hidden">
         {batchBinding && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
             <Loader2 className="animate-spin text-primary" size={28} />
           </div>
         )}
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600 sticky top-0">
+          <thead className="bg-muted/50 text-foreground/70 sticky top-0">
             <tr>
               <th className="px-3 py-2 text-left w-8">
                 <input type="checkbox" checked={selected.size > 0 && selected.size === candidates.length} onChange={toggleSelectAll} />
@@ -573,20 +573,20 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
             {candidates.map((c, idx) => {
               const hc = highlightColor(idx);
               return (
-              <tr key={c.key} className={`${idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100`}>
+              <tr key={c.key} className={`${idx % 2 === 1 ? 'bg-muted/50/40' : ''} hover:bg-muted`}>
                 <td className="px-3 py-2">
                   <input type="checkbox" checked={selected.has(c.key)} onChange={() => toggleSelect(c.key)} />
                 </td>
                 <td className="px-3 py-2 font-medium">
                   <span className={`px-1 rounded ${hc}`}>{c.baseTitle}</span>
                 </td>
-                <td className="px-3 py-2 text-gray-500">{c.category}</td>
+                <td className="px-3 py-2 text-muted-foreground">{c.category}</td>
                 <td className="px-3 py-2">
                   {c.textbooks.map((t) => (
                     <div key={t.id} className="text-xs">
-                      <a href={`/book/${t.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{t.id}</a>{' '}
+                      <a href={`/book/${t.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">#{t.id}</a>{' '}
                       <HighlightedTitle title={t.title} baseTitle={c.baseTitle} highlightClass={hc} />{' '}
-                      <span className="text-gray-400">({t.totalPages}p)</span>
+                      <span className="text-muted-foreground">({t.totalPages}p)</span>
                     </div>
                   ))}
                 </td>
@@ -595,29 +595,29 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
                     <div key={a.id} className="text-xs">
                       <a href={`/book/${a.id}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">#{a.id}</a>{' '}
                       <HighlightedTitle title={a.title} baseTitle={c.baseTitle} highlightClass={hc} />{' '}
-                      <span className="text-gray-400">({a.totalPages}p)</span>
+                      <span className="text-muted-foreground">({a.totalPages}p)</span>
                     </div>
                   ))}
                 </td>
                 <td className="px-3 py-2">
                   {c.bound ? <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">已绑定</span>
                     : <span className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded">待绑定</span>}
-                  {c.hasDuplicate && <span className="ml-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded">多选项</span>}
+                  {c.hasDuplicate && <span className="ml-1 text-xs text-destructive bg-red-50 px-2 py-0.5 rounded">多选项</span>}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">
                   {actionKey === c.key ? (
-                    <Loader2 size={14} className="animate-spin text-gray-500" />
+                    <Loader2 size={14} className="animate-spin text-muted-foreground" />
                   ) : c.bound ? (
-                    <button onClick={() => handleSingleUnbind(c)} className="text-xs text-red-600 hover:underline">解绑</button>
+                    <button onClick={() => handleSingleUnbind(c)} className="text-xs text-destructive hover:underline">解绑</button>
                   ) : (
-                    <button onClick={() => handleSingleBind(c)} className="text-xs text-blue-600 hover:underline">绑定</button>
+                    <button onClick={() => handleSingleBind(c)} className="text-xs text-primary hover:underline">绑定</button>
                   )}
                 </td>
               </tr>
               );
             })}
             {candidates.length === 0 && !loading && (
-              <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">无配对候选</td></tr>
+              <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">无配对候选</td></tr>
             )}
           </tbody>
           </table>
@@ -698,7 +698,7 @@ function BoundTab() {
       title: '解绑确认',
       message: `确认解绑「${title}」及其全部答案？`,
       confirmText: '确认解绑',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-destructive hover:bg-destructive/90',
     });
     if (confirmed) {
       try {
@@ -761,7 +761,7 @@ function BoundTab() {
       title: '批量解绑确认',
       message: `确认解绑选中的 ${selected.size} 组？将解绑: ${titles}`,
       confirmText: '确认批量解绑',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-destructive hover:bg-destructive/90',
     });
     if (!confirmed) return;
     setBatchUnbinding(true);
@@ -822,7 +822,7 @@ function BoundTab() {
   };
 
   const SortHeader = ({ label, col, w = '' }: { label: string; col: string; w?: string }) => (
-    <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100 ${w}`} onClick={() => toggleSort(col)}>
+    <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-muted ${w}`} onClick={() => toggleSort(col)}>
       <span className="inline-flex items-center gap-1">
         {label}
         {sortBy === col && <span className="text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>}
@@ -838,13 +838,13 @@ function BoundTab() {
           placeholder="搜索标题或分类"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
+          className="px-3 py-2 border border-input rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
-        <button onClick={fetch} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">搜索</button>
+        <button onClick={fetch} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted">搜索</button>
         <button
           onClick={handleBatchUnbind}
           disabled={selected.size === 0 || batchUnbinding}
-          className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2 bg-destructive text-white rounded-lg text-sm hover:bg-destructive disabled:opacity-50"
         >
           {batchUnbinding ? <Loader2 size={14} className="animate-spin" /> : null}
           {batchUnbinding ? `解绑中...` : `批量解绑 (${selected.size})`}
@@ -865,10 +865,10 @@ function BoundTab() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
+      <div className="bg-background rounded-lg shadow flex flex-col flex-1 overflow-hidden">
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 sticky top-0">
+            <thead className="bg-muted/50 text-foreground/70 sticky top-0">
               <tr>
                 <th className="px-3 py-2 text-left w-8">
                   <input
@@ -890,7 +890,7 @@ function BoundTab() {
                 const checked = selected.has(g.textbook.id);
                 const allDeleted = g.textbook.isDeleted && g.answers.every((a: any) => a.isDeleted);
                 return (
-                  <tr key={g.textbook.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100 ${allDeleted ? 'opacity-60' : ''}`}>
+                  <tr key={g.textbook.id} className={`${checked ? 'bg-primary/10' : idx % 2 === 1 ? 'bg-muted/50/40' : ''} hover:bg-muted ${allDeleted ? 'opacity-60' : ''}`}>
                     <td className="px-3 py-2">
                       <input
                         type="checkbox"
@@ -900,26 +900,26 @@ function BoundTab() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="font-medium">
-                        <a href={`/book/${g.textbook.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{g.textbook.id}</a> {g.textbook.title}
+                        <a href={`/book/${g.textbook.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">#{g.textbook.id}</a> {g.textbook.title}
                         {g.textbook.isDeleted && <span className="ml-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">已删</span>}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-gray-500">{g.textbook.category}</td>
-                    <td className="px-3 py-2 text-gray-400">{g.textbook.totalPages}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{g.textbook.category}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{g.textbook.totalPages}</td>
                     <td className="px-3 py-2">
                       <span className="text-xs text-sky-600 bg-sky-50 px-2 py-0.5 rounded">{g.answers.length}</span>
                     </td>
                     <td className="px-3 py-2">
                       {g.answers.map((a: any) => (
                         <div key={a.id} className="text-xs">
-                          <a href={`/book/${a.id}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">#{a.id}</a> {a.title} <span className="text-gray-400">({a.totalPages}p)</span>
+                          <a href={`/book/${a.id}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">#{a.id}</a> {a.title} <span className="text-muted-foreground">({a.totalPages}p)</span>
                           {a.isDeleted && <span className="ml-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">已删</span>}
                         </div>
                       ))}
-                      {g.answers.length === 0 && <span className="text-gray-400 text-xs">无答案</span>}
+                      {g.answers.length === 0 && <span className="text-muted-foreground text-xs">无答案</span>}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <button onClick={() => handleUnbind(g.textbook.id, g.textbook.title)} className="text-xs text-red-600 hover:underline mr-2">解绑</button>
+                      <button onClick={() => handleUnbind(g.textbook.id, g.textbook.title)} className="text-xs text-destructive hover:underline mr-2">解绑</button>
                       {allDeleted ? (
                         <button onClick={() => handleGroupRestore(g)} className="text-xs text-green-600 hover:underline">恢复</button>
                       ) : (
@@ -930,7 +930,7 @@ function BoundTab() {
                 );
               })}
               {groups.length === 0 && !loading && (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">暂无已配对数据</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">暂无已配对数据</td></tr>
               )}
             </tbody>
           </table>
@@ -1083,7 +1083,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
   };
 
   const SortHeader = ({ label, col, w = '' }: { label: string; col: string; w?: string }) => (
-    <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-gray-100 ${w}`} onClick={() => toggleSort(col)}>
+    <th className={`px-3 py-2 text-left cursor-pointer select-none hover:bg-muted ${w}`} onClick={() => toggleSort(col)}>
       <span className="inline-flex items-center gap-1">
         {label}
         {sortBy === col && <span className="text-primary">{sortDir === 'asc' ? '↑' : '↓'}</span>}
@@ -1097,7 +1097,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
         <select
           value={role}
           onChange={(e) => { onRoleChange(e.target.value as OrphanRole); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
+          className="px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-primary bg-background"
         >
           <option value="all">全部</option>
           <option value="textbook">孤儿教材</option>
@@ -1109,17 +1109,17 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
           placeholder="搜索标题或分类"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
+          className="px-3 py-2 border border-input rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
         />
-        <button onClick={fetch} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">刷新</button>
-        <button onClick={handleExport} disabled={exporting || deleting} className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200 disabled:opacity-50">
+        <button onClick={fetch} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted">刷新</button>
+        <button onClick={handleExport} disabled={exporting || deleting} className="flex items-center gap-1.5 px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted disabled:opacity-50">
           {exporting ? <Loader2 size={14} className="animate-spin" /> : null}
           {exporting ? '导出中...' : selected.size > 0 ? `导出选中 (${selected.size})` : '导出全部'}
         </button>
         <button
           onClick={handleBatchDelete}
           disabled={selected.size === 0 || deleting}
-          className="flex items-center gap-1.5 px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2 bg-destructive text-white rounded-lg text-sm hover:bg-destructive disabled:opacity-50"
         >
           {deleting ? <Loader2 size={14} className="animate-spin" /> : null}
           {deleting ? `删除中...` : `批量软删 (${selected.size})`}
@@ -1133,10 +1133,10 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow flex flex-col flex-1 overflow-hidden">
+      <div className="bg-background rounded-lg shadow flex flex-col flex-1 overflow-hidden">
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 sticky top-0">
+            <thead className="bg-muted/50 text-foreground/70 sticky top-0">
               <tr>
                 <th className="px-3 py-2 text-left w-8">
                   <input
@@ -1157,7 +1157,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
               {orphans.map((o, idx) => {
                 const checked = selected.has(o.id);
                 return (
-                  <tr key={o.id} className={`${checked ? 'bg-blue-50' : idx % 2 === 1 ? 'bg-gray-50/40' : ''} hover:bg-gray-100 ${o.isDeleted ? 'opacity-60' : ''}`}>
+                  <tr key={o.id} className={`${checked ? 'bg-primary/10' : idx % 2 === 1 ? 'bg-muted/50/40' : ''} hover:bg-muted ${o.isDeleted ? 'opacity-60' : ''}`}>
                     <td className="px-3 py-2">
                       <input
                         type="checkbox"
@@ -1165,18 +1165,18 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                         onChange={() => toggleRow(o.id)}
                       />
                     </td>
-                    <td className="px-3 py-2 text-gray-500"><a href={`/book/${o.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{o.id}</a></td>
+                    <td className="px-3 py-2 text-muted-foreground"><a href={`/book/${o.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">#{o.id}</a></td>
                     <td className="px-3 py-2">
                       {o.title}
                       {o.isDeleted && <span className="ml-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">已删</span>}
                     </td>
-                    <td className="px-3 py-2 text-gray-500">{o.category}</td>
-                    <td className="px-3 py-2 text-gray-400">{o.totalPages}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{o.category}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{o.totalPages}</td>
                     <td className="px-3 py-2">
                       <span className={`text-xs px-2 py-0.5 rounded ${
-                        o.type === '孤儿教材' ? 'bg-blue-50 text-blue-700' :
+                        o.type === '孤儿教材' ? 'bg-primary/10 text-primary' :
                         o.type === '孤儿答案' ? 'bg-teal-50 text-teal-700' :
-                        'bg-gray-100 text-gray-600'
+                        'bg-muted text-foreground/70'
                       }`}>{o.type}</span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -1203,7 +1203,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                 );
               })}
               {orphans.length === 0 && !loading && (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">暂无数据</td></tr>
               )}
             </tbody>
           </table>
@@ -1222,19 +1222,19 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
       {/* Progress modal for batch delete */}
       {deleteProgress && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-80 p-5 text-center">
+          <div className="bg-background rounded-lg shadow-xl w-80 p-5 text-center">
             <div className="mb-3">{deleteProgress.current > 0 && deleteProgress.current >= deleteProgress.total ? (
               <div className="w-12 h-12 mx-auto bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xl">✓</div>
             ) : (
-              <Loader2 size={32} className="animate-spin text-red-500 mx-auto" />
+              <Loader2 size={32} className="animate-spin text-destructive mx-auto" />
             )}</div>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-foreground">
               {deleteProgress.current > 0 && deleteProgress.current >= deleteProgress.total
                 ? `删除完成：${deleteProgress.current} / ${deleteProgress.total}`
                 : `正在删除 ${deleteProgress.current} / ${deleteProgress.total}`}
             </p>
             {deleteProgress.title && (
-              <p className="text-xs text-gray-400 mt-1 truncate" title={deleteProgress.title}>{deleteProgress.title}</p>
+              <p className="text-xs text-muted-foreground mt-1 truncate" title={deleteProgress.title}>{deleteProgress.title}</p>
             )}
           </div>
         </div>

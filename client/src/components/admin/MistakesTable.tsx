@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 const PAGE_SIZE = 10;
 
 const REVIEW_STATUS: Record<number, { label: string; color: string }> = {
-  0: { label: '未复习', color: 'bg-gray-100 text-gray-600' },
+  0: { label: '未复习', color: 'bg-muted text-foreground/70' },
   1: { label: '复习中', color: 'bg-amber-100 text-amber-700' },
   2: { label: '已掌握', color: 'bg-green-100 text-green-700' },
 };
@@ -66,42 +66,42 @@ export default function MistakesTable() {
         <select
           value={filterSubject}
           onChange={(e) => { setFilterSubject(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+          className="px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background"
         >
           <option value="all">全部学科</option>
           {subjects.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <div className="relative w-40">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <input
             type="text"
             value={filterTag}
             onChange={(e) => setFilterTag(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
             placeholder="标签搜索..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <select
           value={filterStatus}
           onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+          className="px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background"
         >
           <option value="all">全部状态</option>
           <option value="0">未复习</option>
           <option value="1">复习中</option>
           <option value="2">已掌握</option>
         </select>
-        <button onClick={handleFilter} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
+        <button onClick={handleFilter} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
           筛选
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-background rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-muted/50 text-foreground/70">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">ID</th>
                 <th className="text-left px-4 py-3 font-medium">图片</th>
@@ -116,30 +116,30 @@ export default function MistakesTable() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-8 text-gray-400">加载中...</td></tr>
+                <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-8 text-gray-400">暂无数据</td></tr>
+                <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">暂无数据</td></tr>
               ) : items.map((item) => {
                 const st = REVIEW_STATUS[item.reviewStatus] || REVIEW_STATUS[0];
                 return (
-                  <tr key={item.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 text-gray-500">{item.id}</td>
+                  <tr key={item.id} className="hover:bg-muted/50 transition">
+                    <td className="px-4 py-3 text-muted-foreground">{item.id}</td>
                     <td className="px-4 py-3">
                       <img
                         src={withAuthToken(item.imagePath)}
                         alt={`错题#${item.id}`}
-                        className="w-14 h-18 object-cover rounded border border-gray-200"
+                        className="w-14 h-18 object-cover rounded border border-border"
                         onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="56" height="72"><rect fill="%23f3f4f6" width="56" height="72"/><text x="50%25" y="50%25" text-anchor="middle" fill="%239ca3af" font-size="10" dy=".3em">N/A</text></svg>'; }}
                       />
                     </td>
                     <td className="px-4 py-3 max-w-[140px]">
-                      <span className="truncate block text-gray-700" title={item.book?.title}>
+                      <span className="truncate block text-foreground" title={item.book?.title}>
                         {item.book?.title || `Book#${item.bookId}`}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">P{item.pageNumber}</td>
-                    <td className="px-4 py-3 text-gray-700">{item.subject}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{item.tags || '-'}</td>
+                    <td className="px-4 py-3 text-foreground/70">P{item.pageNumber}</td>
+                    <td className="px-4 py-3 text-foreground">{item.subject}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{item.tags || '-'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${st.color}`}>
@@ -159,7 +159,7 @@ export default function MistakesTable() {
                             {item.reviewStatus > 0 && (
                               <button
                                 onClick={() => handleStatusChange(item.id, item.reviewStatus - 1)}
-                                className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                className="p-1 text-muted-foreground hover:bg-muted rounded"
                                 title="回退状态"
                               >
                                 <RotateCcw size={14} />
@@ -169,14 +169,14 @@ export default function MistakesTable() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
                       {new Date(item.createdAt).toLocaleString('zh-CN')}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {isAdmin && (
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="p-1.5 text-red-400 hover:bg-red-50 rounded"
+                          className="p-1.5 text-destructive/70 hover:bg-destructive/10 rounded"
                           title="删除"
                         >
                           <Trash2 size={16} />
@@ -192,21 +192,21 @@ export default function MistakesTable() {
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <span className="text-sm text-gray-500">共 {total} 条</span>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+            <span className="text-sm text-muted-foreground">共 {total} 条</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
               >
                 <ChevronLeft size={18} />
               </button>
-              <span className="text-sm text-gray-600">{page} / {totalPages}</span>
+              <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"
+                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
               >
                 <ChevronRight size={18} />
               </button>

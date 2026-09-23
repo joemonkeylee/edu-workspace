@@ -43,7 +43,7 @@ export default function StorageSettings() {
       title: '确认切换资源目录',
       message: `确定切换资源目录？\n\n${path}\n\n检测到 ${matchedBooks}/${totalBooks} 本书资源匹配。`,
       confirmText: '确认切换',
-      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+      confirmClass: 'bg-primary hover:bg-primary/90',
     });
     if (!confirmed) return;
     setSaving(true);
@@ -69,28 +69,28 @@ export default function StorageSettings() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-base font-semibold text-gray-800">资源目录</h2>
-        <p className="mt-1 text-sm text-gray-500">书籍页面、PDF 原文件和错题裁剪图片都会存放在此目录。</p>
-        <label className="block text-sm font-medium text-gray-700 mt-5 mb-2">本机绝对路径</label>
+      <div className="bg-background rounded-lg shadow p-6">
+        <h2 className="text-base font-semibold text-foreground">资源目录</h2>
+        <p className="mt-1 text-sm text-muted-foreground">书籍页面、PDF 原文件和错题裁剪图片都会存放在此目录。</p>
+        <label className="block text-sm font-medium text-foreground mt-5 mb-2">本机绝对路径</label>
         <input
           value={path}
           onChange={(e) => setPath(e.target.value)}
-          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full px-3 py-2.5 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="/Users/username/Documents/edu-storage"
         />
         <div className="mt-4 flex items-center gap-3">
-          <button onClick={inspect} disabled={checking || !path.trim()} className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:border-primary hover:text-primary disabled:opacity-50">
+          <button onClick={inspect} disabled={checking || !path.trim()} className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50">
             <RefreshCw size={15} /> 检查目录
           </button>
-          <button onClick={save} disabled={saving || !path.trim()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primaryDark disabled:opacity-50">
+          <button onClick={save} disabled={saving || !path.trim()} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-50">
             <Save size={15} /> 保存并切换
           </button>
-          <button onClick={open} disabled={!path.trim()} className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:border-primary hover:text-primary disabled:opacity-50">
+          <button onClick={open} disabled={!path.trim()} className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50">
             <FolderOpen size={15} /> 打开目录
           </button>
         </div>
-        <p className="mt-4 text-sm text-gray-500">当前检查结果：匹配 {matchedBooks}/{totalBooks} 本书。切换后立即生效，无需重启服务。</p>
+        <p className="mt-4 text-sm text-muted-foreground">当前检查结果：匹配 {matchedBooks}/{totalBooks} 本书。切换后立即生效，无需重启服务。</p>
         {message && <p className="mt-2 text-sm text-primary">{message}</p>}
       </div>
     </div>

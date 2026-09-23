@@ -21,9 +21,9 @@ const STATUS_TEXT: Record<string, string> = {
 
 const STATUS_CLASS: Record<string, string> = {
   graded: 'bg-green-100 text-green-700',
-  submitted: 'bg-blue-100 text-blue-700',
+  submitted: 'bg-primary/10 text-primary',
   returned: 'bg-amber-100 text-amber-700',
-  draft: 'bg-gray-100 text-gray-600',
+  draft: 'bg-muted text-foreground/70',
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -117,7 +117,7 @@ export default function AssignmentsTable() {
       title: '确认删除',
       message: '确认删除此作业吗？学生笔迹和教师批改笔迹都会被删除，且无法恢复。',
       confirmText: '确认删除',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-destructive hover:bg-destructive/90',
     });
     if (!confirmed) return;
     try {
@@ -135,7 +135,7 @@ export default function AssignmentsTable() {
       title: '确认批量删除',
       message: `确认删除选中的 ${selectedIds.length} 个作业吗？相关笔迹都会被删除，且无法恢复。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-destructive hover:bg-destructive/90',
     });
     if (!confirmed) return;
     try {
@@ -151,11 +151,11 @@ export default function AssignmentsTable() {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
           <button
             onClick={() => { setViewMode('book'); setPage(1); setSelectedIds([]); setExpandedBooks([]); }}
             className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${
-              viewMode === 'book' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              viewMode === 'book' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
             }`}
             title="按书籍聚合展示每次作业"
           >
@@ -164,7 +164,7 @@ export default function AssignmentsTable() {
           <button
             onClick={() => { setViewMode('list'); setPage(1); setSelectedIds([]); }}
             className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${
-              viewMode === 'list' ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              viewMode === 'list' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
             }`}
             title="平铺的作业列表"
           >
@@ -172,16 +172,16 @@ export default function AssignmentsTable() {
           </button>
         </div>
         <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <input
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             onKeyDown={(e) => e.key === 'Enter' && fetchAssignments()}
             placeholder="搜索作业、书名或学科..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
           {[
             { value: 'all', label: '全部' },
             { value: 'draft', label: '待提交' },
@@ -194,8 +194,8 @@ export default function AssignmentsTable() {
               onClick={() => { setFilterStatus(tab.value); setPage(1); }}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
                 filterStatus === tab.value
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-background text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.label}
@@ -205,19 +205,19 @@ export default function AssignmentsTable() {
         <select
           value={filterBook}
           onChange={(e) => { setFilterBook(e.target.value); setPage(1); }}
-          className="max-w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+          className="max-w-64 px-3 py-2 border border-input rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="all">全部书籍</option>
           {books.map((book) => <option key={book.id} value={book.id}>{book.title}</option>)}
         </select>
-        <button onClick={fetchAssignments} className="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primaryDark">
+        <button onClick={fetchAssignments} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
           筛选
         </button>
         {isAdmin && (
           <button
             onClick={handleBatchDelete}
             disabled={selectedIds.length === 0}
-            className="ml-auto inline-flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ml-auto inline-flex items-center gap-1 bg-destructive text-white px-3 py-2 rounded-lg text-sm hover:bg-destructive disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Trash2 size={15} /> 批量删除 ({selectedIds.length})
           </button>
@@ -227,9 +227,9 @@ export default function AssignmentsTable() {
       {viewMode === 'book' ? (
         <div className="space-y-3">
           {loading ? (
-            <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-lg shadow">加载中...</div>
+            <div className="py-8 text-center text-muted-foreground text-sm bg-background rounded-lg shadow">加载中...</div>
           ) : groupedBooks.length === 0 ? (
-            <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-lg shadow">暂无作业</div>
+            <div className="py-8 text-center text-muted-foreground text-sm bg-background rounded-lg shadow">暂无作业</div>
           ) : (
             <>
               {total > items.length && (
@@ -241,7 +241,7 @@ export default function AssignmentsTable() {
                 <button onClick={() => setExpandedBooks(groupedBooks.map((g) => g.bookId))} className="text-xs text-primary hover:underline">
                   展开全部
                 </button>
-                <button onClick={() => setExpandedBooks([])} className="text-xs text-gray-500 hover:underline">
+                <button onClick={() => setExpandedBooks([])} className="text-xs text-muted-foreground hover:underline">
                   收起全部
                 </button>
               </div>
@@ -249,14 +249,14 @@ export default function AssignmentsTable() {
                 const open = expandedBooks.includes(group.bookId);
                 const returned = countByStatus(group.items, 'returned');
                 return (
-                  <div key={group.bookId} className="overflow-hidden bg-white rounded-lg shadow">
+                  <div key={group.bookId} className="overflow-hidden bg-background rounded-lg shadow">
                     <div className="flex items-center gap-3 px-4 py-3">
-                      <button onClick={() => toggleBook(group.bookId)} className="text-gray-400 transition hover:text-primary" title={open ? '收起' : '展开'}>
+                      <button onClick={() => toggleBook(group.bookId)} className="text-muted-foreground transition hover:text-primary" title={open ? '收起' : '展开'}>
                         <ChevronDown size={18} className={`transition-transform ${open ? '' : '-rotate-90'}`} />
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-800 truncate" title={group.title}>{group.title}</p>
-                        <p className="mt-0.5 text-xs text-gray-500">
+                        <p className="font-medium text-foreground truncate" title={group.title}>{group.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           共 {group.items.length} 次作业
                           {' · '}待提交 {countByStatus(group.items, 'draft')}
                           {' · '}已提交 {countByStatus(group.items, 'submitted')}
@@ -274,20 +274,20 @@ export default function AssignmentsTable() {
                       </button>
                     </div>
                     {open && (
-                      <div className="border-t divide-y divide-gray-100 border-gray-100">
+                      <div className="border-t divide-y divide-gray-100 border-border/50">
                         {group.items.map((item) => (
-                          <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 pl-12 transition hover:bg-gray-50">
+                          <div key={item.id} className="flex items-center gap-3 px-4 py-2.5 pl-12 transition hover:bg-muted/50">
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-medium text-gray-800">
+                                <span className="text-sm font-medium text-foreground">
                                   {formatAssignmentTitle(item.title) || `作业 #${item.id}`}
                                 </span>
                                 <StatusBadge status={item.status} />
                                 {item.pages?.length > 0 && (
-                                  <span className="text-xs text-gray-400">第 {item.pages.join('、')} 页</span>
+                                  <span className="text-xs text-muted-foreground">第 {item.pages.join('、')} 页</span>
                                 )}
                               </div>
-                              <p className="mt-0.5 text-xs text-gray-500">
+                              <p className="mt-0.5 text-xs text-muted-foreground">
                                 {formatDate(item.createdAt)} · {item._count?.strokes ?? 0} 笔
                               </p>
                             </div>
@@ -301,7 +301,7 @@ export default function AssignmentsTable() {
                             {isAdmin && (
                               <button
                                 onClick={() => handleDelete(item.id)}
-                                className="p-1.5 rounded text-red-400 hover:bg-red-50"
+                                className="p-1.5 rounded text-destructive/70 hover:bg-destructive/10"
                                 title="删除"
                               >
                                 <Trash2 size={16} />
@@ -318,14 +318,14 @@ export default function AssignmentsTable() {
           )}
         </div>
       ) : (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-background rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-muted/50 text-foreground/70">
               <tr>
                 {isAdmin && (
                   <th className="w-12 px-4 py-3 text-center">
-                    <button onClick={toggleAll} title={allSelected ? '取消全选' : '全选'} className="text-gray-500 hover:text-primary">
+                    <button onClick={toggleAll} title={allSelected ? '取消全选' : '全选'} className="text-muted-foreground hover:text-primary">
                       {allSelected ? <CheckSquare size={17} /> : <Square size={17} />}
                     </button>
                   </th>
@@ -341,28 +341,28 @@ export default function AssignmentsTable() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
-                <tr><td colSpan={isAdmin ? 8 : 7} className="text-center py-8 text-gray-400">加载中...</td></tr>
+                <tr><td colSpan={isAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={isAdmin ? 8 : 7} className="text-center py-8 text-gray-400">暂无作业</td></tr>
+                <tr><td colSpan={isAdmin ? 8 : 7} className="text-center py-8 text-muted-foreground">暂无作业</td></tr>
               ) : items.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition">
+                <tr key={item.id} className="hover:bg-muted/50 transition">
                   {isAdmin && (
                     <td className="px-4 py-3 text-center">
-                      <button onClick={() => toggleSelected(item.id)} className="text-gray-500 hover:text-primary">
+                      <button onClick={() => toggleSelected(item.id)} className="text-muted-foreground hover:text-primary">
                         {selectedIds.includes(item.id) ? <CheckSquare size={17} /> : <Square size={17} />}
                       </button>
                     </td>
                   )}
-                  <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                  <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                     {formatAssignmentTitle(item.title) || `作业 #${item.id}`}
                   </td>
-                  <td className="px-4 py-3 text-gray-700 max-w-56 truncate" title={item.book?.title}>{item.book?.title || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{item.subject || '-'}</td>
-                  <td className="px-4 py-3 text-gray-600">{item._count?.strokes ?? 0}</td>
+                  <td className="px-4 py-3 text-foreground max-w-56 truncate" title={item.book?.title}>{item.book?.title || '-'}</td>
+                  <td className="px-4 py-3 text-foreground/70">{item.subject || '-'}</td>
+                  <td className="px-4 py-3 text-foreground/70">{item._count?.strokes ?? 0}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={item.status} />
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(item.createdAt)}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">{formatDate(item.createdAt)}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <button
                       onClick={() => openInNewTab(`/book/${item.bookId}?assignmentId=${item.id}&grading=1&role=teacher`)}
@@ -374,7 +374,7 @@ export default function AssignmentsTable() {
                     {isAdmin && (
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="p-1.5 text-red-400 hover:bg-red-50 rounded"
+                        className="p-1.5 text-destructive/70 hover:bg-destructive/10 rounded"
                         title="删除"
                       >
                         <Trash2 size={16} />
@@ -388,12 +388,12 @@ export default function AssignmentsTable() {
         </div>
 
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <span className="text-sm text-gray-500">共 {total} 条</span>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+            <span className="text-sm text-muted-foreground">共 {total} 条</span>
             <div className="flex items-center gap-2">
-              <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"><ChevronLeft size={18} /></button>
-              <span className="text-sm text-gray-600">{page} / {totalPages}</span>
-              <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30"><ChevronRight size={18} /></button>
+              <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="p-1.5 rounded hover:bg-muted disabled:opacity-30"><ChevronLeft size={18} /></button>
+              <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
+              <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="p-1.5 rounded hover:bg-muted disabled:opacity-30"><ChevronRight size={18} /></button>
             </div>
           </div>
         )}

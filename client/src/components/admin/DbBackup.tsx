@@ -120,7 +120,7 @@ export default function DbBackup() {
       title: '还原数据库',
       message: `将用 "${filename}" 覆盖目标连接「${targetName}」的数据库,系统会先自动备份该连接的当前数据。确定继续?`,
       confirmText: '确认还原',
-      confirmClass: 'bg-blue-600 hover:bg-blue-700',
+      confirmClass: 'bg-primary hover:bg-primary/90',
     });
     if (!ok) return;
     setBusy(filename);
@@ -141,7 +141,7 @@ export default function DbBackup() {
       title: '删除备份',
       message: `确定删除 "${filename}"?此操作不可撤销。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-destructive hover:bg-destructive/90',
     });
     if (!ok) return;
     setBusy(filename);
@@ -227,7 +227,7 @@ export default function DbBackup() {
       title: '删除连接',
       message: `确定删除连接「${c?.name || id}」?仅删除配置,不影响数据库。`,
       confirmText: '确认删除',
-      confirmClass: 'bg-red-600 hover:bg-red-700',
+      confirmClass: 'bg-destructive hover:bg-destructive/90',
     });
     if (!ok) return;
     const next: ConnectionConfig = {
@@ -274,9 +274,9 @@ export default function DbBackup() {
 
   return (
     <div className="p-6">
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-background rounded-lg shadow">
         {/* Tab header */}
-        <div className="flex items-center gap-1 px-6 pt-4 border-b border-gray-200">
+        <div className="flex items-center gap-1 px-6 pt-4 border-b border-border">
           <TabButton active={tab === 'backups'} onClick={() => setTab('backups')} icon={Database} label="备份列表" />
           <TabButton active={tab === 'connections'} onClick={() => setTab('connections')} icon={Plug} label="连接管理" />
         </div>
@@ -284,13 +284,13 @@ export default function DbBackup() {
         {tab === 'backups' && (
           <>
             {/* Action bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">源连接:</span>
+                <span className="text-sm text-muted-foreground">源连接:</span>
                 <select
                   value={sourceConnId ?? ''}
                   onChange={(e) => setSourceConnId(e.target.value || null)}
-                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                  className="border border-input rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                   disabled={creating || uploading}
                 >
                   {sourceOptions.map((c) => (
@@ -302,7 +302,7 @@ export default function DbBackup() {
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value as 'gzip' | 'sql')}
-                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                  className="border border-input rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                   disabled={creating || uploading}
                   title="备份格式"
                 >
@@ -312,14 +312,14 @@ export default function DbBackup() {
                 <button
                   onClick={handleCreate}
                   disabled={creating || uploading}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primaryDark disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50"
                 >
                   {creating ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} 创建备份
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={creating || uploading}
-                  className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-primary hover:text-primary disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50"
                 >
                   {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />} 上传备份
                 </button>
@@ -330,12 +330,12 @@ export default function DbBackup() {
             {/* Table */}
             <div className="relative overflow-x-auto">
               {loading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
                   <Loader2 className="animate-spin text-primary" size={28} />
                 </div>
               )}
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500">
+                <thead className="bg-muted/50 text-muted-foreground">
                   <tr>
                     <th className="px-6 py-3 text-left font-medium">文件名</th>
                     <th className="px-4 py-3 text-left font-medium">格式</th>
@@ -347,35 +347,35 @@ export default function DbBackup() {
                 <tbody className="divide-y divide-gray-100">
                   {backups.length === 0 && !loading ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                        <Database size={32} className="mx-auto mb-2 text-gray-300" />
+                      <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                        <Database size={32} className="mx-auto mb-2 text-muted-foreground" />
                         暂无备份,点击「创建备份」生成第一份
                       </td>
                     </tr>
                   ) : (
                     backups.map((b) => (
-                      <tr key={b.filename} className="hover:bg-gray-50">
+                      <tr key={b.filename} className="hover:bg-muted/50">
                         <td className="px-6 py-3">
                           <div className="flex items-center gap-2">
-                            {b.compressed ? <FileArchive size={16} className="text-gray-400" /> : <FileText size={16} className="text-gray-400" />}
-                            <span className="text-gray-800">{b.filename}</span>
+                            {b.compressed ? <FileArchive size={16} className="text-muted-foreground" /> : <FileText size={16} className="text-muted-foreground" />}
+                            <span className="text-foreground">{b.filename}</span>
                             {b.type === 'pre-restore' && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">还原前</span>
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">还原前</span>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-600">{b.compressed ? '.sql.gz' : '.sql'}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatSize(b.size)}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatDate(b.createdAt)}</td>
+                        <td className="px-4 py-3 text-foreground/70">{b.compressed ? '.sql.gz' : '.sql'}</td>
+                        <td className="px-4 py-3 text-foreground/70">{formatSize(b.size)}</td>
+                        <td className="px-4 py-3 text-foreground/70">{formatDate(b.createdAt)}</td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => handleDownload(b.filename)} disabled={!!busy} className="p-1.5 rounded text-gray-500 hover:bg-gray-100 hover:text-primary disabled:opacity-50" title="下载">
+                            <button onClick={() => handleDownload(b.filename)} disabled={!!busy} className="p-1.5 rounded text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-50" title="下载">
                               <Download size={16} />
                             </button>
-                            <button onClick={() => handleRestore(b.filename)} disabled={!!busy} className="p-1.5 rounded text-gray-500 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50" title="还原(目标=当前选中的源连接)">
+                            <button onClick={() => handleRestore(b.filename)} disabled={!!busy} className="p-1.5 rounded text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-50" title="还原(目标=当前选中的源连接)">
                               <RotateCcw size={16} />
                             </button>
-                            <button onClick={() => handleDelete(b.filename)} disabled={!!busy} className="p-1.5 rounded text-gray-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50" title="删除">
+                            <button onClick={() => handleDelete(b.filename)} disabled={!!busy} className="p-1.5 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50" title="删除">
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -387,7 +387,7 @@ export default function DbBackup() {
               </table>
             </div>
 
-            <div className="px-6 py-3 border-t border-gray-200 text-sm text-gray-500">
+            <div className="px-6 py-3 border-t border-border text-sm text-muted-foreground">
               共 {backups.length} 条{uploading ? ` · 上传中 ${uploadPct}%` : ''}{sourceConnId ? ` · 目标连接:${sourceOptions.find((c) => c.id === sourceConnId)?.name || ''}` : ''}
             </div>
           </>
@@ -397,10 +397,10 @@ export default function DbBackup() {
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-gray-800">MySQL 连接配置</h3>
-                <p className="text-xs text-gray-500 mt-0.5">管理可备份/还原的 MySQL 实例。可从 A 库备份、还原到 B 库。</p>
+                <h3 className="text-sm font-semibold text-foreground">MySQL 连接配置</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">管理可备份/还原的 MySQL 实例。可从 A 库备份、还原到 B 库。</p>
               </div>
-              <button onClick={startNewConn} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primaryDark">
+              <button onClick={startNewConn} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90">
                 <Plus size={15} /> 新增连接
               </button>
             </div>
@@ -414,37 +414,37 @@ export default function DbBackup() {
             {/* Connection list */}
             <div className="space-y-2">
               {config.connections.length === 0 && !config.hasEnvFallback && !editingConn && (
-                <div className="text-center py-12 text-gray-400">
-                  <Plug size={32} className="mx-auto mb-2 text-gray-300" />
+                <div className="text-center py-12 text-muted-foreground">
+                  <Plug size={32} className="mx-auto mb-2 text-muted-foreground" />
                   暂无连接,点击「新增连接」添加
                 </div>
               )}
               {config.connections.map((c) => (
-                <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-gray-300">
+                <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-input">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                       <Database size={16} />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-800">{c.name}</span>
+                        <span className="text-sm font-medium text-foreground">{c.name}</span>
                         {config.defaultConnectionId === c.id && (
                           <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">默认</span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">{c.user}@{c.host}:{c.port}/{c.database}</div>
+                      <div className="text-xs text-muted-foreground truncate">{c.user}@{c.host}:{c.port}/{c.database}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     {config.defaultConnectionId !== c.id && (
-                      <button onClick={() => handleSetDefault(c.id)} className="p-1.5 rounded text-gray-400 hover:bg-amber-50 hover:text-amber-600" title="设为默认">
+                      <button onClick={() => handleSetDefault(c.id)} className="p-1.5 rounded text-muted-foreground hover:bg-amber-50 hover:text-amber-600" title="设为默认">
                         <Star size={16} />
                       </button>
                     )}
-                    <button onClick={() => setEditingConn({ ...c, password: c.password ? '••••••' : '' })} className="p-1.5 rounded text-gray-500 hover:bg-gray-100 hover:text-primary" title="编辑">
+                    <button onClick={() => setEditingConn({ ...c, password: c.password ? '••••••' : '' })} className="p-1.5 rounded text-muted-foreground hover:bg-muted hover:text-primary" title="编辑">
                       <Plus size={16} className="rotate-45" />
                     </button>
-                    <button onClick={() => handleDeleteConn(c.id)} className="p-1.5 rounded text-gray-500 hover:bg-red-50 hover:text-red-600" title="删除">
+                    <button onClick={() => handleDeleteConn(c.id)} className="p-1.5 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="删除">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -454,10 +454,10 @@ export default function DbBackup() {
 
             {/* Editor form */}
             {editingConn && (
-              <div className="mt-4 p-4 rounded-lg border border-gray-200 bg-gray-50">
+              <div className="mt-4 p-4 rounded-lg border border-border bg-muted/50">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-gray-700">{config.connections.find((c) => c.id === editingConn.id) ? '编辑连接' : '新增连接'}</h4>
-                  <button onClick={() => setEditingConn(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+                  <h4 className="text-sm font-semibold text-foreground">{config.connections.find((c) => c.id === editingConn.id) ? '编辑连接' : '新增连接'}</h4>
+                  <button onClick={() => setEditingConn(null)} className="text-muted-foreground hover:text-foreground/70"><X size={18} /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="名称 *" value={editingConn.name} onChange={(v) => setEditingConn({ ...editingConn, name: v })} placeholder="如:生产库" />
@@ -468,17 +468,17 @@ export default function DbBackup() {
                   <Field label="密码" type="password" value={editingConn.password} onChange={(v) => setEditingConn({ ...editingConn, password: v })} placeholder="留空显示为 •••• 表示不修改" />
                 </div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button onClick={handleTestConn} disabled={testing} className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:border-primary hover:text-primary disabled:opacity-50">
+                  <button onClick={handleTestConn} disabled={testing} className="flex items-center gap-1.5 rounded-lg border border-input px-3 py-1.5 text-sm text-foreground hover:border-primary hover:text-primary disabled:opacity-50">
                     {testing ? <Loader2 size={15} className="animate-spin" /> : <Plug size={15} />} 测试连接
                   </button>
-                  <button onClick={handleSaveConn} disabled={savingConn} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primaryDark disabled:opacity-50">
+                  <button onClick={handleSaveConn} disabled={savingConn} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50">
                     {savingConn ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} 保存
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="mt-6 p-3 rounded-lg bg-blue-50 border border-blue-100 text-xs text-blue-700">
+            <div className="mt-6 p-3 rounded-lg bg-primary/10 border border-blue-100 text-xs text-primary">
               <p className="font-medium mb-1">使用说明</p>
               <ul className="list-disc list-inside space-y-0.5">
                 <li>「备份列表」页顶部选择源连接 → 创建备份,文件存到 API 所在机器</li>
@@ -499,7 +499,7 @@ function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; on
     <button
       onClick={onClick}
       className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition ${
-        active ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+        active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
       }`}
     >
       <Icon size={16} /> {label}
@@ -510,13 +510,13 @@ function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; on
 function Field({ label, value, onChange, type = 'text', placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-foreground/70 mb-1">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full px-3 py-1.5 border border-input rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
       />
     </div>
   );

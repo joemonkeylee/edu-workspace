@@ -70,28 +70,28 @@ export default function UsersTable() {
             placeholder="搜索手机号/邮箱/昵称"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
+            className="px-3 py-2 border border-input rounded-lg text-sm w-64 focus:outline-none focus:border-primary"
           />
           <select
             value={roleFilter}
             onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary bg-white"
+            className="px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:border-primary bg-background"
           >
             <option value="all">全部角色</option>
             <option value="student">学生</option>
             <option value="teacher">教师</option>
             <option value="admin">管理员</option>
           </select>
-          <button onClick={fetchUsers} className="px-4 py-2 bg-gray-100 rounded-lg text-sm hover:bg-gray-200">搜索</button>
+          <button onClick={fetchUsers} className="px-4 py-2 bg-muted rounded-lg text-sm hover:bg-muted">搜索</button>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:opacity-90">添加用户</button>
+          <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:opacity-90">添加用户</button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-background rounded-lg shadow overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600">
+          <thead className="bg-muted/50 text-foreground/70">
             <tr>
               <th className="px-4 py-3 text-left">ID</th>
               <th className="px-4 py-3 text-left">手机号</th>
@@ -106,7 +106,7 @@ export default function UsersTable() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50">
+              <tr key={u.id} className="hover:bg-muted/50">
                 <td className="px-4 py-3">{u.id}</td>
                 <td className="px-4 py-3">{u.phone}</td>
                 <td className="px-4 py-3">{u.email || '-'}</td>
@@ -117,7 +117,7 @@ export default function UsersTable() {
                       <span key={r} className={
                         r === 'admin' ? 'px-1.5 py-0.5 text-xs rounded bg-primary/10 text-primary font-medium' :
                         r === 'teacher' ? 'px-1.5 py-0.5 text-xs rounded bg-teal-50 text-teal-600 font-medium' :
-                        'px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-500'
+                        'px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground'
                       }>
                         {r === 'admin' ? '管理员' : r === 'teacher' ? '教师' : '学生'}
                       </span>
@@ -125,13 +125,13 @@ export default function UsersTable() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={u.status === 'disabled' ? 'text-red-600' : 'text-green-600'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
+                  <span className={u.status === 'disabled' ? 'text-destructive' : 'text-green-600'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
                 </td>
                 <td className="px-4 py-3">{u.deviceCount}</td>
                 <td className="px-4 py-3">{u.maxDevices}</td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2 text-xs">
-                    <button onClick={() => fetchDevices(u.id)} className="text-blue-600 hover:underline">设备</button>
+                    <button onClick={() => fetchDevices(u.id)} className="text-primary hover:underline">设备</button>
                     <EditButton user={u} onUpdated={fetchUsers} />
                     <ResetPasswordButton userId={u.id} />
                     <button onClick={async () => {
@@ -139,24 +139,24 @@ export default function UsersTable() {
                         title: '确认删除',
                         message: '确认删除该用户？',
                         confirmText: '确认删除',
-                        confirmClass: 'bg-red-600 hover:bg-red-700',
+                        confirmClass: 'bg-destructive hover:bg-destructive/90',
                       });
                       if (confirmed) {
                         adminDeleteUser(u.id).then(() => { toast.success('用户已删除'); fetchUsers(); }).catch((e: any) => toast.error('删除失败: ' + (e?.message || '')));
                       }
-                    }} className="text-red-600 hover:underline">删除</button>
+                    }} className="text-destructive hover:underline">删除</button>
                   </div>
                 </td>
               </tr>
             ))}
             {users.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">暂无数据</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">暂无数据</td></tr>
             )}
           </tbody>
         </table>
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t">
-            <span className="text-sm text-gray-500">共 {total} 条</span>
+            <span className="text-sm text-muted-foreground">共 {total} 条</span>
             <div className="flex gap-1">
               <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 border rounded text-sm disabled:opacity-50">上一页</button>
               <span className="px-3 py-1 text-sm">{page} / {totalPages}</span>
@@ -198,12 +198,12 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
   };
 
   if (!editing) {
-    return <button onClick={() => setEditing(true)} className="text-blue-600 hover:underline">编辑</button>;
+    return <button onClick={() => setEditing(true)} className="text-primary hover:underline">编辑</button>;
   }
 
   return (
     <>
-      <button onClick={() => setEditing(false)} className="text-gray-500 hover:underline">取消</button>
+      <button onClick={() => setEditing(false)} className="text-muted-foreground hover:underline">取消</button>
       <button
         onClick={async () => {
           try {
@@ -218,14 +218,14 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
         className="text-green-600 hover:underline"
       >保存</button>
       <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setEditing(false)}>
-        <div className="bg-white rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-background rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
           <h3 className="text-lg font-bold mb-4">编辑用户 #{user.id}</h3>
           <div className="space-y-3">
             <Field label="手机号" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
             <Field label="邮箱" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
             <Field label="昵称" value={form.nickName} onChange={(v) => setForm({ ...form, nickName: v })} />
             <div>
-              <label className="text-sm text-gray-500">角色（可多选）</label>
+              <label className="text-sm text-muted-foreground">角色（可多选）</label>
               <div className="flex gap-3 mt-1">
                 {(['admin', 'teacher', 'student'] as const).map((r) => (
                   <label key={r} className="flex items-center gap-1 text-sm">
@@ -241,14 +241,14 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
               </div>
             </div>
             <div>
-              <label className="text-sm text-gray-500">状态</label>
+              <label className="text-sm text-muted-foreground">状态</label>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full px-3 py-2 border rounded text-sm">
                 <option value="normal">正常</option>
                 <option value="disabled">禁用</option>
               </select>
             </div>
             <div>
-              <label className="text-sm text-gray-500">最大设备数</label>
+              <label className="text-sm text-muted-foreground">最大设备数</label>
               <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="w-full px-3 py-2 border rounded text-sm" />
             </div>
             <button
@@ -262,7 +262,7 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
                   toast.error('更新失败: ' + (e?.message || ''));
                 }
               }}
-              className="w-full py-2 bg-primary text-white rounded text-sm"
+              className="w-full py-2 bg-primary text-primary-foreground rounded text-sm"
             >保存</button>
           </div>
         </div>
@@ -280,7 +280,7 @@ function ResetPasswordButton({ userId }: { userId: number }) {
       <button onClick={() => setShow(true)} className="text-orange-600 hover:underline">重置密码</button>
       {show && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShow(false)}>
-          <div className="bg-white rounded-lg p-6 w-80" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-background rounded-lg p-6 w-80" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">重置密码</h3>
             <input type="password" placeholder="新密码" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border rounded text-sm mb-3" />
             <button
@@ -295,7 +295,7 @@ function ResetPasswordButton({ userId }: { userId: number }) {
                   toast.error('重置失败: ' + (e?.message || ''));
                 }
               }}
-              className="w-full py-2 bg-primary text-white rounded text-sm"
+              className="w-full py-2 bg-primary text-primary-foreground rounded text-sm"
             >确认重置</button>
           </div>
         </div>
@@ -317,7 +317,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-background rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-4">添加用户</h3>
         <div className="space-y-3">
           <Field label="手机号 *" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
@@ -325,7 +325,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <Field label="邮箱" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
           <Field label="昵称" value={form.nickName} onChange={(v) => setForm({ ...form, nickName: v })} />
           <div>
-            <label className="text-sm text-gray-500">角色（可多选）</label>
+            <label className="text-sm text-muted-foreground">角色（可多选）</label>
             <div className="flex gap-3 mt-1">
               {(['admin', 'teacher', 'student'] as const).map((r) => (
                 <label key={r} className="flex items-center gap-1 text-sm">
@@ -341,10 +341,10 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             </div>
           </div>
           <div>
-            <label className="text-sm text-gray-500">最大设备数</label>
+            <label className="text-sm text-muted-foreground">最大设备数</label>
             <input type="number" min={1} max={10} value={form.maxDevices} onChange={(e) => setForm({ ...form, maxDevices: parseInt(e.target.value) || 3 })} className="w-full px-3 py-2 border rounded text-sm" />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <button
             onClick={async () => {
               try {
@@ -356,7 +356,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                 setError(err.response?.data?.error || '创建失败');
               }
             }}
-            className="w-full py-2 bg-primary text-white rounded text-sm"
+            className="w-full py-2 bg-primary text-primary-foreground rounded text-sm"
           >创建</button>
         </div>
       </div>
@@ -367,19 +367,19 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 function DevicesModal({ userId, devices, onClose, onKick }: { userId: number; devices: DeviceRow[]; onClose: () => void; onKick: (tokenId: number) => void }) {
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-background rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-4">用户 #{userId} 的设备 ({devices.length})</h3>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {devices.map((d) => (
             <div key={d.id} className="flex items-center justify-between border rounded-lg px-3 py-2">
               <div>
                 <p className="text-sm font-medium truncate" style={{ maxWidth: 200 }}>{d.deviceInfo}</p>
-                <p className="text-xs text-gray-400">{new Date(d.createdAt).toLocaleString()} - {new Date(d.expiresAt).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">{new Date(d.createdAt).toLocaleString()} - {new Date(d.expiresAt).toLocaleString()}</p>
               </div>
-              <button onClick={() => onKick(d.id)} className="text-xs text-red-600 hover:underline">踢下线</button>
+              <button onClick={() => onKick(d.id)} className="text-xs text-destructive hover:underline">踢下线</button>
             </div>
           ))}
-          {devices.length === 0 && <p className="text-center text-gray-400 py-4">暂无在线设备</p>}
+          {devices.length === 0 && <p className="text-center text-muted-foreground py-4">暂无在线设备</p>}
         </div>
       </div>
     </div>
@@ -389,7 +389,7 @@ function DevicesModal({ userId, devices, onClose, onKick }: { userId: number; de
 function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
   return (
     <div>
-      <label className="text-sm text-gray-500">{label}</label>
+      <label className="text-sm text-muted-foreground">{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full px-3 py-2 border rounded text-sm" />
     </div>
   );

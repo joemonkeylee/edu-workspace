@@ -14,7 +14,7 @@ export default function AuthGuard({ allowedRoles, children, redirectTo = '/login
 
   // Still checking auth status
   if (loading || authEnabled === null) {
-    return <div className="flex items-center justify-center h-screen text-gray-400">Loading...</div>;
+    return <div className="flex items-center justify-center h-screen text-muted-foreground">Loading...</div>;
   }
 
   // Auth disabled — open access

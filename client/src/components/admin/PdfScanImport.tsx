@@ -390,40 +390,40 @@ export default function PdfScanImport() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Input form */}
-      <div className="bg-white rounded-lg shadow p-6 mb-4">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">本地目录绝对路径</label>
+      <div className="bg-background rounded-lg shadow p-6 mb-4">
+        <label className="block text-sm font-semibold text-foreground mb-2">本地目录绝对路径</label>
         <div className="relative">
-          <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
           <input
             type="text"
             value={targetPath}
             onChange={(e) => setTargetPath(e.target.value)}
             placeholder="/Users/username/Documents/textbooks 或 C:\Users\..."
-            className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            className="w-full pl-10 pr-10 py-2.5 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             disabled={scanning}
             onKeyDown={(e) => { if (e.key === 'Escape') setShowHistory(false); }}
           />
           {pathHistory.length > 0 && (
             <button
               onClick={() => setShowHistory((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground/70"
               title="历史路径"
             >
               <ChevronDown size={16} className={`transition-transform ${showHistory ? 'rotate-180' : ''}`} />
             </button>
           )}
           {showHistory && pathHistory.length > 0 && (
-            <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+            <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
               {pathHistory.map((p) => (
                 <div
                   key={p}
                   onClick={() => { setTargetPath(p); setShowHistory(false); }}
-                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 cursor-pointer group"
+                  className="flex items-center justify-between px-4 py-2 hover:bg-muted/50 cursor-pointer group"
                 >
-                  <span className="text-sm text-gray-700 truncate flex-1">{p}</span>
+                  <span className="text-sm text-foreground truncate flex-1">{p}</span>
                   <button
                     onClick={(e) => removeFromHistory(p, e)}
-                    className="ml-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    className="ml-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                     title="删除"
                   >
                     <X size={14} />
@@ -436,16 +436,16 @@ export default function PdfScanImport() {
         {showHistory && (
           <div className="fixed inset-0 z-0" onClick={() => setShowHistory(false)} />
         )}
-        <p className="text-xs text-gray-400 mt-1.5">支持递归扫描子目录，自动取最近的「顺序…」课程目录作为分类</p>
+        <p className="text-xs text-muted-foreground mt-1.5">支持递归扫描子目录，自动取最近的「顺序…」课程目录作为分类</p>
 
         {/* Override selectors */}
         <div className="grid grid-cols-3 gap-4 mt-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">学期（可选）</label>
+            <label className="block text-sm font-semibold text-foreground mb-2">学期（可选）</label>
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-background"
               disabled={scanning}
             >
               <option value="">自动解析</option>
@@ -454,11 +454,11 @@ export default function PdfScanImport() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">科目（可选）</label>
+            <label className="block text-sm font-semibold text-foreground mb-2">科目（可选）</label>
             <select
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-background"
               disabled={scanning}
             >
               <option value="">自动解析</option>
@@ -467,9 +467,9 @@ export default function PdfScanImport() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-foreground mb-2">
               分类（可选）
-              <span className="ml-1 font-normal text-xs text-gray-400">可直接输入</span>
+              <span className="ml-1 font-normal text-xs text-muted-foreground">可直接输入</span>
             </label>
             <input
               type="text"
@@ -477,26 +477,26 @@ export default function PdfScanImport() {
               onChange={(e) => setCategory(e.target.value)}
               placeholder="自动取课程目录名"
               list="scan-category-options"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-background"
               disabled={scanning}
             />
             <datalist id="scan-category-options">
               {categoryOptions.map(c => <option key={c.name} value={c.name}>{c.name}（{c.count}）</option>)}
             </datalist>
-            <p className="text-xs text-gray-400 mt-1">填写后整批统一用该分类，留空则按「顺序…」课程目录自动推断</p>
+            <p className="text-xs text-muted-foreground mt-1">填写后整批统一用该分类，留空则按「顺序…」课程目录自动推断</p>
           </div>
         </div>
 
         {/* DPI + concurrency */}
         <div className="grid grid-cols-3 gap-4 mt-4">
           <div>
-            <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-2">
+            <label className="flex items-center gap-1 text-sm font-semibold text-foreground mb-2">
               <Layers size={14} /> 渲染 DPI
             </label>
             <select
               value={dpi}
               onChange={(e) => setDpi(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-background"
               disabled={scanning}
             >
               {DPI_OPTIONS.map(opt => (
@@ -505,14 +505,14 @@ export default function PdfScanImport() {
             </select>
           </div>
           <div>
-            <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-2">
+            <label className="flex items-center gap-1 text-sm font-semibold text-foreground mb-2">
               <Layers size={14} /> 并发数
-              {cores > 0 && <span className="font-normal text-xs text-gray-400">{cores} 核，上限 {maxConcurrency}</span>}
+              {cores > 0 && <span className="font-normal text-xs text-muted-foreground">{cores} 核，上限 {maxConcurrency}</span>}
             </label>
             <select
               value={concurrency}
               onChange={(e) => setConcurrency(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-white"
+              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-background"
             >
               {Array.from({ length: maxConcurrency }, (_, index) => index + 1).map((value) => (
                 <option key={value} value={value}>{value} 并发</option>
@@ -525,7 +525,7 @@ export default function PdfScanImport() {
             )}
           </div>
           <div>
-            <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-2">
+            <label className="flex items-center gap-1 text-sm font-semibold text-foreground mb-2">
               <Database size={14} /> 数据入库
             </label>
             <label className="flex items-center gap-2 h-[38px] cursor-pointer">
@@ -535,7 +535,7 @@ export default function PdfScanImport() {
                 onChange={(e) => setImportToDb(e.target.checked)}
                 className="w-4 h-4 accent-teal-600 cursor-pointer"
               />
-              <span className="text-sm text-gray-600">{importToDb ? '写入数据库' : '仅渲染图片'}</span>
+              <span className="text-sm text-foreground/70">{importToDb ? '写入数据库' : '仅渲染图片'}</span>
             </label>
           </div>
         </div>
@@ -547,7 +547,7 @@ export default function PdfScanImport() {
         )}
 
         {/* 文件名清洗 */}
-        <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50/60">
+        <div className="mt-4 border border-border rounded-lg p-3 bg-muted/50/60">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -557,11 +557,11 @@ export default function PdfScanImport() {
               disabled={scanning}
             />
             <Eraser size={15} className="text-primary" />
-            <span className="text-sm font-semibold text-gray-700">清理文件名中的广告水印</span>
+            <span className="text-sm font-semibold text-foreground">清理文件名中的广告水印</span>
           </label>
-          <p className="text-xs text-gray-500 mt-1 ml-6">
-            导入时剥掉 <code className="bg-gray-200 px-1 rounded">【爱豆爱做题】</code>、
-            <code className="bg-gray-200 px-1 rounded">【一手资源更新有保障联系sanniaowl】</code>、
+          <p className="text-xs text-muted-foreground mt-1 ml-6">
+            导入时剥掉 <code className="bg-muted px-1 rounded">【爱豆爱做题】</code>、
+            <code className="bg-muted px-1 rounded">【一手资源更新有保障联系sanniaowl】</code>、
             加微信/QQ群、8 位以上数字串等噪声，书名和归档的 PDF 文件名都会用清理后的版本。
             讲次、课型、学期等真实信息保留。
           </p>
@@ -573,7 +573,7 @@ export default function PdfScanImport() {
         </div>
 
         {/* 视频关联 */}
-        <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50/60">
+        <div className="mt-4 border border-border rounded-lg p-3 bg-muted/50/60">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -583,9 +583,9 @@ export default function PdfScanImport() {
               disabled={scanning}
             />
             <Video size={15} className="text-primary" />
-            <span className="text-sm font-semibold text-gray-700">解析并关联 MP4 讲解视频</span>
+            <span className="text-sm font-semibold text-foreground">解析并关联 MP4 讲解视频</span>
           </label>
-          <p className="text-xs text-gray-500 mt-1 ml-6">
+          <p className="text-xs text-muted-foreground mt-1 ml-6">
             按「讲次序号 + 标题相似度」把目录里的 MP4 匹配到 PDF。视频文件不会被复制，只记录原始路径。
             预解析后会先弹出对照表供你逐条确认，确认后才写入数据库。
           </p>
@@ -598,16 +598,16 @@ export default function PdfScanImport() {
           <div className="ml-6 mt-2">
             <button
               onClick={() => setShowRootPanel((v) => !v)}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary transition"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition"
             >
               <HardDrive size={12} />
               视频根目录管理（换盘后批量重定向）
               <ChevronDown size={12} className={`transition-transform ${showRootPanel ? 'rotate-180' : ''}`} />
             </button>
             {showRootPanel && (
-              <div className="mt-2 bg-white border border-gray-200 rounded-lg p-3">
+              <div className="mt-2 bg-background border border-border rounded-lg p-3">
                 {videoRoots.length === 0 ? (
-                  <p className="text-xs text-gray-400">还没有已关联的视频</p>
+                  <p className="text-xs text-muted-foreground">还没有已关联的视频</p>
                 ) : (
                   <div className="space-y-1.5">
                     {videoRoots.map((r) => (
@@ -620,10 +620,10 @@ export default function PdfScanImport() {
                           className="mt-0.5 accent-primary cursor-pointer"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="text-gray-700 break-all">{r.rootPath}</div>
-                          <div className="text-gray-400">
+                          <div className="text-foreground break-all">{r.rootPath}</div>
+                          <div className="text-muted-foreground">
                             {r.total} 个视频
-                            {r.missing > 0 && <span className="text-red-500"> · {r.missing} 个文件缺失</span>}
+                            {r.missing > 0 && <span className="text-destructive"> · {r.missing} 个文件缺失</span>}
                             {r.batches.length > 0 && ` · 批次 ${r.batches.join('、')}`}
                           </div>
                         </div>
@@ -636,7 +636,7 @@ export default function PdfScanImport() {
                     value={newRootInput}
                     onChange={(e) => setNewRootInput(e.target.value)}
                     placeholder="新的根目录绝对路径（子目录结构需保持不变）"
-                    className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="flex-1 min-w-0 px-2 py-1 text-xs border border-input rounded focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                   <button
                     disabled={!repointTarget || !newRootInput.trim() || repointing}
@@ -653,7 +653,7 @@ export default function PdfScanImport() {
                         setRepointing(false);
                       }
                     }}
-                    className="px-3 py-1 text-xs rounded bg-primary text-white hover:bg-primaryDark disabled:bg-gray-300 transition whitespace-nowrap"
+                    className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-border transition whitespace-nowrap"
                   >
                     {repointing ? '处理中...' : '重定向'}
                   </button>
@@ -663,7 +663,7 @@ export default function PdfScanImport() {
                       toast.success(`复查完成：${res.total} 个视频，${res.missing} 个缺失，${res.recovered} 个恢复`);
                       loadVideoRoots();
                     }}
-                    className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-100 transition flex items-center gap-1 whitespace-nowrap"
+                    className="px-3 py-1 text-xs rounded border border-input text-foreground/70 hover:bg-muted transition flex items-center gap-1 whitespace-nowrap"
                   >
                     <RefreshCw size={12} /> 复查
                   </button>
@@ -678,21 +678,21 @@ export default function PdfScanImport() {
           <button
             onClick={handlePreview}
             disabled={previewing || scanning || !targetPath.trim()}
-            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 text-gray-700 px-4 py-2.5 rounded-lg transition text-sm font-medium"
+            className="flex items-center gap-2 bg-muted hover:bg-muted disabled:bg-muted/50 disabled:text-muted-foreground text-foreground px-4 py-2.5 rounded-lg transition text-sm font-medium"
           >
             <Eye size={18} /> {previewing ? '解析中...' : '预解析'}
           </button>
           <button
             onClick={() => startScan()}
             disabled={scanning || !targetPath.trim()}
-            className="flex items-center gap-2 bg-primary hover:bg-primaryDark disabled:bg-gray-300 text-white px-6 py-2.5 rounded-lg transition text-sm font-medium"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:bg-border text-white px-6 py-2.5 rounded-lg transition text-sm font-medium"
           >
             <Scan size={18} /> 开始扫描
           </button>
           {scanning && (
             <button
               onClick={stopScan}
-              className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg transition text-sm font-medium"
+              className="flex items-center gap-2 bg-destructive hover:bg-destructive text-white px-4 py-2.5 rounded-lg transition text-sm font-medium"
             >
               <StopCircle size={18} /> 停止
             </button>
@@ -702,14 +702,14 @@ export default function PdfScanImport() {
 
       {/* Preview table */}
       {previewFiles.length > 0 && (
-        <div className="bg-white rounded-lg shadow mb-4 overflow-hidden">
-          <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">
+        <div className="bg-background rounded-lg shadow mb-4 overflow-hidden">
+          <div className="px-4 py-2 border-b border-border flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">
               预解析结果（{previewFiles.length} 个文件）
             </span>
             <button
               onClick={handleCopyPreview}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-teal-600 transition px-2 py-1 rounded hover:bg-gray-100"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-teal-600 transition px-2 py-1 rounded hover:bg-muted"
               title="复制结果"
             >
               {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
@@ -718,22 +718,22 @@ export default function PdfScanImport() {
           </div>
           <div className="max-h-64 overflow-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 sticky top-0">
+              <thead className="bg-muted/50 sticky top-0">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium text-gray-600">文件名</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-600">完整路径</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-600">学期</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-600">科目</th>
-                  <th className="text-left px-4 py-2 font-medium text-gray-600">分类</th>
+                  <th className="text-left px-4 py-2 font-medium text-foreground/70">文件名</th>
+                  <th className="text-left px-4 py-2 font-medium text-foreground/70">完整路径</th>
+                  <th className="text-left px-4 py-2 font-medium text-foreground/70">学期</th>
+                  <th className="text-left px-4 py-2 font-medium text-foreground/70">科目</th>
+                  <th className="text-left px-4 py-2 font-medium text-foreground/70">分类</th>
                 </tr>
               </thead>
               <tbody>
                 {previewFiles.map((f, i) => (
-                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-4 py-1.5 text-gray-800 truncate max-w-[200px]" title={f.rawFileName ? `${f.rawFileName} → ${f.fileName}` : f.fileName}>
+                  <tr key={i} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/50'}>
+                    <td className="px-4 py-1.5 text-foreground truncate max-w-[200px]" title={f.rawFileName ? `${f.rawFileName} → ${f.fileName}` : f.fileName}>
                       {f.renamed && f.rawFileName ? (
                         <span className="flex items-center gap-1 min-w-0">
-                          <span className="truncate text-gray-400 line-through">{f.rawFileName.replace(/\.pdf$/i, '')}</span>
+                          <span className="truncate text-muted-foreground line-through">{f.rawFileName.replace(/\.pdf$/i, '')}</span>
                           <span className="text-teal-600 flex-shrink-0">→</span>
                           <span className="truncate">{f.fileName.replace(/\.pdf$/i, '')}</span>
                         </span>
@@ -741,14 +741,14 @@ export default function PdfScanImport() {
                         f.fileName
                       )}
                     </td>
-                    <td className="px-4 py-1.5 text-gray-500 truncate max-w-[300px]" title={f.fullPath}>{f.fullPath}</td>
+                    <td className="px-4 py-1.5 text-muted-foreground truncate max-w-[300px]" title={f.fullPath}>{f.fullPath}</td>
                     <td className="px-4 py-1.5">
-                      {f.grade ? <span className="text-blue-600">{f.grade}</span> : <span className="text-gray-300">—</span>}
+                      {f.grade ? <span className="text-primary">{f.grade}</span> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-1.5">
-                      {f.subject ? <span className="text-green-600">{f.subject}</span> : <span className="text-gray-300">—</span>}
+                      {f.subject ? <span className="text-green-600">{f.subject}</span> : <span className="text-muted-foreground">—</span>}
                     </td>
-                    <td className="px-4 py-1.5 text-gray-700">{f.category}</td>
+                    <td className="px-4 py-1.5 text-foreground">{f.category}</td>
                   </tr>
                 ))}
               </tbody>
@@ -759,9 +759,9 @@ export default function PdfScanImport() {
 
       {/* Overall progress with time estimate */}
       {progress && (
-        <div className="bg-white rounded-lg shadow p-4 mb-4 space-y-3">
+        <div className="bg-background rounded-lg shadow p-4 mb-4 space-y-3">
           <div>
-            <div className="flex justify-between text-sm text-gray-600 mb-1.5">
+            <div className="flex justify-between text-sm text-foreground/70 mb-1.5">
               <span className="font-medium">{phase1 ? '文件分析' : '总进度'}</span>
               <span>
                 {phase1
@@ -769,7 +769,7 @@ export default function PdfScanImport() {
                   : `${progress.overallCurrent ?? 0} / ${progress.overallTotal ?? 0} 页 (${overallPct}%)`}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-muted rounded-full h-3">
               <div
                 className="bg-primary h-3 rounded-full transition-all duration-150"
                 style={{
@@ -783,17 +783,17 @@ export default function PdfScanImport() {
 
           {!phase1 && progress.total > 0 && (
             <div>
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
                 <span>当前书籍</span>
                 <span>{progress.current}/{progress.total} ({pagePct}%)</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-400 h-2 rounded-full transition-all duration-150" style={{ width: `${pagePct}%` }} />
+              <div className="w-full bg-muted rounded-full h-2">
+                <div className="bg-primary/70 h-2 rounded-full transition-all duration-150" style={{ width: `${pagePct}%` }} />
               </div>
             </div>
           )}
 
-          <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock size={12} /> 已用 {fmtTime(progress.elapsed ?? 0)}
             </span>
@@ -807,10 +807,10 @@ export default function PdfScanImport() {
       )}
 
       {/* Log console */}
-      <div className="bg-gray-900 rounded-lg shadow overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
-          <span className="text-gray-400 text-xs font-mono">实时日志控制台</span>
-          <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer select-none">
+      <div className="bg-foreground rounded-lg shadow overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+          <span className="text-muted-foreground text-xs font-mono">实时日志控制台</span>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
             <input
               type="checkbox"
               checked={autoScroll}
@@ -821,16 +821,16 @@ export default function PdfScanImport() {
           </label>
         </div>
         <div ref={scrollContainerRef} className="font-mono text-sm p-4 h-80 overflow-auto scrollbar-thin">
-          {logs.length === 0 && !scanning && <div className="text-gray-500">等待开始扫描...</div>}
+          {logs.length === 0 && !scanning && <div className="text-muted-foreground">等待开始扫描...</div>}
           {logs.map((log) => (
             <div
               key={log.id}
               className={
                 log.text.startsWith('✓') ? 'text-green-400'
-                  : log.text.startsWith('✗') ? 'text-red-400'
-                    : log.text.includes('总进度') ? 'text-blue-400'
+                  : log.text.startsWith('✗') ? 'text-destructive/70'
+                    : log.text.includes('总进度') ? 'text-primary'
                       : log.text.includes('预计') || log.text.includes('耗时') ? 'text-yellow-400'
-                        : 'text-gray-300'
+                        : 'text-muted-foreground'
               }
             >
               {log.text}
@@ -854,22 +854,22 @@ export default function PdfScanImport() {
       {/* Confirmation dialog */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowConfirm(false)}>
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-background rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
                 <AlertTriangle size={20} className="text-amber-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">确认开始扫描</h3>
-                <p className="text-sm text-gray-600">
-                  即将扫描 <span className="font-semibold text-gray-900">{targetPath}</span>
+                <h3 className="text-lg font-semibold text-foreground mb-1">确认开始扫描</h3>
+                <p className="text-sm text-foreground/70">
+                  即将扫描 <span className="font-semibold text-foreground">{targetPath}</span>
                 </p>
-                <div className="mt-2 space-y-0.5 text-xs text-gray-500">
-                  <p>DPI: <span className="text-gray-700">{dpi}</span> | 并发: <span className="text-gray-700">{concurrency}</span></p>
+                <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                  <p>DPI: <span className="text-foreground">{dpi}</span> | 并发: <span className="text-foreground">{concurrency}</span></p>
                   <p>入库模式: <span className={importToDb ? 'text-green-600' : 'text-amber-600'}>{importToDb ? '写入数据库' : '仅渲染图片（不入库）'}</span></p>
-                  {grade && <p>学期: <span className="text-gray-700">{grade}</span></p>}
-                  {subject && <p>科目: <span className="text-gray-700">{subject}</span></p>}
-                  {category && <p>分类: <span className="text-gray-700">{category}</span></p>}
+                  {grade && <p>学期: <span className="text-foreground">{grade}</span></p>}
+                  {subject && <p>科目: <span className="text-foreground">{subject}</span></p>}
+                  {category && <p>分类: <span className="text-foreground">{category}</span></p>}
                   {videoPlanId && (
                     <p>视频关联: <span className="text-teal-600">{videoPlanLinks} 条（仅记录路径，不复制文件）</span></p>
                   )}
@@ -879,13 +879,13 @@ export default function PdfScanImport() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition"
               >
                 取消
               </button>
               <button
                 onClick={confirmScan}
-                className="px-6 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primaryDark transition"
+                className="px-6 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary/90 transition"
               >
                 确认扫描
               </button>
