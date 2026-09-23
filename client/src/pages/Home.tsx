@@ -13,7 +13,7 @@ import {
   type SortFieldDef,
   type SortFieldName,
 } from '../store/homeFilters';
-import { BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
+import { BookOpen, Settings, ArrowLeft, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw, Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star, Check, Circle, CheckCircle2, Video, VideoOff, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import ResourceKindMenu from '../components/ResourceKindMenu';
@@ -702,6 +702,13 @@ export default function Home() {
             </span>
           )}
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
+          <Link
+            to="/"
+            className="flex items-center gap-1 text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground transition"
+          >
+            <ArrowLeft size={14} />
+            首页
+          </Link>
           <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
         </div>
         <AppHeaderRight />

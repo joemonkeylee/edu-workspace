@@ -43,11 +43,11 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
           )}
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
           <Link
-            to="/books"
+            to="/"
             className="flex items-center gap-1 text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground transition"
           >
             <ArrowLeft size={14} />
-            Book
+            首页
           </Link>
         </div>
         <AppHeaderRight />
