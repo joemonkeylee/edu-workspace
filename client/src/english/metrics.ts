@@ -121,10 +121,11 @@ export function reportWebVitals(
   onPerfEntry: (metric: Metric) => void,
 ): void {
   import('web-vitals').then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
-    onCLS(onPerfEntry)
-    onINP(onPerfEntry)
-    onFCP(onPerfEntry)
-    onLCP(onPerfEntry)
-    onTTFB(onPerfEntry)
+    const opts = { reportSoftNavs: true }
+    onCLS(onPerfEntry, opts)
+    onINP(onPerfEntry, opts)
+    onFCP(onPerfEntry, opts)
+    onLCP(onPerfEntry, opts)
+    onTTFB(onPerfEntry, opts)
   })
 }

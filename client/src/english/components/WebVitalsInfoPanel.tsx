@@ -69,7 +69,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
             暂无性能数据,请稍后再试
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-visible rounded-lg border border-border">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr className="border-b border-border">
@@ -109,7 +109,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                               )}
                               <span className="group relative inline-flex cursor-help">
                                 <HelpCircle size={13} className="text-muted-foreground" />
-                                <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md ring-1 ring-border opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                                <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-1 -translate-y-1/2 whitespace-nowrap rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md ring-1 ring-border opacity-0 transition-opacity duration-150 group-hover:opacity-100">
                                   {tooltip}
                                 </span>
                               </span>
