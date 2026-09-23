@@ -15,6 +15,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:4001',
       '/storage': 'http://localhost:4001',
+      '/data': 'http://182.92.129.222',
+      '/lt': 'http://182.92.129.222',
     },
   },
 });

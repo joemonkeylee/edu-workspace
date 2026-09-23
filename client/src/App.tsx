@@ -21,6 +21,8 @@ import AuthSettings from './components/admin/AuthSettings';
 import AssignmentsTable from './components/admin/AssignmentsTable';
 import BookPairs from './components/admin/BookPairs';
 import DbBackup from './components/admin/DbBackup';
+import LandingLayout from './english/components/LandingLayout';
+import EnglishPage from './english/components/EnglishPage';
 import { useAuthStore } from './store/authStore';
 
 export default function App() {
@@ -57,7 +59,10 @@ export default function App() {
           </Route>
         </Route>
 
-          <Route path="*" element={<NotFound />} />
+          <Route path="/english" element={<LandingLayout><EnglishPage /></LandingLayout>} />
+        <Route path="/english/:bookIdx/:lessonIdx" element={<LandingLayout><EnglishPage /></LandingLayout>} />
+
+        <Route path="*" element={<NotFound />} />
         </Routes>
       </ConfirmProvider>
     </BrowserRouter>
