@@ -5,6 +5,7 @@ import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, G
 import { toast } from 'sonner';
 import BookCover from '../BookCover';
 import { useAuthStore } from '../../store/authStore';
+import { Button } from '@/components/ui/button';
 
 const PAGE_SIZE = 10;
 
@@ -387,9 +388,9 @@ export default function BooksTable() {
             className="w-full pl-9 pr-4 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
-        <button onClick={handleSearch} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
+        <Button onClick={handleSearch} size="sm">
           搜索
-        </button>
+        </Button>
         <select
           value={batchFilter}
           onChange={(e) => { setBatchFilter(e.target.value); setPage(1); }}
@@ -404,25 +405,27 @@ export default function BooksTable() {
         {isAdmin && selectedIds.size > 0 && (
           <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-1.5">
             <span className="text-sm text-primary">已选 {selectedIds.size} 本</span>
-            <button
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={handleBatchDelete}
               disabled={deleting}
-              className="flex items-center gap-1 text-sm text-destructive hover:text-destructive disabled:opacity-50"
             >
               <Trash2 size={14} />
               {deleting ? '删除中...' : '批量删除'}
-            </button>
+            </Button>
           </div>
         )}
         {isAdmin && (
-          <button
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={handleClearAll}
             disabled={deleting || total === 0}
-            className="flex items-center gap-1 border border-destructive/30 text-destructive px-3 py-2 rounded-lg text-sm hover:bg-destructive/10 disabled:opacity-40"
           >
             <Trash2 size={14} />
             一键清空
-          </button>
+          </Button>
         )}
       </div>
 
@@ -618,29 +621,29 @@ export default function BooksTable() {
                   <td className="px-4 py-3 text-right">
                     {editingId === book.id ? (
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => saveEdit(book.id)} className="p-1.5 text-green-600 hover:bg-green-50 rounded" title="保存">
+                        <Button variant="ghost" size="icon" onClick={() => saveEdit(book.id)} title="保存">
                           <Check size={16} />
-                        </button>
-                        <button onClick={cancelEdit} className="p-1.5 text-muted-foreground hover:bg-muted rounded" title="取消">
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={cancelEdit} title="取消">
                           <X size={16} />
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <div className="flex justify-end gap-1">
                         {isAdmin && (
-                          <button onClick={() => openTocEditor(book)} className="p-1.5 text-violet-500 hover:bg-violet-50 rounded" title="目录排序">
+                          <Button variant="ghost" size="icon" onClick={() => openTocEditor(book)} title="目录排序">
                             <BookOpen size={16} />
-                          </button>
+                          </Button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => startEdit(book)} className="p-1.5 text-primary hover:bg-primary/10 rounded" title="编辑信息">
+                          <Button variant="ghost" size="icon" onClick={() => startEdit(book)} title="编辑信息">
                             <Edit3 size={16} />
-                          </button>
+                          </Button>
                         )}
                         {isAdmin && (
-                          <button onClick={() => handleDelete(book.id, book.title)} className="p-1.5 text-destructive/70 hover:bg-destructive/10 rounded" title="删除">
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(book.id, book.title)} title="删除">
                             <Trash2 size={16} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     )}
@@ -656,21 +659,13 @@ export default function BooksTable() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
             <span className="text-sm text-muted-foreground">共 {total} 条</span>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
-              >
+              <Button variant="ghost" size="icon" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
                 <ChevronLeft size={18} />
-              </button>
+              </Button>
               <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
-              >
+              <Button variant="ghost" size="icon" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                 <ChevronRight size={18} />
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -760,21 +755,16 @@ export default function BooksTable() {
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
-              <button
+              <Button variant="outline" size="sm"
                 onClick={() => setTocDraft(Array.isArray(books.find((book) => book.id === tocBookId)?.tocJson) ? JSON.parse(JSON.stringify(books.find((book) => book.id === tocBookId)?.tocJson)) : [])}
-                className="inline-flex items-center gap-1 rounded-lg border border-input px-3 py-2 text-sm text-foreground/70 hover:bg-muted/50"
               >
                 <RotateCcw size={15} />
                 重置
-              </button>
-              <button
-                onClick={saveTocEdit}
-                disabled={tocSaving}
-                className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-60"
-              >
+              </Button>
+              <Button size="sm" onClick={saveTocEdit} disabled={tocSaving}>
                 <Save size={15} />
                 {tocSaving ? '保存中...' : '保存目录'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -783,28 +773,18 @@ export default function BooksTable() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="relative w-80 rounded-xl bg-background p-6 shadow-xl">
-            <button
-              onClick={() => setDeleteConfirm(null)}
-              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground/70"
-              title="取消"
-            >
+            <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(null)} className="absolute right-3 top-3 h-6 w-6" title="取消">
               <X size={16} />
-            </button>
+            </Button>
             <h3 className="text-base font-semibold text-foreground">{deleteConfirm.title}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{deleteConfirm.message}</p>
             <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="rounded-lg border border-input px-3 py-1.5 text-sm text-foreground/70 hover:bg-muted/50"
-              >
+              <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)}>
                 取消
-              </button>
-              <button
-                onClick={deleteConfirm.onConfirm}
-                className="rounded-lg bg-destructive px-3 py-1.5 text-sm text-white hover:bg-destructive"
-              >
+              </Button>
+              <Button variant="destructive" size="sm" onClick={deleteConfirm.onConfirm}>
                 删除
-              </button>
+              </Button>
             </div>
           </div>
         </div>
