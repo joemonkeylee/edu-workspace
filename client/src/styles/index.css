@@ -41,15 +41,15 @@
     --ring: 217 91% 60%;
 
     /* sidebar：shadcn 风格浅灰 */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 215 28% 27%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-accent: 210 40% 96%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 240 4.8% 95.9%;
 
     /* 旧代码兼容 */
     --ui-surface: 210 40% 98%;
 
-    --radius: 0.5rem;                   /* 8px */
+    --radius: 0.5rem;                   /* 8px */                   --sidebar-primary: 240 5.9% 10%;                   --sidebar-primary-foreground: 0 0% 98%;                   --sidebar-accent-foreground: 240 5.9% 10%;                   --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
@@ -83,12 +83,20 @@
     --ring: 217 91% 70%;
 
     /* sidebar */
-    --sidebar-background: 215 28% 4%;   /* #0a0f18 */
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-border: 215 18% 22%;
-    --sidebar-accent: 215 22% 14%;
+    --sidebar-background: 240 5.9% 10%;   /* #0a0f18 */
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-accent: 240 3.7% 15.9%;
 
     --ui-surface: 215 28% 6%;
+
+    --sidebar-primary: 224.3 76.3% 48%;
+
+    --sidebar-primary-foreground: 0 0% 100%;
+
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   /* resets */

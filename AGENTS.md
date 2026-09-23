@@ -154,6 +154,191 @@ edu-workspace/
 
 ### Role & Permission Conventions
 
+### shadcn/ui Patterns
+
+This project uses shadcn/ui components throughout. All UI work must follow these patterns:
+
+#### Color Tokens (never hardcode hex or `gray-*`/`white`/`black`)
+
+| Instead | Use | Reason |
+|---|---|---|
+| `bg-white` | `bg-background` / `bg-card` | Dark mode auto-adapts |
+| `bg-gray-50` | `bg-muted` | |
+| `text-gray-700` / `text-gray-800` | `text-foreground` | |
+| `text-gray-500` / `text-gray-400` | `text-muted-foreground` | |
+| `border-gray-300` / `border-gray-200` | `border-border` | |
+| `divide-gray-100` | `divide-border` | Table tbody separators |
+| `hover:bg-gray-100` | `hover:bg-accent` | |
+| `bg-gray-100 hover:bg-gray-200` | `bg-muted hover:bg-muted/80` | |
+| `bg-black/40` / `bg-black/50` | `bg-black/40` (mask only) | Masks are OK, they're intentionally dark overlays |
+| `text-white` on `bg-primary` | `text-primary-foreground` | Auto-inverts when primary color changes |
+| `text-white` on `bg-destructive` | `text-destructive-foreground` | Same |
+| `text-white` on `bg-amber-600` | Keep `text-white` | Custom brand colors keep their own text color |
+| Raw hex `#fff`, `#000` | Never use | |
+
+#### Semantic Color Tags (book status, assignment grade, etc.)
+
+Light mode: `bg-{color}-50` or `bg-{color}-100` + `text-{color}-600` or `text-{color}-700`
+Dark mode: `bg-{color}-950/50` or `bg-{color}-950/60` + `text-{color}-400` + `border-{color}-800`
+
+Example for amber/warning tag:
+```tsx
+className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-400"
+```
+
+#### Native `<input>` / `<select>` / `<textarea>` Must Have Background + Text Color
+
+Native form elements only declare `border border-input` but default to browser `bg-white color:black`. In dark mode, transparent backgrounds become dark + browser black text = invisible. Always add all three:
+
+```tsx
+// ❌ Wrong — invisible in dark mode
+<input className="border border-input rounded-md px-3 py-2" />
+
+// ✅ Right
+<input className="border border-input bg-background text-foreground placeholder:text-muted-foreground rounded-md px-3 py-2" />
+```
+
+#### Button: Prefer shadcn `<Button>`, Not Native `<button>`
+
+Native `<button>` with hardcoded class strings is fragile. Use shadcn Button variants:
+
+```tsx
+import { Button } from "@/components/ui/button";
+
+<Button variant="default">主操作</Button>        // bg-primary text-primary-foreground
+<Button variant="outline">次要操作</Button>       // border border-input bg-background
+<Button variant="secondary">第三级</Button>       // bg-secondary text-secondary-foreground
+<Button variant="destructive">删除</Button>       // bg-destructive text-destructive-foreground
+<Button variant="ghost">图标按钮</Button>         // transparent, hover:bg-accent
+<Button variant="link">链接文字</Button>          // underline-offset-4 hover:underline
+<Button size="sm">小按钮</Button>                 // h-8 text-xs
+<Button size="lg">大按钮</Button>                 // h-10
+<Button size="icon">图标方形</Button>             // h-9 w-9
+```
+
+**When NOT to convert** (safe to leave as native):
+- Self-closing `<button ... />` tags (regex can't handle these blindly)
+- Buttons with dynamic className like `className={someCondition ? 'px-3' : 'px-4'}`
+- Buttons inside custom complex layouts (e.g., drag-drop zones)
+
+#### Confirmation Dialog: Use shadcn `<AlertDialog>` + `useConfirm()`
+
+The project wraps AlertDialog in `ConfirmDialog.tsx` exposing `useConfirm()` returning `Promise<boolean>`:
+
+```tsx
+const confirm = useConfirm();
+const ok = await confirm({ title: '删除书籍', message: '此操作不可撤销', confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90' });
+if (ok) await deleteBook();
+```
+
+Confirm button color conventions:
+- **Red** (`bg-destructive` + `text-destructive-foreground`) — delete, destroy
+- **Amber** (`bg-amber-600` + `text-white`) — return to student, soft-delete
+- **Green** (`bg-green-600` + `text-white`) — approve, submit
+- **Blue (default)** — save, confirm normal action
+
+#### Modal Dialog: Use shadcn `<Dialog>`
+
+For modals with title + description + footer:
+
+```tsx
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
+<Dialog open={show} onOpenChange={setShow}>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>标题</DialogTitle>
+      <DialogDescription>描述</DialogDescription>
+    </DialogHeader>
+    {/* content */}
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setShow(false)}>取消</Button>
+      <Button onClick={handleOk}>确定</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+**When to keep native fixed-inset overlay instead of Dialog**:
+- Non-dismissible progress loaders (deleteProgress, scanProgress) — should NOT be closable by ESC or overlay click
+- Max-w-4xl complex editors (TOC drag-drop, pairing rules) — too risky to convert
+
+#### Admin Layout: shadcn `<Sidebar>` + `<SidebarInset>`
+
+The admin uses a **two-level** structure: primary tabs in the header, secondary menu in the sidebar.
+
+```tsx
+import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider, SidebarInset, SidebarTrigger, SidebarRail, SidebarMenu, SidebarMenuButton } from "@/components/ui/sidebar";
+import { NavLink } from "react-router-dom";
+
+<SidebarProvider defaultOpen>
+  <Sidebar variant="inset" collapsible="icon">
+    <SidebarHeader>{/* logo only */}</SidebarHeader>
+    <SidebarContent>
+      <SidebarMenu>
+        {items.map(item => (
+          <SidebarMenuButton asChild tooltip={item.label} key={item.path}>
+            <NavLink to={item.path}>{/* NavLink children */}</NavLink>
+          </SidebarMenuButton>
+        ))}
+      </SidebarMenu>
+    </SidebarContent>
+    <SidebarRail />
+  </Sidebar>
+  <SidebarInset>
+    <header className="h-14 bg-sidebar border-b border-sidebar-border">
+      <SidebarTrigger />
+      {/* Primary tabs */}
+      {/* User info + logout */}
+    </header>
+    <Outlet />
+  </SidebarInset>
+</SidebarProvider>
+```
+
+Key points:
+- `SidebarMenuButton asChild` + `tooltip={item.label}` enables:
+  - Tooltip on hover in collapsed state (free from TooltipProvider inside Sidebar)
+  - No nested `<a><button></button></a>` — NavLink becomes the root element via Radix Slot
+- `variant="inset"` — SidebarInset follows sidebar width changes (required for correct collapsible behavior)
+- `collapsible="icon"` — collapses to 3rem (48px) icon-only width with Cmd+B shortcut
+- `group-data-[collapsible=icon]:hidden` — hide Sidebar header text when collapsed
+
+#### Table Containers
+
+Wrap tables in shadcn Card-like containers:
+```tsx
+<div className="rounded-lg border border-border bg-card shadow-sm">
+  <div className="p-4 border-b border-border">{/* header */}</div>
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm">{/* rows */}</table>
+  </div>
+</div>
+```
+
+#### Duplicate Token Collapse
+
+After many edits, className strings accumulate repeated Tailwind tokens like `dark:text-amber-400 dark:text-amber-400`. Use sed to collapse:
+
+```bash
+sed -i '' -e 's/dark:text-amber-400 dark:text-amber-400/dark:text-amber-400/g' *.tsx
+```
+
+**NEVER use perl/sed/python to auto-convert className patterns** — regex is greedy and destroys JS identifiers, imports, and component props. Manual or targeted sed only.
+
+#### shadcn Install Notes
+
+```bash
+cd client && npx shadcn@latest add <component-name> -y -c client
+```
+
+After install, check what changed:
+- `tailwind.config.js` — may add new `animate-*` tokens
+- `src/styles/index.css` — may add new keyframes/variables for dark mode
+- New files in `src/components/ui/` (dialog, sheet, tooltip, skeleton, sidebar, use-mobile hook, etc.)
+
+### Role & Permission Conventions
+
 - **Frontend + backend protection** — role-based access must be enforced on BOTH sides. Frontend hides UI elements and guards routes; backend middleware blocks unauthorized requests.
 - **Admin sidebar menu filtering** — the admin sidebar must filter menu items by user role. Teachers should not see admin-only menu items (user management, auth settings, storage settings, scan import).
 - **Role badge in admin header** — when AUTH_ENABLED=true, show the user's role badge in the admin top bar: `(管理员)` for admin, `(教师)` for teacher.
