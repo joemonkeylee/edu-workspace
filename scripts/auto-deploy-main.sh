@@ -94,6 +94,11 @@ if [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]]; then
   info "Pulling main (local changes will be auto-stashed and restored)..."
   git pull --ff-only --autostash origin main >> "$LOG_FILE" 2>&1 || fail "Git pull failed"
 fi
+# `npm install` is idempotent and cheap when nothing changed, so it is safe to run
+# on every deploy: without it, a commit that only adds a dependency to
+# package.json leaves node_modules stale and the build fails with TS2307.
+info "Installing dependencies..."
+npm install --no-audit --no-fund >> "$LOG_FILE" 2>&1 || fail "Dependency install failed"
 info "Building server and client..."
 npm run build >> "$LOG_FILE" 2>&1 || fail "Build failed"
 info "Restarting production services..."
