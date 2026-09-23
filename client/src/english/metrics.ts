@@ -28,6 +28,15 @@ export interface Metric {
 export function convertMetricToVitalInfo(
   metric: Metric,
 ): VitalInfo & { rawMetric: Metric } {
+  const meanings: Record<string, string> = {
+    FCP: '从导航开始到页面首次渲染出任何文本、图像或非空白元素的时间',
+    LCP: '从导航开始到页面最大内容元素(图片/文本块)完成渲染的时间',
+    INP: '页面生命周期内最长的一次用户交互(点击/按键)响应时间',
+    CLS: '页面加载后所有布局偏移的累积分数,值越小越稳定',
+    TTFB: '从发起请求到收到服务器首个字节响应的时间(含 DNS/TCP/TLS)',
+    TTI: '从导航开始到页面完全可交互(主线程持续 5s 空闲)的时间',
+  }
+
   let rangeInfo: {
     grade: string
     range: string
@@ -99,7 +108,7 @@ export function convertMetricToVitalInfo(
 
   return {
     name: metric.name,
-    meaning: `指标 ${metric.name}，当前值 ${metric.value.toFixed(2)} 毫秒 (${rangeInfo.grade})`,
+    meaning: meanings[metric.name] ?? '未知指标',
     idealRange: rangeInfo.range,
     userImpact: rangeInfo.impact,
     improvementNeeded: rangeInfo.improvementNeeded,

@@ -53,7 +53,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-normal">Web Vitals 性能指标</DialogTitle>
+          <DialogTitle className="font-normal">Web Vitals</DialogTitle>
         </DialogHeader>
         {vitals.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
@@ -65,7 +65,6 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
               <thead className="bg-muted/50">
                 <tr className="border-b border-border">
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">指标</th>
-                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">含义</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">值</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">状态</th>
                   <th className="px-3 py-2 text-left font-normal text-muted-foreground">理想范围</th>
@@ -102,7 +101,6 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                               </span>
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-muted-foreground">{meaning}</td>
                           <td className="px-3 py-2 font-mono text-xs text-foreground">
                             {rawMetric.value.toFixed(rawMetric.value < 1000 ? 1 : 0)}
                             <span className="ml-0.5 text-muted-foreground">ms</span>
@@ -124,7 +122,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                         </tr>
                         {expanded && (
                           <tr className="bg-muted/40">
-                            <td colSpan={6} className="px-3 py-2">
+                            <td colSpan={5} className="px-3 py-2">
                               <pre className="max-h-60 overflow-auto rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
                                 {JSON.stringify(rawMetric, null, 2)}
                               </pre>
