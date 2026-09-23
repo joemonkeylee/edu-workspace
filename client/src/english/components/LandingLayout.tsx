@@ -1,14 +1,6 @@
-import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import WebVitalsInfoPanel from './WebVitalsInfoPanel'
-import { ThemeSwitcher } from '@/components/ThemeSwitcher'
-import {
-  reportWebVitals,
-  convertMetricToVitalInfo,
-  type Metric,
-  type VitalInfo,
-} from '../metrics'
-import { BookOpen, ArrowLeft, Settings } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import AppHeaderRight from '@/components/AppHeaderRight'
+import { BookOpen, ArrowLeft } from 'lucide-react'
 
 const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST')
 const APP_COMMIT = import.meta.env.VITE_APP_COMMIT || ''
@@ -20,20 +12,8 @@ const APP_ENV_CLASS = APP_ENV === 'PROD'
 
 export default function LandingLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const navigate = useNavigate()
-  const [vitals, setVitals] = useState<(VitalInfo & { rawMetric: Metric })[]>([])
 
-  useEffect(() => {
-    reportWebVitals((metric: Metric) => {
-      setVitals((prev) => {
-        const newVital = convertMetricToVitalInfo(metric)
-        const filtered = prev.filter((v) => v.name !== metric.name)
-        return [...filtered, newVital]
-      })
-    })
-  }, [])
-
-  // 具体学习页：只有返回按钮 + 右下角浮动控件
+  // 具体学习页：直接渲染 children（已有自己的 header）
   const isLearningPath = /^\/english\/\d+\/\d+/.test(location.pathname)
 
   if (isLearningPath) {
@@ -44,10 +24,10 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
     )
   }
 
-  // 书籍列表页 /english：用首页同款 sidebar header 风格
+  // /english 卡片网格页：统一 header
   return (
     <div className="flex h-full flex-col bg-background">
-      <header className="flex h-14 flex-shrink-0 items-center justify-between bg-sidebar px-6 py-4 text-sidebar-foreground">
+      <header className="flex h-14 flex-shrink-0 items-center justify-between bg-sidebar px-6 text-sidebar-foreground">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
             <BookOpen size={22} />
@@ -63,26 +43,14 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
           )}
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
           <Link
-            to="/"
-            className="flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
+            to="/books"
+            className="flex items-center gap-1 text-sm text-sidebar-foreground/80 hover:text-sidebar-foreground transition"
           >
             <ArrowLeft size={14} />
-            返回首页
+            Book
           </Link>
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeSwitcher />
-          <WebVitalsInfoPanel vitals={vitals} />
-          <Link
-            to="/admin"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="后台管理"
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary opacity-90 transition hover:opacity-100"
-          >
-            <Settings size={18} />
-          </Link>
-        </div>
+        <AppHeaderRight />
       </header>
       <main className="flex-1 overflow-auto px-6 py-4">{children}</main>
     </div>

@@ -26,7 +26,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-foreground/80 hover:bg-accent hover:text-foreground transition"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition"
           aria-label="打开 Web Vitals"
           title="Web Vitals"
         >
