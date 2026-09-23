@@ -7,11 +7,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { VitalInfo, Metric } from '../metrics'
 
 interface WebVitalsInfoPanelProps {
   vitals: (VitalInfo & { rawMetric: Metric })[]
+}
+
+function ratingBadge(rating?: string) {
+  if (!rating) return null
+  const map: Record<string, { variant: 'default' | 'secondary' | 'destructive'; label: string; cls?: string }> = {
+    good: { variant: 'secondary', label: '良好', cls: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/25' },
+    'needs-improvement': { variant: 'default', label: '需改进', cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/25' },
+    poor: { variant: 'destructive', label: '较差' },
+  }
+  const cfg = map[rating]
+  if (!cfg) return null
+  return (
+    <Badge variant={cfg.variant} className={cn('font-normal', cfg.cls)}>
+      {cfg.label}
+    </Badge>
+  )
 }
 
 export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) {
@@ -35,24 +53,24 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Web Vitals 性能指标</DialogTitle>
+          <DialogTitle className="font-normal">Web Vitals 性能指标</DialogTitle>
         </DialogHeader>
         {vitals.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
             暂无性能数据，请稍后再试
           </p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-muted/50">
                 <tr className="border-b border-border">
-                  <th className="px-2 py-2 text-left font-normal text-foreground">指标</th>
-                  <th className="px-2 py-2 text-left font-normal text-foreground">含义</th>
-                  <th className="px-2 py-2 text-left font-normal text-foreground">理想值</th>
-                  <th className="px-2 py-2 text-left font-normal text-foreground">体验影响</th>
-                  <th className="px-2 py-2 text-left font-normal text-foreground">改进</th>
-                  <th className="px-2 py-2 text-left font-normal text-foreground">参考</th>
-                  <th className="px-2 py-2 text-left font-normal text-foreground">详情</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">指标</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">含义</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">值</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">状态</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">理想范围</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">改进</th>
+                  <th className="px-3 py-2 text-left font-normal text-muted-foreground">详情</th>
                 </tr>
               </thead>
               <tbody>
@@ -61,54 +79,56 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                     name,
                     meaning,
                     idealRange,
-                    userImpact,
                     improvementNeeded,
                     referenceLink,
                     rawMetric,
-                  }) => (
-                    <Fragment key={name}>
-                      <tr className="border-b border-border/50 hover:bg-muted/50">
-                        <td className="px-2 py-2 font-normal text-foreground">{name}</td>
-                        <td className="px-2 py-2 text-muted-foreground">{meaning}</td>
-                        <td className="px-2 py-2 text-muted-foreground">{idealRange}</td>
-                        <td className="px-2 py-2 text-muted-foreground">{userImpact}</td>
-                        <td className="px-2 py-2 text-muted-foreground">{improvementNeeded}</td>
-                        <td className="px-2 py-2">
-                          <a
-                            href={referenceLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline"
-                          >
-                            查看 <ExternalLink size={12} />
-                          </a>
-                        </td>
-                        <td className="px-2 py-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleExpand(name)}
-                            className="inline-flex items-center text-primary hover:underline"
-                          >
-                            {expandedName === name ? (
-                              <ChevronDown size={14} />
-                            ) : (
-                              <ChevronRight size={14} />
-                            )}
-                            {expandedName === name ? '收起' : '展开'}
-                          </button>
-                        </td>
-                      </tr>
-                      {expandedName === name && rawMetric && (
-                        <tr>
-                          <td colSpan={7} className="bg-muted/50 px-2 py-2">
-                            <pre className="max-h-60 overflow-auto rounded bg-muted p-3 text-xs text-foreground">
-                              {JSON.stringify(rawMetric, null, 2)}
-                            </pre>
+                  }) => {
+                    const expanded = expandedName === name
+                    return (
+                      <Fragment key={name}>
+                        <tr className="border-b border-border/50 last:border-b-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2 font-medium text-foreground">{name}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{meaning}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-foreground">
+                            {rawMetric.value.toFixed(rawMetric.value < 1000 ? 1 : 0)}
+                            <span className="ml-0.5 text-muted-foreground">ms</span>
+                          </td>
+                          <td className="px-3 py-2">{ratingBadge(rawMetric.rating)}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{idealRange}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{improvementNeeded}</td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1">
+                              {referenceLink && (
+                                <Button variant="link" size="sm" className="h-auto px-0 py-0 text-xs font-normal" asChild>
+                                  <a href={referenceLink} target="_blank" rel="noopener noreferrer">
+                                    参考 <ExternalLink size={12} />
+                                  </a>
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs font-normal"
+                                onClick={() => toggleExpand(name)}
+                              >
+                                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                {expanded ? '收起' : '展开'}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
-                      )}
-                    </Fragment>
-                  ),
+                        {expanded && (
+                          <tr className="bg-muted/40">
+                            <td colSpan={7} className="px-3 py-2">
+                              <pre className="max-h-60 overflow-auto rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">
+                                {JSON.stringify(rawMetric, null, 2)}
+                              </pre>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  },
                 )}
               </tbody>
             </table>
