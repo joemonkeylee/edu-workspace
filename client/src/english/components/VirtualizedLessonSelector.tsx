@@ -27,8 +27,8 @@ interface Props {
   onShowVocabChange: (show: boolean) => void
 }
 
-/** 与侧栏顶行（教材下拉）、生词表标题行统一为 48px */
-const ITEM_HEIGHT = 48
+/** 与右侧 sentence item 高度(~61px)对齐,蓝边框 div 53px 上下各留 4px */
+const ITEM_HEIGHT = 61
 const LAST_ITEM_MARGIN = 8
 const SCROLL_THRESHOLD = 16
 
@@ -74,13 +74,6 @@ export default function VirtualizedLessonSelector({
   const scrollBottomDistance = contentHeight - (scrollTop + containerHeight)
   if (scrollBottomDistance < 0) paddingBottom = Math.max(0, paddingBottom + scrollBottomDistance)
 
-  useEffect(() => {
-    if (!containerRef.current) return
-    const targetScrollPosition = currentLessonIdx * ITEM_HEIGHT
-    containerRef.current.scrollTop = targetScrollPosition
-    setScrollTop(containerRef.current.scrollTop)
-  }, [currentLessonIdx, lessons, containerHeight])
-
   const onScroll = (e: UIEvent<HTMLDivElement>) => setScrollTop(e.currentTarget.scrollTop)
 
   const copyToClipboard = (text: string, type: 'en' | 'zh' | 'bi', index: number, extraText?: string) => {
@@ -123,7 +116,7 @@ export default function VirtualizedLessonSelector({
           return (
             <li
               key={lesson.id}
-              className="px-2 py-0.5"
+              className="px-2"
               style={{
                 height: ITEM_HEIGHT,
                 marginBottom: realIdx === lessons.length - 1 ? LAST_ITEM_MARGIN : undefined,
@@ -131,7 +124,7 @@ export default function VirtualizedLessonSelector({
             >
               <div
                 className={cn(
-                  'group relative flex h-full w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg border px-2.5 transition-colors',
+                  'group relative flex h-[53px] w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg border px-2.5 transition-colors',
                   isActive
                     ? 'border-primary/60 bg-primary/10'
                     : 'border-transparent bg-transparent hover:bg-sidebar-accent',
