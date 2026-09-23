@@ -10,6 +10,22 @@
         reverse_proxy 127.0.0.1:4000
     }
 
+    # English module data & audio live on the remote resource server.
+    # Without these, requests fall through to the SPA fallback below and
+    # return index.html, which the JSON fetch then fails to parse.
+    # Keep in sync with the proxy entries in client/vite.config.ts.
+    handle /data/* {
+        reverse_proxy http://182.92.129.222 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
+    handle /lt/* {
+        reverse_proxy http://182.92.129.222 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
     handle {
         try_files {path} /index.html
         file_server
