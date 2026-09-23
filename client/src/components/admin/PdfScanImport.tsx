@@ -8,6 +8,10 @@ import { useStore } from '../../store/useStore';
 import { Scan, StopCircle, FolderOpen, Clock, Layers, Eye, Database, AlertTriangle, Copy, Check, ChevronDown, X, Video, HardDrive, RefreshCw, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import VideoMatchReview from './VideoMatchReview';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface ProgressData {
   phase?: number;
@@ -519,7 +523,7 @@ export default function PdfScanImport() {
               ))}
             </select>
             {capacityError && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 mt-1 flex items-center gap-1">
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                 <AlertTriangle size={11} /> {capacityError}
               </p>
             )}
@@ -541,7 +545,7 @@ export default function PdfScanImport() {
         </div>
 
         {!importToDb && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 mt-2 flex items-center gap-1">
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
             <AlertTriangle size={12} /> 不入库模式：仅按文件哈希匹配已有书籍，渲染图片到对应目录，不创建新书记录
           </p>
         )}
@@ -746,7 +750,7 @@ export default function PdfScanImport() {
                       {f.grade ? <span className="text-primary">{f.grade}</span> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-1.5">
-                      {f.subject ? <span className="text-green-600 dark:text-green-400 dark:text-green-400">{f.subject}</span> : <span className="text-muted-foreground">—</span>}
+                      {f.subject ? <span className="text-green-600 dark:text-green-400">{f.subject}</span> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-1.5 text-foreground">{f.category}</td>
                   </tr>
@@ -852,47 +856,33 @@ export default function PdfScanImport() {
       )}
 
       {/* Confirmation dialog */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowConfirm(false)}>
-          <div className="bg-background rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 flex items-center justify-center shrink-0">
-                <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-foreground mb-1">确认开始扫描</h3>
-                <p className="text-sm text-foreground/70">
-                  即将扫描 <span className="font-semibold text-foreground">{targetPath}</span>
-                </p>
-                <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-                  <p>DPI: <span className="text-foreground">{dpi}</span> | 并发: <span className="text-foreground">{concurrency}</span></p>
-                  <p>入库模式: <span className={importToDb ? 'text-green-600 dark:text-green-400 dark:text-green-400' : 'text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400'}>{importToDb ? '写入数据库' : '仅渲染图片（不入库）'}</span></p>
-                  {grade && <p>学期: <span className="text-foreground">{grade}</span></p>}
-                  {subject && <p>科目: <span className="text-foreground">{subject}</span></p>}
-                  {category && <p>分类: <span className="text-foreground">{category}</span></p>}
-                  {videoPlanId && (
-                    <p>视频关联: <span className="text-teal-600 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400">{videoPlanLinks} 条（仅记录路径，不复制文件）</span></p>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-foreground/70 hover:bg-muted transition"
-              >
-                取消
-              </button>
-              <button
-                onClick={confirmScan}
-                className="px-6 py-2 rounded-lg text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 transition"
-              >
-                确认扫描
-              </button>
-            </div>
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400" />
+              确认开始扫描
+            </DialogTitle>
+            <DialogDescription>
+              即将扫描 <span className="font-semibold text-foreground">{targetPath}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-0.5 text-xs text-muted-foreground">
+            <p>DPI: <span className="text-foreground">{dpi}</span> | 并发: <span className="text-foreground">{concurrency}</span></p>
+            <p>入库模式: <span className={importToDb ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>{importToDb ? '写入数据库' : '仅渲染图片（不入库）'}</span></p>
+            {grade && <p>学期: <span className="text-foreground">{grade}</span></p>}
+            {subject && <p>科目: <span className="text-foreground">{subject}</span></p>}
+            {category && <p>分类: <span className="text-foreground">{category}</span></p>}
+            {videoPlanId && (
+              <p>视频关联: <span className="text-teal-600 dark:text-teal-400">{videoPlanLinks} 条（仅记录路径，不复制文件）</span></p>
+            )}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirm(false)}>取消</Button>
+            <Button onClick={confirmScan}>确认扫描</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

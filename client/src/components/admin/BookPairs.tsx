@@ -165,11 +165,11 @@ function StatsCard({
   const boxes: StatBoxConfig[] = [
     { label: '总书数', value: stats.totalBooks, color: 'text-foreground', desc: '数据库中所有书籍的总数量（含已配对/未配对/无版本关键词）' },
     { label: '候选配对', value: stats.candidatePairs, color: 'text-primary', desc: '按基础标题相等匹配到的教材+答案组合数（含已绑定和待绑定）' },
-    { label: '已绑定', value: stats.boundPairs, color: 'text-green-600 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400', desc: '已确认配对并写入 attributes.pair 的组数（点击查看已配对列表）', filterKey: 'bound' },
+    { label: '已绑定', value: stats.boundPairs, color: 'text-green-600 dark:text-green-400', desc: '已确认配对并写入 attributes.pair 的组数（点击查看已配对列表）', filterKey: 'bound' },
     { label: '待绑定', value: stats.unboundPairs, color: 'text-orange-600 dark:text-orange-400 dark:text-orange-400', desc: '候选配对中尚未确认绑定的组数（点击切换"仅未绑定"筛选）', filterKey: 'unbound' },
     { label: '多选项组', value: stats.duplicateGroups, color: 'text-destructive', desc: '同组有多个教材或多个答案，存在多种配对可能（点击筛选）', filterKey: 'duplicates' },
-    { label: '孤儿教材', value: stats.orphanTextbooks, color: 'text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400', desc: '有教材关键词但没有匹配到答案的书（点击查看）', filterKey: 'orphanTextbook' },
-    { label: '孤儿答案', value: stats.orphanAnswers, color: 'text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400', desc: '有答案关键词但没有匹配到教材的书（点击查看）', filterKey: 'orphanAnswer' },
+    { label: '孤儿教材', value: stats.orphanTextbooks, color: 'text-amber-600 dark:text-amber-400', desc: '有教材关键词但没有匹配到答案的书（点击查看）', filterKey: 'orphanTextbook' },
+    { label: '孤儿答案', value: stats.orphanAnswers, color: 'text-amber-600 dark:text-amber-400', desc: '有答案关键词但没有匹配到教材的书（点击查看）', filterKey: 'orphanAnswer' },
     { label: '无版本关键词', value: stats.noVersionKeyword, color: 'text-muted-foreground', desc: '标题不含"原卷版/解析版/答案"等关键词，不参与自动配对（点击查看）', filterKey: 'noVersion' },
   ];
   return (
@@ -294,7 +294,7 @@ function RulesModal({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             </div>
-            <div className="bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 border border-amber-200 dark:border-amber-800 rounded p-3 text-xs text-amber-700 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400">
+            <div className="bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 border border-amber-200 dark:border-amber-800 rounded p-3 text-xs text-amber-700 dark:text-amber-400">
               <p className="font-semibold mb-1">规则扩展提示</p>
               <p>当前规则覆盖约 95% 的"原卷版 ↔ 解析版"配对。剩余 5% 零散组合（如《详解》《全解全析》等）可在"孤儿"Tab 手动配对，或扩展 ANSWER_KEYWORDS 数组自动覆盖。</p>
             </div>
@@ -601,7 +601,7 @@ function ScanTab({ onFilter }: { onFilter?: (key: 'unbound' | 'duplicates' | 'bo
                   ))}
                 </td>
                 <td className="px-3 py-2">
-                  {c.bound ? <span className="text-xs text-green-600 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 bg-green-50 dark:bg-green-950/50 dark:border dark:border-green-800 px-2 py-0.5 rounded">已绑定</span>
+                  {c.bound ? <span className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50 dark:border dark:border-green-800 px-2 py-0.5 rounded">已绑定</span>
                     : <span className="text-xs text-orange-600 dark:text-orange-400 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/50 dark:border dark:border-orange-800 px-2 py-0.5 rounded">待绑定</span>}
                   {c.hasDuplicate && <span className="ml-1 text-xs text-destructive bg-red-50 px-2 py-0.5 rounded">多选项</span>}
                 </td>
@@ -902,7 +902,7 @@ function BoundTab() {
                     <td className="px-3 py-2">
                       <div className="font-medium">
                         <a href={`/book/${g.textbook.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">#{g.textbook.id}</a> {g.textbook.title}
-                        {g.textbook.isDeleted && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 px-1.5 py-0.5 rounded">已删</span>}
+                        {g.textbook.isDeleted && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 px-1.5 py-0.5 rounded">已删</span>}
                       </div>
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{g.textbook.category}</td>
@@ -914,7 +914,7 @@ function BoundTab() {
                       {g.answers.map((a: any) => (
                         <div key={a.id} className="text-xs">
                           <a href={`/book/${a.id}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 dark:text-teal-400 dark:text-teal-400 hover:underline">#{a.id}</a> {a.title} <span className="text-muted-foreground">({a.totalPages}p)</span>
-                          {a.isDeleted && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 px-1.5 py-0.5 rounded">已删</span>}
+                          {a.isDeleted && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 px-1.5 py-0.5 rounded">已删</span>}
                         </div>
                       ))}
                       {g.answers.length === 0 && <span className="text-muted-foreground text-xs">无答案</span>}
@@ -922,9 +922,9 @@ function BoundTab() {
                     <td className="px-3 py-2 whitespace-nowrap">
                       <button onClick={() => handleUnbind(g.textbook.id, g.textbook.title)} className="text-xs text-destructive hover:underline mr-2">解绑</button>
                       {allDeleted ? (
-                        <button onClick={() => handleGroupRestore(g)} className="text-xs text-green-600 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 hover:underline">恢复</button>
+                        <button onClick={() => handleGroupRestore(g)} className="text-xs text-green-600 dark:text-green-400 hover:underline">恢复</button>
                       ) : (
-                        <button onClick={() => handleGroupSoftDelete(g)} className="text-xs text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 hover:underline">软删</button>
+                        <button onClick={() => handleGroupSoftDelete(g)} className="text-xs text-amber-600 dark:text-amber-400 hover:underline">软删</button>
                       )}
                     </td>
                   </tr>
@@ -1169,7 +1169,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                     <td className="px-3 py-2 text-muted-foreground"><a href={`/book/${o.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">#{o.id}</a></td>
                     <td className="px-3 py-2">
                       {o.title}
-                      {o.isDeleted && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 px-1.5 py-0.5 rounded">已删</span>}
+                      {o.isDeleted && <span className="ml-1 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 dark:bg-amber-950/60 dark:border dark:border-amber-800 px-1.5 py-0.5 rounded">已删</span>}
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{o.category}</td>
                     <td className="px-3 py-2 text-muted-foreground">{o.totalPages}</td>
@@ -1185,7 +1185,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                         <button onClick={async () => {
                           try { await adminRestoreBook(o.id); toast.success('已恢复'); fetch(); }
                           catch (e: any) { toast.error('恢复失败: ' + (e?.message || '')); }
-                        }} className="text-xs text-green-600 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 hover:underline">恢复</button>
+                        }} className="text-xs text-green-600 dark:text-green-400 hover:underline">恢复</button>
                       ) : (
                         <button onClick={async () => {
                           const confirmed = await confirm({
@@ -1197,7 +1197,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
                           if (!confirmed) return;
                           try { await adminSoftDeleteBook(o.id); toast.success('已软删除'); fetch(); }
                           catch (e: any) { toast.error('软删除失败: ' + (e?.message || '')); }
-                        }} className="text-xs text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 hover:underline">软删</button>
+                        }} className="text-xs text-amber-600 dark:text-amber-400 hover:underline">软删</button>
                       )}
                     </td>
                   </tr>
@@ -1225,7 +1225,7 @@ function OrphansTab({ role, onRoleChange }: { role: OrphanRole; onRoleChange: (r
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-background rounded-lg shadow-xl w-80 p-5 text-center">
             <div className="mb-3">{deleteProgress.current > 0 && deleteProgress.current >= deleteProgress.total ? (
-              <div className="w-12 h-12 mx-auto bg-green-100 dark:bg-green-950/60 dark:border dark:border-green-800 text-green-600 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 dark:text-green-400 rounded-full flex items-center justify-center text-xl">✓</div>
+              <div className="w-12 h-12 mx-auto bg-green-100 dark:bg-green-950/60 dark:border dark:border-green-800 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center text-xl">✓</div>
             ) : (
               <Loader2 size={32} className="animate-spin text-destructive mx-auto" />
             )}</div>

@@ -126,7 +126,7 @@ export default function UsersTable() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={u.status === 'disabled' ? 'text-destructive' : 'text-green-600 dark:text-green-400 dark:text-green-400'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
+                  <span className={u.status === 'disabled' ? 'text-destructive' : 'text-green-600 dark:text-green-400'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
                 </td>
                 <td className="px-4 py-3">{u.deviceCount}</td>
                 <td className="px-4 py-3">{u.maxDevices}</td>
@@ -216,7 +216,7 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
             toast.error('更新失败: ' + (e?.message || ''));
           }
         }}
-        className="text-green-600 dark:text-green-400 dark:text-green-400 hover:underline"
+        className="text-green-600 dark:text-green-400 hover:underline"
       >保存</button>
       <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setEditing(false)}>
         <div className="bg-background rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>

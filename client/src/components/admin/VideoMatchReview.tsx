@@ -126,7 +126,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
               共 {stats.pdfs} 个 PDF（讲次型 {stats.lesson} / 讲义合集 {stats.course}），已选 {stats.links} 条关联
-              {stats.unmatched > 0 && <span className="ml-1 text-amber-600 dark:text-amber-400 dark:text-amber-400">· {stats.unmatched} 个讲次型 PDF 还没有视频</span>}
+              {stats.unmatched > 0 && <span className="ml-1 text-amber-600 dark:text-amber-400">· {stats.unmatched} 个讲次型 PDF 还没有视频</span>}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">资源根目录：{videoRoot}</p>
           </div>
@@ -252,7 +252,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
                                       className="w-3.5 h-3.5 accent-teal-600 cursor-pointer flex-shrink-0"
                                     />
                                     <span className={`flex-shrink-0 tabular-nums ${
-                                      m.score >= 0.8 ? 'text-green-600 dark:text-green-400' : m.score >= 0.5 ? 'text-amber-600 dark:text-amber-400 dark:text-amber-400' : 'text-muted-foreground'
+                                      m.score >= 0.8 ? 'text-green-600 dark:text-green-400' : m.score >= 0.5 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
                                     }`} title="匹配置信度">
                                       {m.score.toFixed(2)}
                                     </span>
