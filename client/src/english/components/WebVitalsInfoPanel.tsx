@@ -1,5 +1,5 @@
 import { useState, Fragment } from 'react'
-import { BarChart, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { BarChart, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -87,15 +87,19 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                     return (
                       <Fragment key={name}>
                         <tr className="border-b border-border/50 last:border-b-0 hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2 font-medium text-foreground">
+                          <td className="px-3 py-2 font-medium">
                             <div className="flex items-center gap-1">
-                              <span>{name}</span>
-                              {referenceLink && (
+                              {referenceLink ? (
                                 <a href={referenceLink} target="_blank" rel="noopener noreferrer"
-                                  className="text-muted-foreground hover:text-primary transition-colors">
-                                  <ExternalLink size={12} />
+                                  className="text-primary hover:underline">
+                                  {name}
                                 </a>
+                              ) : (
+                                <span className="text-foreground">{name}</span>
                               )}
+                              <span title={meaning} className="inline-flex cursor-help">
+                                <HelpCircle size={13} className="text-muted-foreground" />
+                              </span>
                             </div>
                           </td>
                           <td className="px-3 py-2 text-muted-foreground">{meaning}</td>
