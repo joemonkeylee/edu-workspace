@@ -32,6 +32,15 @@ function ratingBadge(rating?: string) {
   )
 }
 
+const MEANINGS: Record<string, string> = {
+  FCP: '从导航开始到页面首次渲染出任何文本、图像或非空白元素的时间',
+  LCP: '从导航开始到页面最大内容元素(图片/文本块)完成渲染的时间',
+  INP: '页面生命周期内最长的一次用户交互(点击/按键)响应时间',
+  CLS: '页面加载后所有布局偏移的累积分数,值越小越稳定',
+  TTFB: '从发起请求到收到服务器首个字节响应的时间(含 DNS/TCP/TLS)',
+  TTI: '从导航开始到页面完全可交互(主线程持续 5s 空闲)的时间',
+}
+
 export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) {
   const [expandedName, setExpandedName] = useState<string | null>(null)
 
@@ -57,7 +66,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
         </DialogHeader>
         {vitals.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            暂无性能数据，请稍后再试
+            暂无性能数据,请稍后再试
           </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
@@ -77,7 +86,6 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                 {vitals.map(
                   ({
                     name,
-                    meaning,
                     idealRange,
                     userImpact,
                     improvementNeeded,
@@ -85,6 +93,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                     rawMetric,
                   }) => {
                     const expanded = expandedName === name
+                    const tooltip = MEANINGS[name] ?? '未知指标'
                     return (
                       <Fragment key={name}>
                         <tr className="border-b border-border/50 last:border-b-0 hover:bg-muted/30 transition-colors">
@@ -98,7 +107,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                               ) : (
                                 <span className="text-foreground">{name}</span>
                               )}
-                              <span title={meaning} className="inline-flex cursor-help">
+                              <span title={tooltip} className="inline-flex cursor-help">
                                 <HelpCircle size={13} className="text-muted-foreground" />
                               </span>
                             </div>
