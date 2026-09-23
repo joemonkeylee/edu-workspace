@@ -47,7 +47,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
     // （不要在中间放 <br />，它会被当成 flex item 撑开一行 height）
     const commonStyle = { lineHeight: '1.2', display: 'inline-block' as const, fontSize: '14px' }
     const enStyle = commonStyle
-    const zhStyle = { ...commonStyle, fontSize: '12px', marginTop: '0px' }
+    const zhStyle = { ...commonStyle, fontSize: '12px', marginTop: '2px' }
     const renderEn = () => {
       const wordsArr = sentence.Sentence ? sentence.Sentence.split(' ') : []
       return (
@@ -105,7 +105,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
           <div
             key={index}
             className={cn(
-              'sentence group flex gap-3 border-b border-l-2 border-border px-3 py-1 transition-colors',
+              'sentence group flex gap-4 border-b border-l-2 border-border px-3 py-1.5 transition-colors',
               isActive ? 'border-l-primary bg-primary/5 active' : 'border-l-transparent',
               'hover:bg-muted/50',
             )}
@@ -117,7 +117,7 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
             aria-current={isActive ? 'true' : undefined}
           >
             {/* 播放按钮 + 时间 */}
-            <div className="flex flex-col items-center gap-0.5 shrink-0 self-center">
+            <div className="flex flex-col items-center gap-1.5 shrink-0 self-center">
               <button
                 type="button"
                 className={cn(iconBtn(isActive), 'active:scale-95')}

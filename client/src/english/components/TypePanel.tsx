@@ -259,7 +259,7 @@ export default function TypePanel({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3 flex-nowrap mb-1">
+      <div className="flex items-end justify-between gap-3 flex-nowrap mb-1">
         <div className="flex gap-3 shrink-0">
           <button type="button" className="min-w-[72px] rounded border border-border bg-transparent px-3.5 py-1.5 text-sm font-normal text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors" onClick={() => onPrev?.()} disabled={currentIndex <= 0}>Prev</button>
           <button type="button" className="min-w-[72px] rounded border border-primary bg-primary px-3.5 py-1.5 text-sm font-normal text-primary-foreground hover:bg-primary/80 transition-colors" onClick={() => onPlay?.()}>Play</button>
