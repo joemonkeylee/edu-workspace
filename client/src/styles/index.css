@@ -168,3 +168,39 @@ body {
   /* 封面 overlay 在 dark 下需要稍微亮一点但不刺眼 */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
+
+/* 原生表单元素 dark mode 适配 */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="number"],
+.dark input[type="url"],
+.dark input[type="search"],
+.dark input[type="tel"],
+.dark textarea {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--input));
+}
+
+.dark select {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--input));
+}
+
+.dark select option {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.dark input:-webkit-autofill,
+.dark textarea:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+}
