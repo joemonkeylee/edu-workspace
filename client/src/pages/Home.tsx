@@ -691,7 +691,7 @@ export default function Home() {
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
             <BookOpen size={22} />
-            <span className="text-lg font-normal">edu-workspace</span>
+            <span className="text-lg font-normal">Books</span>
           </Link>
           <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${APP_ENV_CLASS}`}>
             {APP_ENV}
