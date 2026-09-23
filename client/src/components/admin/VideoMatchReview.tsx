@@ -126,7 +126,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
               共 {stats.pdfs} 个 PDF（讲次型 {stats.lesson} / 讲义合集 {stats.course}），已选 {stats.links} 条关联
-              {stats.unmatched > 0 && <span className="ml-1 text-amber-600">· {stats.unmatched} 个讲次型 PDF 还没有视频</span>}
+              {stats.unmatched > 0 && <span className="ml-1 text-amber-600 dark:text-amber-400 dark:text-amber-400">· {stats.unmatched} 个讲次型 PDF 还没有视频</span>}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">资源根目录：{videoRoot}</p>
           </div>
@@ -197,7 +197,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
                       </td>
                       <td className="px-2 py-1.5">
                         {isCourse ? (
-                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-700 px-1.5 py-0.5 text-[10px]">
+                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[10px]">
                             <Layers size={10} /> 合集
                           </span>
                         ) : (
@@ -207,7 +207,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
                         )}
                       </td>
                       <td className="px-2 py-1.5">
-                        <span className={pickedCount > 0 ? 'text-teal-600 font-medium' : 'text-muted-foreground'}>
+                        <span className={pickedCount > 0 ? 'text-teal-600 dark:text-teal-400 font-medium' : 'text-muted-foreground'}>
                           {pickedCount} / {matches.length}
                         </span>
                       </td>
@@ -242,7 +242,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
                                   <label
                                     key={m.filePath}
                                     className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer text-xs ${
-                                      checked ? 'bg-teal-50' : 'hover:bg-muted'
+                                      checked ? 'bg-teal-50 dark:bg-teal-950/50 dark:border dark:border-teal-800' : 'hover:bg-muted'
                                     }`}
                                   >
                                     <input
@@ -252,7 +252,7 @@ export default function VideoMatchReview({ files, videoRoot, onCancel, onConfirm
                                       className="w-3.5 h-3.5 accent-teal-600 cursor-pointer flex-shrink-0"
                                     />
                                     <span className={`flex-shrink-0 tabular-nums ${
-                                      m.score >= 0.8 ? 'text-green-600' : m.score >= 0.5 ? 'text-amber-600' : 'text-muted-foreground'
+                                      m.score >= 0.8 ? 'text-green-600 dark:text-green-400' : m.score >= 0.5 ? 'text-amber-600 dark:text-amber-400 dark:text-amber-400' : 'text-muted-foreground'
                                     }`} title="匹配置信度">
                                       {m.score.toFixed(2)}
                                     </span>

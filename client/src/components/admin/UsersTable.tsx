@@ -116,7 +116,7 @@ export default function UsersTable() {
                     {(Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role]).map((r) => (
                       <span key={r} className={
                         r === 'admin' ? 'px-1.5 py-0.5 text-xs rounded bg-primary/10 text-primary font-medium' :
-                        r === 'teacher' ? 'px-1.5 py-0.5 text-xs rounded bg-teal-50 text-teal-600 font-medium' :
+                        r === 'teacher' ? 'px-1.5 py-0.5 text-xs rounded bg-teal-50 dark:bg-teal-950/50 dark:border dark:border-teal-800 text-teal-600 dark:text-teal-400 font-medium' :
                         'px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground'
                       }>
                         {r === 'admin' ? '管理员' : r === 'teacher' ? '教师' : '学生'}
@@ -125,7 +125,7 @@ export default function UsersTable() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={u.status === 'disabled' ? 'text-destructive' : 'text-green-600'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
+                  <span className={u.status === 'disabled' ? 'text-destructive' : 'text-green-600 dark:text-green-400 dark:text-green-400'}>{u.status === 'disabled' ? '禁用' : '正常'}</span>
                 </td>
                 <td className="px-4 py-3">{u.deviceCount}</td>
                 <td className="px-4 py-3">{u.maxDevices}</td>
@@ -215,7 +215,7 @@ function EditButton({ user, onUpdated }: { user: UserRow; onUpdated: () => void 
             toast.error('更新失败: ' + (e?.message || ''));
           }
         }}
-        className="text-green-600 hover:underline"
+        className="text-green-600 dark:text-green-400 dark:text-green-400 hover:underline"
       >保存</button>
       <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setEditing(false)}>
         <div className="bg-background rounded-lg p-6 w-96" onClick={(e) => e.stopPropagation()}>
@@ -277,7 +277,7 @@ function ResetPasswordButton({ userId }: { userId: number }) {
 
   return (
     <>
-      <button onClick={() => setShow(true)} className="text-orange-600 hover:underline">重置密码</button>
+      <button onClick={() => setShow(true)} className="text-orange-600 dark:text-orange-400 hover:underline">重置密码</button>
       {show && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShow(false)}>
           <div className="bg-background rounded-lg p-6 w-80" onClick={(e) => e.stopPropagation()}>

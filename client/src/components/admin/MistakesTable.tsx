@@ -8,8 +8,8 @@ const PAGE_SIZE = 10;
 
 const REVIEW_STATUS: Record<number, { label: string; color: string }> = {
   0: { label: '未复习', color: 'bg-muted text-foreground/70' },
-  1: { label: '复习中', color: 'bg-amber-100 text-amber-700' },
-  2: { label: '已掌握', color: 'bg-green-100 text-green-700' },
+  1: { label: '复习中', color: 'bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 text-amber-700 dark:text-amber-400' },
+  2: { label: '已掌握', color: 'bg-green-100 dark:bg-green-950/60 dark:border dark:border-green-800 text-green-700 dark:text-green-400' },
 };
 
 export default function MistakesTable() {
@@ -150,7 +150,7 @@ export default function MistakesTable() {
                             {item.reviewStatus < 2 && (
                               <button
                                 onClick={() => handleStatusChange(item.id, item.reviewStatus + 1)}
-                                className="p-1 text-green-500 hover:bg-green-50 rounded"
+                                className="p-1 text-green-500 hover:bg-green-50 dark:bg-green-950/50 dark:border dark:border-green-800 rounded"
                                 title="升级状态"
                               >
                                 <CheckCircle2 size={14} />

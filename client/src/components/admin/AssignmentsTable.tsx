@@ -20,9 +20,9 @@ const STATUS_TEXT: Record<string, string> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-  graded: 'bg-green-100 text-green-700',
+  graded: 'bg-green-100 dark:bg-green-950/60 dark:border dark:border-green-800 text-green-700 dark:text-green-400',
   submitted: 'bg-primary/10 text-primary',
-  returned: 'bg-amber-100 text-amber-700',
+  returned: 'bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 text-amber-700 dark:text-amber-400 dark:text-amber-400',
   draft: 'bg-muted text-foreground/70',
 };
 
@@ -233,7 +233,7 @@ export default function AssignmentsTable() {
           ) : (
             <>
               {total > items.length && (
-                <p className="px-3 py-2 text-xs rounded-lg text-amber-700 bg-amber-50 border border-amber-200">
+                <p className="px-3 py-2 text-xs rounded-lg text-amber-700 dark:text-amber-400 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 border border-amber-200 dark:border-amber-800">
                   共匹配 {total} 条，分组视图一次最多加载 {items.length} 条，请缩小筛选范围以查看全部。
                 </p>
               )}

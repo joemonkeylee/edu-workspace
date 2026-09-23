@@ -519,7 +519,7 @@ export default function PdfScanImport() {
               ))}
             </select>
             {capacityError && (
-              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+              <p className="text-xs text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 mt-1 flex items-center gap-1">
                 <AlertTriangle size={11} /> {capacityError}
               </p>
             )}
@@ -541,7 +541,7 @@ export default function PdfScanImport() {
         </div>
 
         {!importToDb && (
-          <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+          <p className="text-xs text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 mt-2 flex items-center gap-1">
             <AlertTriangle size={12} /> 不入库模式：仅按文件哈希匹配已有书籍，渲染图片到对应目录，不创建新书记录
           </p>
         )}
@@ -566,7 +566,7 @@ export default function PdfScanImport() {
             讲次、课型、学期等真实信息保留。
           </p>
           {renamedCount > 0 && (
-            <p className="text-xs text-teal-600 mt-1.5 ml-6 flex items-center gap-1">
+            <p className="text-xs text-teal-600 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 mt-1.5 ml-6 flex items-center gap-1">
               <Check size={12} /> 本次预解析有 {renamedCount} 个文件名含噪声，将被清理
             </p>
           )}
@@ -590,7 +590,7 @@ export default function PdfScanImport() {
             预解析后会先弹出对照表供你逐条确认，确认后才写入数据库。
           </p>
           {videoPlanId && (
-            <p className="text-xs text-teal-600 mt-1.5 ml-6 flex items-center gap-1">
+            <p className="text-xs text-teal-600 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 mt-1.5 ml-6 flex items-center gap-1">
               <Check size={12} /> 已确认 {videoPlanLinks} 条视频关联，开始扫描后将一并写入
             </p>
           )}
@@ -709,7 +709,7 @@ export default function PdfScanImport() {
             </span>
             <button
               onClick={handleCopyPreview}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-teal-600 transition px-2 py-1 rounded hover:bg-muted"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-teal-600 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 transition px-2 py-1 rounded hover:bg-muted"
               title="复制结果"
             >
               {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
@@ -734,7 +734,7 @@ export default function PdfScanImport() {
                       {f.renamed && f.rawFileName ? (
                         <span className="flex items-center gap-1 min-w-0">
                           <span className="truncate text-muted-foreground line-through">{f.rawFileName.replace(/\.pdf$/i, '')}</span>
-                          <span className="text-teal-600 flex-shrink-0">→</span>
+                          <span className="text-teal-600 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 flex-shrink-0">→</span>
                           <span className="truncate">{f.fileName.replace(/\.pdf$/i, '')}</span>
                         </span>
                       ) : (
@@ -746,7 +746,7 @@ export default function PdfScanImport() {
                       {f.grade ? <span className="text-primary">{f.grade}</span> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-1.5">
-                      {f.subject ? <span className="text-green-600">{f.subject}</span> : <span className="text-muted-foreground">—</span>}
+                      {f.subject ? <span className="text-green-600 dark:text-green-400 dark:text-green-400">{f.subject}</span> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-1.5 text-foreground">{f.category}</td>
                   </tr>
@@ -856,8 +856,8 @@ export default function PdfScanImport() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowConfirm(false)}>
           <div className="bg-background rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <AlertTriangle size={20} className="text-amber-600" />
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950/60 dark:border dark:border-amber-800 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} className="text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-1">确认开始扫描</h3>
@@ -866,12 +866,12 @@ export default function PdfScanImport() {
                 </p>
                 <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
                   <p>DPI: <span className="text-foreground">{dpi}</span> | 并发: <span className="text-foreground">{concurrency}</span></p>
-                  <p>入库模式: <span className={importToDb ? 'text-green-600' : 'text-amber-600'}>{importToDb ? '写入数据库' : '仅渲染图片（不入库）'}</span></p>
+                  <p>入库模式: <span className={importToDb ? 'text-green-600 dark:text-green-400 dark:text-green-400' : 'text-amber-600 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400 dark:text-amber-400'}>{importToDb ? '写入数据库' : '仅渲染图片（不入库）'}</span></p>
                   {grade && <p>学期: <span className="text-foreground">{grade}</span></p>}
                   {subject && <p>科目: <span className="text-foreground">{subject}</span></p>}
                   {category && <p>分类: <span className="text-foreground">{category}</span></p>}
                   {videoPlanId && (
-                    <p>视频关联: <span className="text-teal-600">{videoPlanLinks} 条（仅记录路径，不复制文件）</span></p>
+                    <p>视频关联: <span className="text-teal-600 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400 dark:text-teal-400">{videoPlanLinks} 条（仅记录路径，不复制文件）</span></p>
                   )}
                 </div>
               </div>

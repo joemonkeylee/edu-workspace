@@ -360,7 +360,7 @@ export default function BooksTable() {
                   event.stopPropagation();
                   toggleIgnoreTocNode(currentPath);
                 }}
-                className={`p-1 rounded ${node.ignored ? 'text-amber-600 hover:bg-amber-50' : 'text-muted-foreground hover:bg-muted'}`}
+                className={`p-1 rounded ${node.ignored ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800' : 'text-muted-foreground hover:bg-muted'}`}
                 title={node.ignored ? '显示页面' : '隐藏页面'}
               >
                 {node.ignored ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -579,14 +579,14 @@ export default function BooksTable() {
                       <div className="space-y-1">
                         <span className="truncate block" title={book.title}>{book.title}</span>
                         <div className="flex flex-wrap gap-1 text-[11px]">
-                          {book.subject && <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border dark:border-emerald-800 rounded px-1.5 py-0.5">{book.subject}</span>}
+                          {book.subject && <span className="bg-emerald-50 dark:bg-emerald-950/50 dark:border dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border dark:border-emerald-800 rounded px-1.5 py-0.5">{book.subject}</span>}
                           {book.grade && <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5">{book.grade}</span>}
-                          {book.category && <span className="bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400 dark:border dark:border-violet-800 rounded px-1.5 py-0.5">{book.category}</span>}
+                          {book.category && <span className="bg-violet-50 dark:bg-violet-950/50 dark:border dark:border-violet-800 text-violet-600 dark:text-violet-400 dark:bg-violet-950/50 dark:text-violet-400 dark:border dark:border-violet-800 rounded px-1.5 py-0.5">{book.category}</span>}
                           {(() => {
                             const pair = (book.attributes as any)?.pair;
                             if (!pair || !pair.with) return null;
                             if (pair.role === 'textbook') return <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5" title={`教材 → 答案 #${pair.with}`}>教材</span>;
-                            if (pair.role === 'answer') return <span className="bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400 dark:border dark:border-teal-800 rounded px-1.5 py-0.5" title={`答案 ← 教材 #${pair.with}`}>答案</span>;
+                            if (pair.role === 'answer') return <span className="bg-teal-50 dark:bg-teal-950/50 dark:border dark:border-teal-800 text-teal-600 dark:text-teal-400 dark:bg-teal-950/50 dark:text-teal-400 dark:border dark:border-teal-800 rounded px-1.5 py-0.5" title={`答案 ← 教材 #${pair.with}`}>答案</span>;
                             return null;
                           })()}
                         </div>
@@ -610,7 +610,7 @@ export default function BooksTable() {
                   <td className="px-4 py-3 text-foreground/70">{book.coverPage || 1}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {book.batchId ? (
-                      <span className="inline-block px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-xs font-mono">{book.batchId}</span>
+                      <span className="inline-block px-1.5 py-0.5 bg-purple-50 dark:bg-purple-950/50 dark:border dark:border-purple-800 text-purple-600 dark:text-purple-400 rounded text-xs font-mono">{book.batchId}</span>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
@@ -707,7 +707,7 @@ export default function BooksTable() {
             </div>
 
             <div className="p-4">
-              <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+              <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
                 提示：拖拽节点可调整目录顺序，右侧按钮可预览页面或忽略当前目录项。
               </div>
 

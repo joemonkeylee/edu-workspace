@@ -406,7 +406,7 @@ export default function DbBackup() {
             </div>
 
             {config.hasEnvFallback && config.connections.length === 0 && (
-              <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
+              <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
                 当前未添加任何连接,备份/还原将使用 <code className="text-amber-800">DATABASE_URL</code> 环境变量作为默认连接。建议添加显式连接配置以便管理多个 MySQL 实例。
               </div>
             )}
@@ -437,7 +437,7 @@ export default function DbBackup() {
                   </div>
                   <div className="flex items-center gap-1">
                     {config.defaultConnectionId !== c.id && (
-                      <button onClick={() => handleSetDefault(c.id)} className="p-1.5 rounded text-muted-foreground hover:bg-amber-50 hover:text-amber-600" title="设为默认">
+                      <button onClick={() => handleSetDefault(c.id)} className="p-1.5 rounded text-muted-foreground hover:bg-amber-50 dark:bg-amber-950/50 dark:border dark:border-amber-800 dark:bg-amber-950/50 dark:border dark:border-amber-800 hover:text-amber-600 dark:text-amber-400" title="设为默认">
                         <Star size={16} />
                       </button>
                     )}
