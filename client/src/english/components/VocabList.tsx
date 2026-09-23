@@ -34,8 +34,8 @@ export default function VocabList({ words, toggle }: VocabListProps) {
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground" role="list" aria-label="生词表">
-      <div className="flex items-center justify-between border-b border-sidebar-border px-3 py-2.5">
-        <h3 className="text-sm font-semibold">生词表</h3>
+      <div className="flex h-12 items-center justify-between border-b border-sidebar-border px-3">
+        <h3 className="text-sm font-normal">生词表</h3>
         <button
           type="button"
           aria-label="返回课程列表"
@@ -71,7 +71,7 @@ export default function VocabList({ words, toggle }: VocabListProps) {
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-baseline gap-2 min-w-0">
-                  <span className="text-sm font-semibold text-foreground truncate">{wordObj.word || ''}</span>
+                  <span className="text-sm font-normal text-foreground truncate">{wordObj.word || ''}</span>
                   {wordObj.phonetic && (
                     <span className="text-xs italic text-muted-foreground shrink-0">{wordObj.phonetic}</span>
                   )}

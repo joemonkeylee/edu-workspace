@@ -24,7 +24,7 @@ export default function BookSelector({ books, currentBookIdx, setCurrentBookIdx,
     <div className={bare ? '' : 'border-b border-sidebar-border px-3 py-2.5'}>
       <div className="relative">
         <select
-          className="w-full appearance-none truncate rounded-md border border-border bg-background py-2 pl-3 pr-7 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+          className="w-full appearance-none truncate rounded-md border border-border bg-background py-2 pl-3 pr-7 text-sm font-normal text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
           value={currentBookIdx}
           onChange={(e) => {
             setCurrentBookIdx(Number(e.target.value))

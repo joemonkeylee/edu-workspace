@@ -31,7 +31,7 @@ export default function SubtitleControls({
   const segGroup = 'flex items-center rounded-md border border-border bg-muted p-0.5'
   const segBtn = (active: boolean) =>
     cn(
-      'h-7 px-2.5 text-xs font-medium rounded-sm transition-all',
+      'h-7 px-2.5 text-xs font-normal rounded-sm transition-all',
       active
         ? 'bg-background text-foreground shadow-sm'
         : 'text-muted-foreground hover:text-foreground hover:bg-background/50',
@@ -68,7 +68,7 @@ export default function SubtitleControls({
           <select
             value={playbackRate.toFixed(2)}
             onChange={(e) => onChangePlaybackRate(Number(e.target.value))}
-            className="h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="h-7 rounded-md border border-border bg-background px-2 text-xs font-normal text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             aria-label="倍速"
           >
             {presetRates.map(r => (

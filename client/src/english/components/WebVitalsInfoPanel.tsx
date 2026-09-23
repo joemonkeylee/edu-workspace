@@ -46,13 +46,13 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="px-2 py-2 text-left font-semibold text-foreground">指标</th>
-                  <th className="px-2 py-2 text-left font-semibold text-foreground">含义</th>
-                  <th className="px-2 py-2 text-left font-semibold text-foreground">理想值</th>
-                  <th className="px-2 py-2 text-left font-semibold text-foreground">体验影响</th>
-                  <th className="px-2 py-2 text-left font-semibold text-foreground">改进</th>
-                  <th className="px-2 py-2 text-left font-semibold text-foreground">参考</th>
-                  <th className="px-2 py-2 text-left font-semibold text-foreground">详情</th>
+                  <th className="px-2 py-2 text-left font-normal text-foreground">指标</th>
+                  <th className="px-2 py-2 text-left font-normal text-foreground">含义</th>
+                  <th className="px-2 py-2 text-left font-normal text-foreground">理想值</th>
+                  <th className="px-2 py-2 text-left font-normal text-foreground">体验影响</th>
+                  <th className="px-2 py-2 text-left font-normal text-foreground">改进</th>
+                  <th className="px-2 py-2 text-left font-normal text-foreground">参考</th>
+                  <th className="px-2 py-2 text-left font-normal text-foreground">详情</th>
                 </tr>
               </thead>
               <tbody>
@@ -68,7 +68,7 @@ export default function WebVitalsInfoPanel({ vitals }: WebVitalsInfoPanelProps) 
                   }) => (
                     <Fragment key={name}>
                       <tr className="border-b border-border/50 hover:bg-muted/50">
-                        <td className="px-2 py-2 font-bold text-foreground">{name}</td>
+                        <td className="px-2 py-2 font-normal text-foreground">{name}</td>
                         <td className="px-2 py-2 text-muted-foreground">{meaning}</td>
                         <td className="px-2 py-2 text-muted-foreground">{idealRange}</td>
                         <td className="px-2 py-2 text-muted-foreground">{userImpact}</td>

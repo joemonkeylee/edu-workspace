@@ -138,7 +138,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
       className={cn(
         'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition',
         category === key
-          ? 'bg-primary/10 font-medium text-primary'
+          ? 'bg-primary/10 font-normal text-primary'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
       )}
     >
@@ -194,7 +194,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
       {/* 右侧系列区 */}
       <section className="min-w-0 flex-1">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <h2 className="text-sm font-medium">{categoryLabel}</h2>
+          <h2 className="text-sm font-normal">{categoryLabel}</h2>
           <span className="text-xs text-muted-foreground">
             {visibleSeries.length} 个系列 · {visibleSeries.reduce((a, s) => a + s.members.length, 0)} 套
           </span>
@@ -230,7 +230,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                 >
                   {/* 标题行 */}
                   <div className="flex items-baseline gap-2">
-                    <h3 className="min-w-0 flex-1 truncate text-sm font-medium" title={s.name}>{s.name}</h3>
+                    <h3 className="min-w-0 flex-1 truncate text-sm font-normal" title={s.name}>{s.name}</h3>
                     <span className="flex-shrink-0 text-[11px] tabular-nums text-muted-foreground">
                       {single ? `${s.total} 课` : `${s.members.length} 套 · ${s.total} 课`}
                     </span>
@@ -239,7 +239,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                   {/* 分类标签行：与子项分区独立 */}
                   {s.tag && (
                     <div className="mt-1.5">
-                      <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', getTagColor(s.tag))}>
+                      <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-normal', getTagColor(s.tag))}>
                         {s.tag}
                       </span>
                     </div>
@@ -263,7 +263,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                       <button
                         type="button"
                         onClick={() => onSelect(s.members[0].idx)}
-                        className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:opacity-90"
+                        className="rounded-md bg-primary px-3 py-1.5 text-xs font-normal text-primary-foreground transition hover:opacity-90"
                       >
                         {learnedLessons(progress[s.members[0].book.id]) > 0
                           ? `继续 第 ${learnedLessons(progress[s.members[0].book.id])} 课`

@@ -43,9 +43,11 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
   const renderSentenceText = (sentence: SentenceItem) => {
     if (!sentence) return null
     // 英文 14px 中文 12px,都不加粗,紧凑行高
+    // 两行紧贴：父容器是 flex column，英文 / 中文各占一个 item 自然换行
+    // （不要在中间放 <br />，它会被当成 flex item 撑开一行 height）
     const commonStyle = { lineHeight: '1.2', display: 'inline-block' as const, fontSize: '14px' }
     const enStyle = commonStyle
-    const zhStyle = { ...commonStyle, fontSize: '12px', marginTop: '-3px' }
+    const zhStyle = { ...commonStyle, fontSize: '12px', marginTop: '0px' }
     const renderEn = () => {
       const wordsArr = sentence.Sentence ? sentence.Sentence.split(' ') : []
       return (
@@ -73,7 +75,6 @@ const SentenceList = forwardRef<HTMLDivElement, Props>(({
         return (
           <>
             {renderEn()}
-            <br />
             <span className="font-normal text-muted-foreground" style={zhStyle}>{sentence.Trans || '(No translation)'}</span>
           </>
         )

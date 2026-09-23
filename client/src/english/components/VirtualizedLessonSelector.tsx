@@ -27,7 +27,8 @@ interface Props {
   onShowVocabChange: (show: boolean) => void
 }
 
-const ITEM_HEIGHT = 64
+/** 与侧栏顶行（教材下拉）、生词表标题行统一为 48px */
+const ITEM_HEIGHT = 48
 const LAST_ITEM_MARGIN = 8
 const SCROLL_THRESHOLD = 16
 
@@ -143,7 +144,7 @@ export default function VirtualizedLessonSelector({
                 {/* 序号 / 播放状态 */}
                 <div
                   className={cn(
-                    'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-medium tabular-nums',
+                    'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-normal tabular-nums',
                     isActive
                       ? 'bg-primary text-primary-foreground'
                       : isPlayed
@@ -157,7 +158,7 @@ export default function VirtualizedLessonSelector({
                 {/* 主信息 */}
                 <div className="flex min-w-0 flex-1 flex-col justify-center">
                   <div className={cn(
-                    'truncate text-[13px] font-medium leading-tight',
+                    'truncate text-[13px] font-normal leading-tight',
                     isActive ? 'text-foreground' : 'text-sidebar-foreground',
                   )}>
                     {lesson.title}

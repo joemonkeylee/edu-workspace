@@ -51,9 +51,9 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
             <BookOpen size={22} />
-            <span className="text-lg font-bold">English</span>
+            <span className="text-lg font-normal">English</span>
           </Link>
-          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${APP_ENV_CLASS}`}>
+          <span className={`rounded px-1.5 py-0.5 text-[10px] font-normal tracking-wide ${APP_ENV_CLASS}`}>
             {APP_ENV}
           </span>
           {APP_ENV === 'TEST' && APP_COMMIT && (

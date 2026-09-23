@@ -144,7 +144,7 @@ function LearningView() {
   const errorBlock = (message: string) => (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
       <p className="m-0 text-base text-muted-foreground">{message}</p>
-      <button type="button" className="px-6 py-2 text-sm text-primary-foreground bg-primary rounded font-medium hover:opacity-85 transition" onClick={handleRetry}>重试</button>
+      <button type="button" className="px-6 py-2 text-sm text-primary-foreground bg-primary rounded font-normal hover:opacity-85 transition" onClick={handleRetry}>重试</button>
     </div>
   )
 

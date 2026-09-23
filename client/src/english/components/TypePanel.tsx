@@ -205,7 +205,7 @@ export default function TypePanel({
               </span>
               {label}
               <span
-                className={cn('ml-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-border text-[11px] font-bold text-muted-foreground cursor-help shrink-0 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary')}
+                className={cn('ml-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-border text-[11px] font-normal text-muted-foreground cursor-help shrink-0 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary')}
                 data-tip={tip}
                 onClick={(e) => { e.stopPropagation(); setOpenHelp(openHelp === key ? null : key) }}
                 onMouseEnter={() => setOpenHelp(key)}
@@ -241,14 +241,14 @@ export default function TypePanel({
         />
         {currentResult && (
           <div className={cn('mt-2.5 rounded border p-2.5 px-4 text-[15px] leading-relaxed', currentResult.passed ? 'border-green-500' : 'border-red-500')}>
-            <div className="text-[13px] font-semibold mb-1.5 text-foreground">
+            <div className="text-[13px] font-normal mb-1.5 text-foreground">
               {currentResult.passed ? `✅ Passed ${currentResult.correctCount}/${currentResult.totalWords} — Cmd+Enter 下一句` : `❌ ${currentResult.correctCount}/${currentResult.totalWords} 正确 — 修改后 Enter 重新判卷`}
             </div>
             {showCompare && (
-              <div className="flex flex-wrap gap-1 gap-x-2">
+              <div className="flex flex-wrap gap-0.5">
                 {currentResult.diff.map((d, idx) => {
                   if (d.status === 'correct') return <span key={idx} className="text-green-500">{d.typed}</span>
-                  if (d.status === 'wrong') return <span key={idx} className="text-red-500"><del>{d.typed}</del> <em className="not-italic font-semibold text-green-500">{d.expected}</em></span>
+                  if (d.status === 'wrong') return <span key={idx} className="text-red-500"><del>{d.typed}</del><em className="not-italic font-normal text-green-500">{d.expected}</em></span>
                   if (d.status === 'missing') return <span key={idx} className="text-muted-foreground underline decoration-dashed underline-offset-4">{d.expected}</span>
                   return <span key={idx} className="text-red-500/75"><del>{d.typed}</del></span>
                 })}
@@ -261,18 +261,18 @@ export default function TypePanel({
 
       <div className="flex items-center justify-between gap-3 flex-nowrap mb-1">
         <div className="flex gap-3 shrink-0">
-          <button type="button" className="min-w-[72px] rounded border border-border bg-transparent px-3.5 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors" onClick={() => onPrev?.()} disabled={currentIndex <= 0}>Prev</button>
-          <button type="button" className="min-w-[72px] rounded border border-primary bg-primary px-3.5 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/80 transition-colors" onClick={() => onPlay?.()}>Play</button>
-          <button type="button" className="min-w-[72px] rounded border border-border bg-transparent px-3.5 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors" onClick={() => onNext?.()} disabled={currentIndex >= totalCount - 1}>Next</button>
+          <button type="button" className="min-w-[72px] rounded border border-border bg-transparent px-3.5 py-1.5 text-sm font-normal text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors" onClick={() => onPrev?.()} disabled={currentIndex <= 0}>Prev</button>
+          <button type="button" className="min-w-[72px] rounded border border-primary bg-primary px-3.5 py-1.5 text-sm font-normal text-primary-foreground hover:bg-primary/80 transition-colors" onClick={() => onPlay?.()}>Play</button>
+          <button type="button" className="min-w-[72px] rounded border border-border bg-transparent px-3.5 py-1.5 text-sm font-normal text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors" onClick={() => onNext?.()} disabled={currentIndex >= totalCount - 1}>Next</button>
         </div>
         <div className="flex flex-1 flex-col items-center gap-1 min-w-[160px]">
-          <div className="text-base font-semibold text-foreground">{lessonName}</div>
+          <div className="text-base font-normal text-foreground">{lessonName}</div>
           <progress className="w-4/5 h-2 rounded overflow-hidden appearance-none bg-secondary [&::-webkit-progress-bar]:rounded [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:rounded [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary" value={submittedCount} max={totalCount} aria-label="progress bar" />
           <div className="text-sm text-foreground">{`${currentIndex + 1} / ${totalCount} · 已提交 ${submittedCount}`}</div>
         </div>
         <div className="flex gap-3 shrink-0">
-          <button type="button" className="min-w-[72px] rounded border border-border bg-transparent px-3.5 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors" onClick={handleRedo}>Redo</button>
-          <button type="button" className="min-w-[72px] rounded border border-primary bg-primary px-3.5 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/80 transition-colors" onClick={handleSubmit}>Submit</button>
+          <button type="button" className="min-w-[72px] rounded border border-border bg-transparent px-3.5 py-1.5 text-sm font-normal text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors" onClick={handleRedo}>Redo</button>
+          <button type="button" className="min-w-[72px] rounded border border-primary bg-primary px-3.5 py-1.5 text-sm font-normal text-primary-foreground hover:bg-primary/80 transition-colors" onClick={handleSubmit}>Submit</button>
         </div>
       </div>
       <div className={cn('text-center text-[11px] text-muted-foreground py-1 opacity-70 transition-opacity', isFocus && 'opacity-25')}>

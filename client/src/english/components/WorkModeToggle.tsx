@@ -10,7 +10,7 @@ interface Props {
 export default function WorkModeToggle({ workMode, onChangeWorkMode }: Props) {
   const segBtn = (active: boolean) =>
     cn(
-      'h-7 px-2.5 text-xs font-medium rounded-sm transition-all',
+      'h-7 px-2.5 text-xs font-normal rounded-sm transition-all',
       active
         ? 'bg-background text-foreground shadow-sm'
         : 'text-muted-foreground hover:text-foreground hover:bg-background/50',

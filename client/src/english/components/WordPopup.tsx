@@ -19,7 +19,7 @@ export default function WordPopup({ word, loading = false, miss = null, error = 
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent className="max-w-[40%]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-primary">{heading}</DialogTitle>
+          <DialogTitle className="text-2xl font-normal text-primary">{heading}</DialogTitle>
           {error ? (
             <DialogDescription>词典加载失败，请检查网络后再试</DialogDescription>
           ) : !loading && (us || uk) ? (
