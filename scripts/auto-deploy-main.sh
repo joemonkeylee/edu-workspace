@@ -1,6 +1,14 @@
 #!/bin/zsh
 set -euo pipefail
 
+# --force / --yes: skip the interactive "not on main" confirmation and deploy anyway.
+DEPLOY_FORCE=0
+for arg in "$@"; do
+  case "$arg" in
+    --force|--yes|-f|-y) DEPLOY_FORCE=1 ;;
+  esac
+done
+
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK_DIR="/tmp/edu-workspace-auto-deploy.lock"
 PID_FILE="$LOCK_DIR/pid"
@@ -63,15 +71,30 @@ fail() {
 
 cd "$ROOT_DIR"
 
-if [[ "$(git branch --show-current)" != "main" ]]; then
-  info "Skipped: current branch is not main"
-  exit 0
+CURRENT_BRANCH="$(git branch --show-current)"
+DEPLOY_BRANCH="$CURRENT_BRANCH"
+
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+  if [[ "$DEPLOY_FORCE" == "1" ]]; then
+    info "Current branch is '$CURRENT_BRANCH' (not main); --force set, will deploy this branch."
+  elif [[ -t 0 ]]; then
+    print -r -- "[deploy] [警告] 当前分支不是 main（而是 '$CURRENT_BRANCH'）。"
+    print -rn -- "[deploy] 仍要发布该分支吗？[y/N] "
+    read -r ans || ans=""
+    case "$ans" in
+      y|Y|yes|YES|是) info "Proceeding to deploy branch '$CURRENT_BRANCH'." ;;
+      *) info "Skipped: 用户取消发布非 main 分支。"; exit 0 ;;
+    esac
+  else
+    info "Skipped: current branch is not main and no interactive TTY to confirm."
+    exit 0
+  fi
 fi
 
-info "Checking origin/main..."
-git fetch origin main >> "$LOG_FILE" 2>&1 || fail "Unable to fetch origin/main"
-LOCAL_COMMIT="$(git rev-parse main)"
-REMOTE_COMMIT="$(git rev-parse origin/main)"
+info "Checking origin/$DEPLOY_BRANCH..."
+git fetch origin "$DEPLOY_BRANCH" >> "$LOG_FILE" 2>&1 || fail "Unable to fetch origin/$DEPLOY_BRANCH"
+LOCAL_COMMIT="$(git rev-parse "$DEPLOY_BRANCH")"
+REMOTE_COMMIT="$(git rev-parse "origin/$DEPLOY_BRANCH")"
 BUILT_COMMIT="$(cat client/dist/build-commit.txt 2>/dev/null || true)"
 NEEDS_BUILD=false
 if [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]]; then
@@ -85,14 +108,14 @@ else
 fi
 
 if ! git merge-base --is-ancestor "$LOCAL_COMMIT" "$REMOTE_COMMIT"; then
-  info "Skipped: local main is ahead of or diverged from origin/main"
+  info "Skipped: local $DEPLOY_BRANCH is ahead of or diverged from origin/$DEPLOY_BRANCH"
   exit 0
 fi
 
 if [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]]; then
   info "New commit found: ${LOCAL_COMMIT:0:8} -> ${REMOTE_COMMIT:0:8}"
-  info "Pulling main (local changes will be auto-stashed and restored)..."
-  git pull --ff-only --autostash origin main >> "$LOG_FILE" 2>&1 || fail "Git pull failed"
+  info "Pulling $DEPLOY_BRANCH (local changes will be auto-stashed and restored)..."
+  git pull --ff-only --autostash origin "$DEPLOY_BRANCH" >> "$LOG_FILE" 2>&1 || fail "Git pull failed"
 fi
 # `npm install` is idempotent and cheap when nothing changed, so it is safe to run
 # on every deploy: without it, a commit that only adds a dependency to

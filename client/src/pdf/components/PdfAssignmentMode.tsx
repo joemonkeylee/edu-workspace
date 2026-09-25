@@ -159,18 +159,20 @@ export default function PdfAssignmentMode({
   }, [ratio]);
 
   // ── 画布尺寸（适页 / 适宽） ──────────────────────────────
+  // 与图片版 AssignmentMode 一致：canvasSize 始终是页面「未旋转」朝向的尺寸，
+  // 旋转由内层 CSS rotate 处理；套裁时把旋转后的显示宽高(交换)塞进容器即可。
   const calcSize = useCallback(() => {
     const el = containerRef.current;
     if (!el || !ratio) return;
     const cw = el.clientWidth - 32;
     const ch = el.clientHeight - 32;
-    const isRotated = ((rotation % 360) + 360) % 360 === 90 || ((rotation % 360) + 360) % 360 === 270;
-    const rw = isRotated ? ratio : 1;
-    const rh = isRotated ? 1 : ratio;
-    const widthZoom = cw / rw;
-    const heightZoom = ch / rh;
+    const isRot = ((rotation % 360) + 360) % 360 === 90 || ((rotation % 360) + 360) % 360 === 270;
+    const natW = isRot ? ratio : 1; // 旋转后用于套裁的显示宽高 = 自然页交换
+    const natH = isRot ? 1 : ratio;
+    const widthZoom = cw / natW;
+    const heightZoom = ch / natH;
     const zoom = fitMode === 'width' ? widthZoom : Math.min(widthZoom, heightZoom);
-    setCanvasSize({ w: Math.max(1, Math.round(rw * zoom)), h: Math.max(1, Math.round(rh * zoom)) });
+    setCanvasSize({ w: Math.max(1, Math.round(zoom)), h: Math.max(1, Math.round(ratio * zoom)) });
   }, [ratio, rotation, fitMode]);
 
   useEffect(() => { calcSize(); }, [calcSize]);
@@ -731,28 +733,36 @@ export default function PdfAssignmentMode({
         >
           {canvasSize.w > 0 && canvasSize.h > 0 && (
             <div
-              className="relative"
+              className="flex items-center justify-center"
               style={{
-                width: canvasSize.w,
-                height: canvasSize.h,
-                transform: `translate(${panOffset.x}px, ${panOffset.y}px) rotate(${rotation}deg) scale(${gestureScale})`,
-                transformOrigin: 'center center',
+                width: isRotated ? `${canvasSize.h}px` : `${canvasSize.w}px`,
+                height: isRotated ? `${canvasSize.w}px` : `${canvasSize.h}px`,
               }}
             >
-              <PageLayerUnderlay doc={doc} pageNumber={currentPage} width={canvasSize.w} height={canvasSize.h} />
-              <DrawingCanvas
-                ref={canvasRef}
-                width={canvasSize.w}
-                height={canvasSize.h}
-                rotation={rotation}
-                strokes={strokes}
-                layer={layer}
-                readOnly={readOnly}
-                tool={tool}
-                color={color}
-                penWidth={penWidth}
-                onStrokesChange={handleStrokesChange}
-              />
+              <div
+                className="relative"
+                style={{
+                  width: canvasSize.w,
+                  height: canvasSize.h,
+                  transform: `translate(${panOffset.x}px, ${panOffset.y}px) rotate(${rotation}deg) scale(${gestureScale})`,
+                  transformOrigin: 'center center',
+                }}
+              >
+                <PageLayerUnderlay doc={doc} pageNumber={currentPage} width={canvasSize.w} height={canvasSize.h} />
+                <DrawingCanvas
+                  ref={canvasRef}
+                  width={canvasSize.w}
+                  height={canvasSize.h}
+                  rotation={rotation}
+                  strokes={strokes}
+                  layer={layer}
+                  readOnly={readOnly}
+                  tool={tool}
+                  color={color}
+                  penWidth={penWidth}
+                  onStrokesChange={handleStrokesChange}
+                />
+              </div>
             </div>
           )}
         </div>
