@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { GraduationCap } from 'lucide-react';
-import AppHeaderRight from '@/components/AppHeaderRight';
+import AppHeaderRight from "@/components/AppHeaderRight";
+import EnvBadge from "@/components/EnvBadge";
 
 export default function Landing() {
   return (
@@ -11,6 +12,7 @@ export default function Landing() {
             <GraduationCap size={22} />
             <span className="text-lg font-normal">edu-workspace</span>
           </Link>
+          <EnvBadge />
         </div>
         <AppHeaderRight />
       </header>

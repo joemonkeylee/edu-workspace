@@ -17,7 +17,8 @@ import { GraduationCap, BookOpen, Settings, ChevronLeft, ChevronRight, X, Trash2
 import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import ResourceKindMenu from '../components/ResourceKindMenu';
-import AppHeaderRight from '@/components/AppHeaderRight';
+import AppHeaderRight from "@/components/AppHeaderRight";
+import EnvBadge from "@/components/EnvBadge";
 import { updateBook, deleteBook } from '../api/client';
 
 const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
@@ -688,6 +689,7 @@ export default function Home() {
           </Link>
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
           <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
+          <EnvBadge />
         </div>
         <AppHeaderRight />
       </header>

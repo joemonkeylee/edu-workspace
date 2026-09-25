@@ -12,7 +12,8 @@ import {
 } from '../store/pdfHomeFilters';
 import PdfBookCover from '../components/PdfBookCover';
 import PdfResourceKindMenu from '../components/PdfResourceKindMenu';
-import AppHeaderRight from '@/components/AppHeaderRight';
+import AppHeaderRight from "@/components/AppHeaderRight";
+import EnvBadge from "@/components/EnvBadge";
 import {
   GraduationCap, ChevronLeft, ChevronRight, X, Trash2, RotateCcw, RefreshCw,
   Search, ArrowUp, ArrowDown, Minus, GripVertical, LayoutGrid, List, Star,
@@ -672,6 +673,7 @@ export default function PdfHome() {
           </Link>
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
           <PdfResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
+          <EnvBadge />
         </div>
         <AppHeaderRight />
       </header>
