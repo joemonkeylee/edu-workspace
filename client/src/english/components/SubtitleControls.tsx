@@ -42,7 +42,7 @@ export default function SubtitleControls({
     { value: SubtitleModes.BLIND_HINT, label: 'Hint', title: '提示模式：首字母提示' },
     { value: SubtitleModes.CHINESE, label: '中', title: '仅中文字幕' },
     { value: SubtitleModes.ENGLISH, label: '英', title: '仅英文字幕' },
-    { value: SubtitleModes.FULL, label: '双语', title: '双语字幕' },
+    { value: SubtitleModes.FULL, label: '双', title: '双语字幕' },
   ]
 
   return (

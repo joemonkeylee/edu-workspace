@@ -184,19 +184,19 @@ export default function VirtualizedLessonSelector({
                   <CopyTextButton
                     onClick={(e) => { e.stopPropagation(); copyToClipboard(lesson.text + '\n' + lesson.trans, 'bi', realIdx) }}
                     title="复制双语"
-                    label="Bi"
+                    label="双"
                     active={copyActiveIndex.bi === realIdx}
                   />
                   <CopyTextButton
                     onClick={(e) => { e.stopPropagation(); copyToClipboard(lesson.text, 'en', realIdx) }}
                     title="复制英文"
-                    label="En"
+                    label="英"
                     active={copyActiveIndex.en === realIdx}
                   />
                   <CopyTextButton
                     onClick={(e) => { e.stopPropagation(); copyToClipboard(lesson.trans, 'zh', realIdx) }}
                     title="复制中文"
-                    label="Zh"
+                    label="中"
                     active={copyActiveIndex.zh === realIdx}
                   />
                   {hasNewWords && (
