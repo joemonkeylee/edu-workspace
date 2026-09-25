@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Keyboard,
+  Library,
   Play,
   Settings2,
   SkipForward,
@@ -24,7 +25,7 @@ import WordDisplay from './components/WordDisplay';
 import StatsBar from './components/StatsBar';
 import ChapterResult from './components/ChapterResult';
 import SettingsPanel from './components/SettingsPanel';
-import DictPicker from './components/DictPicker';
+import DictPanel from './components/DictPanel';
 import StatsView from './components/stats/StatsView';
 
 const LAST_DICT_KEY = 'typing-last-dict';
@@ -300,86 +301,101 @@ export default function TypingHome() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      {/* 工具栏 */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <DictPicker value={dictId} onChange={handleSelectDict} />
+      {/* 工具栏：视图切换在最左，章节导航居中，面板开关靠右 */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* 练习 / 统计 视图切换 */}
+        <div className="flex items-center rounded-lg border border-border p-0.5">
+          {(
+            [
+              ['practice', '练习', <Keyboard key="i" size={14} />],
+              ['stats', '统计', <BarChart3 key="i" size={14} />],
+            ] as const
+          ).map(([v, label, icon]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              aria-pressed={view === v}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors',
+                view === v
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
 
-          {isReview ? (
-            <Button variant="outline" size="sm" onClick={exitReview}>
-              退出错词复习
+        {/* 章节导航与错词复习只在练习视图下有意义 */}
+        {view === 'practice' && (
+          <div className="flex flex-wrap items-center gap-2">
+            {isReview ? (
+              <Button variant="outline" size="sm" onClick={exitReview}>
+                退出错词复习
+              </Button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  disabled={chapter === 0}
+                  onClick={() => setChapter((c) => Math.max(0, c - 1))}
+                  title="上一章"
+                >
+                  <ChevronLeft size={16} />
+                </Button>
+                <span className="min-w-[5.5rem] text-center text-sm tabular-nums text-muted-foreground">
+                  第 {chapter + 1} / {totalChapters} 章
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  disabled={chapter + 1 >= totalChapters}
+                  onClick={handleNextChapter}
+                  title="下一章"
+                >
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            )}
+
+            <Button variant="outline" size="sm" onClick={handleStartReview}>
+              <Sparkles size={15} className="mr-1.5" />
+              错词复习
             </Button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                disabled={chapter === 0}
-                onClick={() => setChapter((c) => Math.max(0, c - 1))}
-                title="上一章"
-              >
-                <ChevronLeft size={16} />
-              </Button>
-              <span className="min-w-[5.5rem] text-center text-sm tabular-nums text-muted-foreground">
-                第 {chapter + 1} / {totalChapters} 章
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                disabled={chapter + 1 >= totalChapters}
-                onClick={handleNextChapter}
-                title="下一章"
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-          )}
-
-          <Button variant="outline" size="sm" onClick={handleStartReview}>
-            <Sparkles size={15} className="mr-1.5" />
-            错词复习
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* 练习 / 统计 视图切换 */}
-          <div className="flex items-center rounded-lg border border-border p-0.5">
-            {(
-              [
-                ['practice', '练习', <Keyboard key="i" size={14} />],
-                ['stats', '统计', <BarChart3 key="i" size={14} />],
-              ] as const
-            ).map(([v, label, icon]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                aria-pressed={view === v}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                  view === v
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {icon}
-                {label}
-              </button>
-            ))}
           </div>
+        )}
 
-          <Button
-            variant={settings.panelOpen ? 'default' : 'outline'}
-            size="sm"
-            aria-pressed={settings.panelOpen}
-            onClick={settings.togglePanel}
-          >
-            <Settings2 size={15} className="mr-1.5" />
-            设置
-          </Button>
-        </div>
+        {/* 两个侧栏只在练习视图存在，统计视图下隐藏开关，避免点了没反应 */}
+        {view === 'practice' && (
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant={settings.dictPanelOpen ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={settings.dictPanelOpen}
+              onClick={settings.toggleDictPanel}
+              title="显示 / 收起词库列表"
+            >
+              <Library size={15} className="mr-1.5 shrink-0" />
+              <span className="max-w-[9rem] truncate">{dict.name}</span>
+            </Button>
+
+            <Button
+              variant={settings.panelOpen ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={settings.panelOpen}
+              onClick={settings.togglePanel}
+            >
+              <Settings2 size={15} className="mr-1.5" />
+              设置
+            </Button>
+          </div>
+        )}
       </div>
 
       {view === 'stats' ? (
@@ -388,8 +404,12 @@ export default function TypingHome() {
         </div>
       ) : (
         <>
-      {/* 练习区 + 设置面板 */}
+      {/* 词库列表 + 练习区 + 设置面板 */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+        {settings.dictPanelOpen && (
+          <DictPanel value={dictId} onChange={handleSelectDict} />
+        )}
+
         <div className="relative flex min-h-[16rem] flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-card px-6">
           {loading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
