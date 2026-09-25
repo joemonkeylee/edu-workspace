@@ -276,6 +276,15 @@ export default function PdfBookViewer() {
     window.addEventListener('mouseup', onResizeEnd);
   }, [onResizeMove, onResizeEnd]);
 
+  // 左侧栏默认窄：固定 LEFT_MIN（w-60 = 240px），与图片版「无视频书」一致。
+  // PDF 模块左侧没有视频 tab，不应像视频书那样把侧栏撑到「整页宽度」。
+  // 标记 initWidthSet 已初始化，阻止下方 calcDisplayWidth 的首屏逻辑把它覆盖成 pageFitWidth。
+  useEffect(() => {
+    initWidthSet.current = true;
+    leftWidthRef.current = LEFT_MIN;
+    setLeftWidth(LEFT_MIN);
+  }, [bookId]);
+
   // ── 缩放 ──────────────────────────────────────────────────
   const calcDisplayWidth = useCallback(() => {
     const el = mainRef.current;
