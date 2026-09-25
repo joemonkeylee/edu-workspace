@@ -8,17 +8,25 @@ import { DEFAULT_TYPING_SETTINGS, type TypingSettings } from './types';
  * 设置项本身与「面板是否展开」都放在 store 里，组件只负责渲染，
  * 不持有任何本地副本 —— 这样面板、快捷键、词表计算看到的值永远一致。
  */
+export const ALL_DICT_TAB = '__all__';
+
 export type TypingSettingsState = TypingSettings & {
   /** 设置面板是否展开。一并持久化，下次进来保持用户习惯 */
   panelOpen: boolean;
   /** 词库列表面板是否展开。默认展开，与设置面板一样是常驻侧栏而非弹窗 */
   dictPanelOpen: boolean;
+  /** 词库面板当前分类 Tab：ALL_DICT_TAB 或某个 DICT_CATEGORIES 值 */
+  dictTab: string;
+  /** 词库面板当前搜索词 */
+  dictKeyword: string;
   /** 合并式更新，只传变化的字段 */
   update: (patch: Partial<TypingSettings>) => void;
   togglePanel: () => void;
   setPanelOpen: (v: boolean) => void;
   toggleDictPanel: () => void;
   setDictPanelOpen: (v: boolean) => void;
+  setDictTab: (v: string) => void;
+  setDictKeyword: (v: string) => void;
   /** 恢复默认（面板展开状态保留，属于界面偏好不算练习设置） */
   reset: () => void;
 };
@@ -42,6 +50,8 @@ const PERSIST_KEYS = [
   'blindMode',
   'panelOpen',
   'dictPanelOpen',
+  'dictTab',
+  'dictKeyword',
 ] as const satisfies readonly (keyof TypingSettingsState)[];
 
 export const useTypingSettings = create<TypingSettingsState>()(
@@ -51,12 +61,16 @@ export const useTypingSettings = create<TypingSettingsState>()(
       panelOpen: false,
       // 词库列表默认展开：它是练习的入口，藏起来反而多一次点击
       dictPanelOpen: true,
+      dictTab: ALL_DICT_TAB,
+      dictKeyword: '',
 
       update: (patch) => set(patch),
       togglePanel: () => set({ panelOpen: !get().panelOpen }),
       setPanelOpen: (v) => set({ panelOpen: v }),
       toggleDictPanel: () => set({ dictPanelOpen: !get().dictPanelOpen }),
       setDictPanelOpen: (v) => set({ dictPanelOpen: v }),
+      setDictTab: (v) => set({ dictTab: v }),
+      setDictKeyword: (v) => set({ dictKeyword: v }),
       reset: () => set({ ...DEFAULT_TYPING_SETTINGS }),
     }),
     {
@@ -80,6 +94,8 @@ export const useTypingSettings = create<TypingSettingsState>()(
         setPanelOpen: current.setPanelOpen,
         toggleDictPanel: current.toggleDictPanel,
         setDictPanelOpen: current.setDictPanelOpen,
+        setDictTab: current.setDictTab,
+        setDictKeyword: current.setDictKeyword,
         reset: current.reset,
       }),
     },

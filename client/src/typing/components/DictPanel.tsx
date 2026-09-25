@@ -1,54 +1,46 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Library, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { DICT_CATEGORIES, DICT_GROUPS, DICTIONARIES, searchDicts } from '../dictionaries';
-import { useTypingSettings } from '../settingsStore';
+import { ALL_DICT_TAB, useTypingSettings } from '../settingsStore';
 
 type Props = {
   value: string;
   onChange: (id: string) => void;
 };
 
-const ALL_TAB = '__all__';
-
 /**
  * 常驻式词库面板：横向分类 Tabs + 扁平词库列表。
  *
- * 只有 6 个分类时，sticky header 分组其实是杀鸡用牛刀 —— 用户的心智模型是
- * 「选一个大类 → 看这个类里的全部词库」，而不是「不停滚动、靠吸顶 header
- * 知道自己在哪个分组」。
- *
- * 搜索开启后强制切回「全部」Tab，搜索结果扁平合并，不再显示分类名（避免
- * 结果被拆得太碎）。
+ * dictTab / dictKeyword / dictPanelOpen 全部进 settingsStore 持久化，
+ * 关掉浏览器再回来还停留在同一个分类、同一个搜索位置。
  */
 export default function DictPanel({ value, onChange }: Props) {
-  const [keyword, setKeyword] = useState('');
+  const { dictTab, dictKeyword, setDictTab, setDictKeyword, setDictPanelOpen } =
+    useTypingSettings();
   const listRef = useRef<HTMLDivElement>(null);
-  const setDictPanelOpen = useTypingSettings((s) => s.setDictPanelOpen);
-  const [tab, setTab] = useState<string>(ALL_TAB);
 
-  const isSearching = keyword.trim().length > 0;
+  const isSearching = dictKeyword.trim().length > 0;
 
-  // 搜索时强制回到「全部」，跨分类搜索
+  // 搜索时强制切回「全部」，跨分类搜索
   useEffect(() => {
-    if (isSearching && tab !== ALL_TAB) setTab(ALL_TAB);
-  }, [isSearching, tab]);
+    if (isSearching && dictTab !== ALL_DICT_TAB) setDictTab(ALL_DICT_TAB);
+  }, [isSearching, dictTab, setDictTab]);
 
   // 按当前 tab 取扁平列表
   const visibleItems = useMemo(() => {
     if (isSearching) {
-      // 搜索结果跨分类扁平合并，按原 DICT_GROUPS 顺序保持
-      const grouped = searchDicts(keyword);
+      const grouped = searchDicts(dictKeyword);
       return grouped.flatMap((g) => g.items);
     }
-    if (tab === ALL_TAB) {
+    if (dictTab === ALL_DICT_TAB) {
       return DICT_GROUPS.flatMap((g) => g.items);
     }
-    const g = DICT_GROUPS.find((x) => x.category === tab);
+    const g = DICT_GROUPS.find((x) => x.category === dictTab);
     return g?.items ?? [];
-  }, [tab, isSearching, keyword]);
+  }, [dictTab, isSearching, dictKeyword]);
 
   // 当前选中词库滚进视野（面板打开时）
   useEffect(() => {
@@ -56,7 +48,6 @@ export default function DictPanel({ value, onChange }: Props) {
     if (!parent) return;
     const el = parent.querySelector<HTMLElement>('[data-selected="true"]');
     if (!el) return;
-    // 只在初始加载时滚一次，用户自己滚动了就不抢
     const p = parent.getBoundingClientRect();
     const e = el.getBoundingClientRect();
     parent.scrollTop += e.top - p.top - (p.height / 2 - e.height / 2);
@@ -90,19 +81,19 @@ export default function DictPanel({ value, onChange }: Props) {
             className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <Input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            value={dictKeyword}
+            onChange={(e) => setDictKeyword(e.target.value)}
             placeholder="搜索词库…"
             className="h-8 pl-8 text-sm"
           />
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
+      <Tabs value={dictTab} onValueChange={setDictTab} className="flex min-h-0 flex-1 flex-col">
         <div className="border-b border-border px-2 pt-2">
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
             <TabsTrigger
-              value={ALL_TAB}
+              value={ALL_DICT_TAB}
               className="h-7 rounded-md bg-transparent px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none"
             >
               全部
@@ -120,11 +111,11 @@ export default function DictPanel({ value, onChange }: Props) {
           </TabsList>
         </div>
 
-        <TabsContent value={tab} className="m-0 flex min-h-0 flex-1 flex-col">
+        <TabsContent value={dictTab} className="m-0 flex min-h-0 flex-1 flex-col">
           <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-2 py-1">
             {visibleItems.length === 0 ? (
               <p className="px-2 py-8 text-center text-sm text-muted-foreground">
-                没有匹配「{keyword}」的词库
+                没有匹配「{dictKeyword}」的词库
               </p>
             ) : (
               <ul className="space-y-0.5">
@@ -139,23 +130,21 @@ export default function DictPanel({ value, onChange }: Props) {
                         onClick={() => onChange(d.id)}
                         title={d.description || d.name}
                         className={cn(
-                          'flex w-full items-start justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors',
+                          'flex w-full items-start justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors',
                           selected
-                            ? 'bg-accent text-accent-foreground'
-                            : 'text-foreground hover:bg-accent/40',
+                            ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         )}
                       >
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium leading-tight">
+                          <span className="block truncate leading-tight">
                             {d.name}
                           </span>
                           {d.description && (
                             <span
                               className={cn(
                                 'mt-0.5 block truncate text-xs leading-relaxed',
-                                selected
-                                  ? 'text-accent-foreground/70'
-                                  : 'text-muted-foreground',
+                                selected ? 'text-primary/70' : 'text-muted-foreground/80',
                               )}
                             >
                               {d.description}
@@ -165,9 +154,7 @@ export default function DictPanel({ value, onChange }: Props) {
                         <span
                           className={cn(
                             'shrink-0 text-xs tabular-nums',
-                            selected
-                              ? 'text-accent-foreground/80'
-                              : 'text-muted-foreground',
+                            selected ? 'text-primary/80' : 'text-muted-foreground',
                           )}
                         >
                           {d.length.toLocaleString()}
@@ -187,13 +174,13 @@ export default function DictPanel({ value, onChange }: Props) {
           <>
             共 {DICTIONARIES.length} 个词库 · 匹配 {visibleItems.length} 个
           </>
-        ) : tab === ALL_TAB ? (
+        ) : dictTab === ALL_DICT_TAB ? (
           <>
             共 {DICTIONARIES.length} 个词库
           </>
         ) : (
           <>
-            {tab} · {visibleItems.length} 个词库
+            {dictTab} · {visibleItems.length} 个词库
           </>
         )}
       </footer>
