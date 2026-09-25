@@ -87,7 +87,8 @@ export default function PdfBookViewer() {
   const gradingEntry = searchParams.get('grading') === '1';
   const role = searchParams.get('role') || '';
   const isTeacher = role === 'teacher' || gradingEntry;
-  const canGrade = isTeacher && (!authEnabled || Boolean(user?.isAdmin || user?.role === 'teacher'));
+  // roles 才是权威来源：user.role 只是 roles[0]，多角色（如 student+teacher）时会漏判
+  const canGrade = isTeacher && (!authEnabled || Boolean(user?.isAdmin || user?.roles?.includes('teacher') || user?.role === 'teacher'));
 
   const [book, setBook] = useState<PdfBookDetail | null>(null);
   const [doc, setDoc] = useState<any>(null);

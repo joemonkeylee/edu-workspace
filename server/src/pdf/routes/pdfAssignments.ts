@@ -76,6 +76,88 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   });
 }));
 
+/**
+ * 跨书的「我的 PDF 作业」列表。
+ * GET / 必须带 bookId，而概览页要的是一个人所有 PDF 书上的作业汇总，
+ * 所以这里补一个不带 bookId 的视图。返回结构刻意与既有
+ * GET /api/assignments/mine 保持一致（data / counts / books），
+ * 前端两侧的展示能共用同一套组件。
+ *
+ * 注意：必须声明在 /:id 之前，否则 "mine" 会被当成 id 吃掉。
+ */
+router.get('/mine', asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const take = Math.min(200, Math.max(1, parseIntParam(req.query.limit, 60)));
+  const bookId = parseIntParam(req.query.bookId, NaN);
+
+  const userId = getUserId(req);
+  const scope: any = userId ? { userId } : {};
+
+  // 与图片模式同规则：进过作业模式但一笔没画的空壳不算作业
+  const shellFilter = {
+    OR: [
+      { status: { not: 'draft' } },
+      { strokes: { some: {} } },
+    ],
+  };
+
+  // 书本筛选下拉始终按「全量范围」构建，选中某本书只影响行与计数
+  const bookFilter = Number.isFinite(bookId) ? { bookId } : {};
+  const where: any = { ...scope, ...shellFilter, ...bookFilter };
+  const scopeWhere: any = { ...scope, ...shellFilter };
+
+  const [rows, grouped, bookGroups] = await Promise.all([
+    prisma.pdfAssignment.findMany({
+      where,
+      select: {
+        id: true, bookId: true, userId: true, title: true, subject: true,
+        status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
+        _count: { select: { strokes: true } },
+        strokes: { select: { pageNumber: true }, distinct: ['pageNumber'], orderBy: { pageNumber: 'asc' } },
+        book: { select: { id: true, title: true, subject: true, category: true, coverPage: true, totalPages: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take,
+    }),
+    prisma.pdfAssignment.groupBy({ by: ['status'], where, _count: { _all: true } }),
+    prisma.pdfAssignment.groupBy({
+      by: ['bookId'],
+      where: scopeWhere,
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
+  ]);
+
+  const bookMeta = await prisma.pdfBook.findMany({
+    where: { id: { in: bookGroups.map((g) => g.bookId) } },
+    select: { id: true, title: true, subject: true },
+  });
+  const bookMap = new Map(bookMeta.map((b) => [b.id, b]));
+  const books = bookGroups
+    .map((g) => ({
+      ...bookMap.get(g.bookId),
+      id: g.bookId,
+      count: g._count._all || 0,
+      lastUpdatedAt: g._max.updatedAt,
+    }))
+    .filter((b) => Boolean(bookMap.get(b.id)))
+    .sort((a, b) => (b.lastUpdatedAt?.getTime() || 0) - (a.lastUpdatedAt?.getTime() || 0))
+    .map(({ lastUpdatedAt, ...rest }) => rest);
+
+  const data = (rows as any[]).map(({ strokes, ...rest }) => ({
+    ...rest,
+    pages: strokes.map((s: any) => s.pageNumber),
+  }));
+
+  const counts = { draft: 0, submitted: 0, graded: 0, returned: 0, all: 0 };
+  for (const g of grouped) {
+    const n = g._count._all || 0;
+    counts.all += n;
+    if (g.status in counts) counts[g.status as keyof typeof counts] += n;
+  }
+
+  res.json({ data, counts, books, limit: take });
+}));
+
 router.get('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const id = parseIntParam(req.params.id, NaN);
   const assignment = await prisma.pdfAssignment.findUnique({

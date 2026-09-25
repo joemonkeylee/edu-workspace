@@ -207,6 +207,45 @@ export async function listAssignments(bookId: number, params: { page?: number; p
   return data as { data: PdfAssignment[]; total: number; page: number; pageSize: number };
 }
 
+export interface MyPdfAssignment {
+  id: number;
+  bookId: number;
+  userId: number | null;
+  title: string;
+  subject: string;
+  status: 'draft' | 'submitted' | 'graded' | 'returned';
+  gradedBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+  gradedAt: string | null;
+  _count?: { strokes: number };
+  pages: number[];
+  book: {
+    id: number;
+    title: string;
+    subject: string;
+    category: string;
+    coverPage: number;
+    totalPages: number;
+  } | null;
+}
+
+/**
+ * 跨书的「我的 PDF 作业」，概览页右半部分用。
+ * 结构与既有 /assignments/mine 对齐，方便两侧共用展示组件。
+ */
+export async function getMyPdfAssignments(limit = 60, bookId?: number) {
+  const { data } = await apiClient.get('/pdf/assignments/mine', {
+    params: { limit, ...(bookId ? { bookId } : {}) },
+  });
+  return data as {
+    data: MyPdfAssignment[];
+    counts: { all: number; draft: number; submitted: number; graded: number; returned: number };
+    books: { id: number; title: string; subject: string; count: number }[];
+    limit: number;
+  };
+}
+
 export async function getAssignment(id: number) {
   const { data } = await apiClient.get(`/pdf/assignments/${id}`);
   return data.data as PdfAssignment;
