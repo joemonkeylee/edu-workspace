@@ -260,7 +260,7 @@ export default function BilingualPage({
           onChangeSubtitleMode={handleChangeSubtitleMode}
           onChangeWorkMode={handleChangeWorkMode}
           audioElement={
-            <audio key={internalAudioSrc} style={{ width: '280px' }} ref={audioRef} src={internalAudioSrc} preload="metadata" controlsList="nodownload noplaybackrate" controls onError={handleAudioError} />
+            <audio key={internalAudioSrc} style={{ width: 260, zoom: 0.74 }} ref={audioRef} src={internalAudioSrc} preload="metadata" controlsList="nodownload noplaybackrate" controls onError={handleAudioError} />
           }
         />
         {audioError && (

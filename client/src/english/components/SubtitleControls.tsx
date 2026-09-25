@@ -52,8 +52,8 @@ export default function SubtitleControls({
       <WorkModeToggle workMode={workMode} onChangeWorkMode={onChangeWorkMode} />
 
       {/* 中间：播放控制 + 倍速 */}
-      <div className="flex items-center gap-3">
-        {audioElement && <div className="flex items-center">{audioElement}</div>}
+      <div className="flex items-center gap-2">
+        {audioElement}
 
         <div className="flex items-center gap-1">
           <button
