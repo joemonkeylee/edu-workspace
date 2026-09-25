@@ -1,4 +1,5 @@
 import MyWorkspace from './MyWorkspace';
+import EnglishStudyPanel from './EnglishStudyPanel';
 
 /**
  * /admin 的首页。这里放的是「我自己的」工作台 —— 作业进展与学习概览；
@@ -6,13 +7,16 @@ import MyWorkspace from './MyWorkspace';
  */
 export default function AdminDashboard() {
   return (
-    <div className="p-6">
-      <div className="mb-4">
+    <div className="space-y-4 p-6">
+      <div>
         <h1 className="text-xl font-semibold text-foreground">概览</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          自己的作业进展与完成情况。批改或查看他人作业请去「作业管理」。
+          自己的学习进展与作业完成情况。批改或查看他人作业请去「作业管理」。
         </p>
       </div>
+
+      <EnglishStudyPanel />
+
       <MyWorkspace />
     </div>
   );
