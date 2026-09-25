@@ -94,7 +94,7 @@ export default function AdminLayout() {
       <Sidebar variant="inset" collapsible="icon">
         {/* Sidebar Header: only logo */}
         <SidebarHeader className="!p-0 !gap-0 h-14 border-b border-sidebar-border">
-          <Link to="/" className="flex h-full items-center gap-2 px-2 text-sidebar-foreground hover:text-sidebar-foreground/80 group-data-[collapsible=icon]:justify-center">
+          <Link to="/" className="flex h-full items-center gap-2 pl-4 pr-2 text-sidebar-foreground hover:text-sidebar-foreground/80 group-data-[collapsible=icon]:justify-center">
             <GraduationCap size={22} />
             <span className="text-lg font-normal truncate group-data-[collapsible=icon]:hidden">edu-workspace</span>
           </Link>
