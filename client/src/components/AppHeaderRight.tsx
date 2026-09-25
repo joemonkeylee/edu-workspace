@@ -45,7 +45,7 @@ export default function AppHeaderRight() {
       <div className="mx-1 h-5 w-px bg-sidebar-border" />
       <ThemeSwitcher />
       <WebVitalsInfoPanel vitals={vitals} />
-      <Link to="/admin" target="_blank" rel="noopener noreferrer" title="后台管理"
+      <Link to="/admin" title="后台管理"
         className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition">
         <Settings size={16} />
       </Link>
