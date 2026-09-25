@@ -57,13 +57,6 @@ function loadListPageSize(): number {
   } catch { /* ignore */ }
   return 20;
 }
-const APP_ENV = import.meta.env.VITE_APP_ENV || (import.meta.env.DEV ? 'DEV' : 'TEST');
-const APP_COMMIT = import.meta.env.VITE_APP_COMMIT || '';
-const APP_ENV_CLASS = APP_ENV === 'PROD'
-  ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-  : APP_ENV === 'TEST'
-    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-    : 'bg-primary/15 text-primary dark:text-blue-300';
 
 const SUBJECT_ORDER = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '科学', '道法'];
 const GRADE_ORDER = ['七上', '七下', '八上', '八下', '九上', '九下'];
