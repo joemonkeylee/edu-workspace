@@ -82,49 +82,61 @@ export default function DictPanel({ value, onChange }: Props) {
           </p>
         ) : (
           groups.map((g) => (
-            <section key={g.category}>
-              <h3 className="sticky top-0 z-10 flex items-center justify-between bg-card px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <section key={g.category} className="px-2 py-1 first:pt-2">
+              <h3 className="sticky top-0 z-10 flex items-center justify-between bg-card px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 <span>{g.category}</span>
                 <span className="tabular-nums">{g.items.length}</span>
               </h3>
-              {g.items.map((d) => {
-                const selected = d.id === value;
-                return (
-                  <button
-                    key={d.id}
-                    type="button"
-                    data-selected={selected}
-                    aria-current={selected}
-                    onClick={() => onChange(d.id)}
-                    title={d.description || d.name}
-                    className={cn(
-                      'flex w-full items-start justify-between gap-2 border-l-2 px-3 py-1.5 text-left transition-colors',
-                      selected
-                        ? 'border-l-primary bg-accent'
-                        : 'border-l-transparent hover:bg-muted/60',
-                    )}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span
+              <ul className="space-y-0.5">
+                {g.items.map((d) => {
+                  const selected = d.id === value;
+                  return (
+                    <li key={d.id}>
+                      <button
+                        type="button"
+                        data-selected={selected}
+                        aria-current={selected}
+                        onClick={() => onChange(d.id)}
+                        title={d.description || d.name}
                         className={cn(
-                          'block truncate text-sm',
-                          selected ? 'font-medium text-accent-foreground' : 'text-foreground',
+                          'flex w-full items-start justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors',
+                          selected
+                            ? 'bg-accent text-accent-foreground'
+                            : 'text-foreground hover:bg-accent/40',
                         )}
                       >
-                        {d.name}
-                      </span>
-                      {d.description && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {d.description}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium leading-tight">
+                            {d.name}
+                          </span>
+                          {d.description && (
+                            <span
+                              className={cn(
+                                'mt-0.5 block truncate text-xs leading-relaxed',
+                                selected
+                                  ? 'text-accent-foreground/70'
+                                  : 'text-muted-foreground',
+                              )}
+                            >
+                              {d.description}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {d.length.toLocaleString()}
-                    </span>
-                  </button>
-                );
-              })}
+                        <span
+                          className={cn(
+                            'shrink-0 text-xs tabular-nums',
+                            selected
+                              ? 'text-accent-foreground/80'
+                              : 'text-muted-foreground',
+                          )}
+                        >
+                          {d.length.toLocaleString()}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </section>
           ))
         )}
