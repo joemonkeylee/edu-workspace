@@ -8,6 +8,7 @@
 
 import {
   listTypingChapterStats,
+  listTypingHistory,
   listTypingWrongWords,
   saveTypingChapterRecord,
   saveTypingWordRecords,
@@ -238,6 +239,28 @@ export async function fetchSummary(): Promise<TypingSummary> {
     /* 回落本地 */
   }
   return getLocalSummary();
+}
+
+/** 最近章节记录（时间序列，统计页用）：云端优先，回落本地 */
+export async function fetchChapterHistory(limit = 200): Promise<ChapterRec[]> {
+  try {
+    const rows = await listTypingHistory(limit);
+    if (rows.length > 0) {
+      return rows.map((r) => ({
+        dictId: r.dictId,
+        chapter: r.chapter,
+        timeSec: r.timeSec,
+        correctCount: r.correctCount,
+        wrongCount: r.wrongCount,
+        wordCount: r.wordCount,
+        createdAt: new Date(r.createdAt).getTime(),
+      }));
+    }
+  } catch {
+    /* 回落本地 */
+  }
+  const store = readStore();
+  return [...store.chapters].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
 }
 
 /** 从错词列表还原成可练习的词条（释义从原词库里回填） */

@@ -32,6 +32,9 @@ export type LetterMistakes = Record<number, string[]>;
 /** 发音口音 */
 export type PronunciationType = 'us' | 'uk';
 
+/** 听写/盲打模式：控制单词中哪些字母被下划线占位 */
+export type BlindMode = 'off' | 'all' | 'vowel' | 'consonant' | 'random';
+
 /** 模块设置（持久化到 localStorage）
  *
  * 按语义分四组，SettingsPanel 按同样的分组渲染：
@@ -63,12 +66,18 @@ export type TypingSettings = {
   isShuffle: boolean;
   /** 每个单词重复练习次数：1 = 不循环 */
   loopTimes: number;
+  /** 每日打卡目标的练习词数 */
+  dailyGoalWords: number;
 
   // ── view ──
   /** 单词字号（px），音标与释义按同一比例联动 */
   fontSize: number;
   /** 默认隐藏释义，需点击或按 Tab 才显示 */
   isTransHidden: boolean;
+  /** 隐藏音标（喇叭按钮仍在，可手动发音） */
+  isPhoneticHidden: boolean;
+  /** 盲打/听写模式：隐藏全部或部分字母，默认 off（完整显示） */
+  blindMode: BlindMode;
 };
 
 export const DEFAULT_TYPING_SETTINGS: TypingSettings = {
@@ -83,5 +92,8 @@ export const DEFAULT_TYPING_SETTINGS: TypingSettings = {
   fontSize: 48,
   isShuffle: false,
   isTransHidden: false,
+  isPhoneticHidden: false,
+  blindMode: 'off',
   loopTimes: 1,
+  dailyGoalWords: 20,
 };

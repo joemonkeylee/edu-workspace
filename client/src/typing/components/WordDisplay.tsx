@@ -1,7 +1,46 @@
 import { EyeOff, Volume2 } from 'lucide-react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { EXPLICIT_SPACE, type WordState } from '../engine';
-import type { PronunciationType, Word } from '../types';
+import type { BlindMode, PronunciationType, Word } from '../types';
+
+const VOWELS = new Set('AEIOUaeiou');
+
+/**
+ * 给定盲打模式，判断第 i 个字母是否应该显示原文。
+ * 返回 false 时渲染成下划线占位。
+ *
+ * 设计：打字已经打出的字母（correct / wrong）**总是显示原文**，
+ * 盲打只隐藏「还没轮到」的字母 —— 这样用户能立刻知道自己打对了没有，
+ * 也能看到已打出部分对不对。
+ */
+function letterVisible(
+  char: string,
+  index: number,
+  mode: BlindMode,
+  letterState: WordState['letterStates'][number],
+  randomMask: boolean[],
+): boolean {
+  // 已打出的字母一律显示
+  if (letterState === 'correct' || letterState === 'wrong') return true;
+  // 空格永远显示（不可能藏空格让用户打）
+  if (char === EXPLICIT_SPACE) return true;
+
+  switch (mode) {
+    case 'off':
+      return true;
+    case 'all':
+      return false;
+    case 'vowel':
+      // 藏元音 → 元音不显示，辅音显示
+      return !VOWELS.has(char);
+    case 'consonant':
+      // 藏辅音 → 辅音不显示，元音显示
+      return VOWELS.has(char);
+    case 'random':
+      return randomMask[index] ?? true;
+  }
+}
 
 type Props = {
   word: Word;
@@ -14,31 +53,38 @@ type Props = {
   transToggleable: boolean;
   onToggleTrans: () => void;
   pronunciationType: PronunciationType;
+  blindMode: BlindMode;
+  hidePhonetic: boolean;
   onPronounce: () => void;
 };
 
 function Letter({
   char,
+  visible,
   state,
   isCurrent,
   fontSize,
 }: {
   char: string;
+  visible: boolean;
   state: WordState['letterStates'][number];
   isCurrent: boolean;
   fontSize: number;
 }) {
+  const displayChar = char === EXPLICIT_SPACE ? '␣' : char;
+  const placeholder = visible ? displayChar : '_';
+
   return (
     <span
       className={cn(
         'relative inline-block transition-colors duration-75',
         state === 'correct' && 'text-emerald-600 dark:text-emerald-400',
         state === 'wrong' && 'text-destructive',
-        state === 'normal' && 'text-foreground',
+        state === 'normal' && (visible ? 'text-foreground' : 'text-border'),
       )}
       style={{ fontSize, lineHeight: 1.4 }}
     >
-      {char}
+      {placeholder}
       {isCurrent && state === 'normal' && (
         <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 rounded-full bg-primary" />
       )}
@@ -54,12 +100,20 @@ export default function WordDisplay({
   transToggleable,
   onToggleTrans,
   pronunciationType,
+  blindMode,
+  hidePhonetic,
   onPronounce,
 }: Props) {
   const phonetic = pronunciationType === 'uk' ? word.ukphone : word.usphone;
   const cursor = state.inputWord.length;
   const phoneticSize = Math.max(12, Math.round(fontSize * 0.3));
   const transSize = Math.max(12, Math.round(fontSize * 0.28));
+
+  // random 模式：每个单词一份独立掩码，随 word 切换重新生成
+  const randomMask = useMemo(
+    () => state.displayWord.split('').map(() => Math.random() > 0.5),
+    [state.displayWord],
+  );
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -72,7 +126,7 @@ export default function WordDisplay({
         >
           <Volume2 size={16} />
         </button>
-        {phonetic && <span className="font-mono">/{phonetic}/</span>}
+        {!hidePhonetic && phonetic && <span className="font-mono">/{phonetic}/</span>}
       </div>
 
       <div
@@ -81,15 +135,19 @@ export default function WordDisplay({
           state.hasWrong && 'animate-shake',
         )}
       >
-        {state.displayWord.split('').map((char, i) => (
-          <Letter
-            key={`${i}-${char}`}
-            char={char === EXPLICIT_SPACE ? '␣' : char}
-            state={state.letterStates[i] ?? 'normal'}
-            isCurrent={i === cursor}
-            fontSize={fontSize}
-          />
-        ))}
+        {state.displayWord.split('').map((char, i) => {
+          const ls = state.letterStates[i] ?? 'normal';
+          return (
+            <Letter
+              key={`${i}-${char}`}
+              char={char}
+              visible={letterVisible(char, i, blindMode, ls, randomMask)}
+              state={ls}
+              isCurrent={i === cursor}
+              fontSize={fontSize}
+            />
+          );
+        })}
       </div>
 
       {/* 释义区：高度固定，隐藏与显示之间切换时不会跳动 */}

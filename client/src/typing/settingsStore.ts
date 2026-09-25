@@ -31,8 +31,11 @@ const PERSIST_KEYS = [
   'isIgnoreCase',
   'isShuffle',
   'loopTimes',
+  'dailyGoalWords',
   'fontSize',
   'isTransHidden',
+  'isPhoneticHidden',
+  'blindMode',
   'panelOpen',
 ] as const satisfies readonly (keyof TypingSettingsState)[];
 

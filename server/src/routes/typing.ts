@@ -160,6 +160,31 @@ router.get('/chapter-records', asyncHandler(async (req: AuthedRequest, res: Resp
   });
 }));
 
+// ── 读取：最近章节记录（统计页时间序列用）──────────────────────
+router.get('/history', asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const limit = Math.min(Number(req.query.limit) || 200, 500);
+  if (!req.user) return res.json({ data: [] });
+
+  const rows = await prisma.typingChapterRecord.findMany({
+    where: { userId: req.user.userId },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+
+  res.json({
+    data: rows.map((r) => ({
+      id: r.id,
+      dictId: r.dictId,
+      chapter: r.chapter,
+      timeSec: r.timeSec,
+      correctCount: r.correctCount,
+      wrongCount: r.wrongCount,
+      wordCount: r.wordCount,
+      createdAt: r.createdAt,
+    })),
+  });
+}));
+
 // ── 读取：总览统计 ──────────────────────────────────────────────
 router.get('/summary', asyncHandler(async (req: AuthedRequest, res: Response) => {
   if (!req.user) return res.json({ data: null });

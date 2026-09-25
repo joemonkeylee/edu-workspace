@@ -1,4 +1,4 @@
-import { RotateCcw, ArrowRight } from 'lucide-react';
+import { RotateCcw, ArrowRight, Star } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { formatTime } from './StatsBar';
+import { starsFor } from '../stats';
 
 type Props = {
   open: boolean;
@@ -46,13 +48,30 @@ export default function ChapterResult({
   onRetry,
   onNextChapter,
 }: Props) {
+  const stars = starsFor(accuracy);
+  const starText = stars === 3 ? '完美！' : stars === 2 ? '很不错' : stars === 1 ? '完成本章' : '错误有点多，再练一次试试';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>本章完成</DialogTitle>
-          <DialogDescription>共 {wordCount} 个单词，继续保持。</DialogDescription>
+          <DialogDescription>共 {wordCount} 个单词，{starText}</DialogDescription>
         </DialogHeader>
+
+        {/* 星级：按字母正确率 98% / 90% / 60% 三档 */}
+        <div className="flex items-center justify-center gap-1.5" title={`正确率 ${accuracy}%`}>
+          {[1, 2, 3].map((i) => (
+            <Star
+              key={i}
+              size={26}
+              className={cn(
+                'transition-colors',
+                i <= stars ? 'fill-amber-400 text-amber-400' : 'fill-none text-muted-foreground/40',
+              )}
+            />
+          ))}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Metric label="用时" value={formatTime(timeSec)} />

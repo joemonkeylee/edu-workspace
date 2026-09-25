@@ -990,3 +990,19 @@ export async function clearTypingRecords(dictId?: string) {
   const { data } = await api.delete('/typing/records', { params: { dictId } });
   return data as { success: boolean };
 }
+
+export type TypingChapterHistoryRow = {
+  id: number;
+  dictId: string;
+  chapter: number;
+  timeSec: number;
+  correctCount: number;
+  wrongCount: number;
+  wordCount: number;
+  createdAt: string;
+};
+
+export async function listTypingHistory(limit = 200) {
+  const { data } = await api.get('/typing/history', { params: { limit } });
+  return data.data as TypingChapterHistoryRow[];
+}

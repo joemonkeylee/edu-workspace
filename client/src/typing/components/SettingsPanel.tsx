@@ -107,6 +107,14 @@ const LOOP_OPTIONS = [
   { value: '5', label: '5 次' },
 ];
 
+const GOAL_OPTIONS = [
+  { value: '10', label: '10 词' },
+  { value: '20', label: '20 词' },
+  { value: '30', label: '30 词' },
+  { value: '50', label: '50 词' },
+  { value: '100', label: '100 词' },
+];
+
 export default function SettingsPanel() {
   const s = useTypingSettings();
   const { update } = s;
@@ -203,6 +211,24 @@ export default function SettingsPanel() {
               </SelectContent>
             </Select>
           </Row>
+
+          <Row label="每日目标" hint="统计页按此计算打卡进度">
+            <Select
+              value={String(s.dailyGoalWords)}
+              onValueChange={(v) => update({ dailyGoalWords: Number(v) })}
+            >
+              <SelectTrigger className="h-8 w-[5.5rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {GOAL_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
         </Group>
 
         <Group title="显示">
@@ -218,6 +244,28 @@ export default function SettingsPanel() {
 
           <Row label="默认隐藏释义" hint="隐藏后点击释义区或按 Tab 显示">
             <Toggle checked={s.isTransHidden} onChange={(v) => update({ isTransHidden: v })} />
+          </Row>
+
+          <Row label="隐藏音标" hint="喇叭按钮仍在，可手动发音">
+            <Toggle checked={s.isPhoneticHidden} onChange={(v) => update({ isPhoneticHidden: v })} />
+          </Row>
+
+          <Row label="盲打/听写模式" hint="只隐藏还没打到的字母，已打出的总会显示">
+            <Select
+              value={s.blindMode}
+              onValueChange={(v) => update({ blindMode: v as typeof s.blindMode })}
+            >
+              <SelectTrigger className="h-8 w-[7rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="off">关闭</SelectItem>
+                <SelectItem value="all">全隐藏</SelectItem>
+                <SelectItem value="vowel">只藏元音</SelectItem>
+                <SelectItem value="consonant">只藏辅音</SelectItem>
+                <SelectItem value="random">随机隐藏</SelectItem>
+              </SelectContent>
+            </Select>
           </Row>
         </Group>
       </div>

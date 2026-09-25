@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   Keyboard,
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { DICTIONARIES, getDict } from './dictionaries';
 import { CHAPTER_LENGTH, createInitialState, currentWord, typingReducer } from './engine';
 import { playCorrectSound, playKeySound, playWrongSound } from './sounds';
@@ -29,6 +31,7 @@ import WordDisplay from './components/WordDisplay';
 import StatsBar from './components/StatsBar';
 import ChapterResult from './components/ChapterResult';
 import SettingsPanel from './components/SettingsPanel';
+import StatsView from './components/stats/StatsView';
 
 const LAST_DICT_KEY = 'typing-last-dict';
 
@@ -53,6 +56,14 @@ export default function TypingHome() {
   const [reviewWords, setReviewWords] = useState<Word[] | null>(null);
   /** 「默认隐藏释义」开启时，用户主动查看释义的临时状态 */
   const [showAnswer, setShowAnswer] = useState(false);
+  /** 页面视图：练习 / 统计 */
+  const [view, setView] = useState<'practice' | 'stats'>('practice');
+  /** 统计视图首次打开后再挂载，之后保留（避免来回切换重复请求） */
+  const [statsMounted, setStatsMounted] = useState(false);
+
+  useEffect(() => {
+    if (view === 'stats') setStatsMounted(true);
+  }, [view]);
 
   const { words, loading, error } = useDictWords(dictId);
   const [state, dispatch] = useReducer(typingReducer, undefined, () => createInitialState([]));
@@ -184,6 +195,9 @@ export default function TypingHome() {
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
 
+      // 统计页不响应打字快捷键（Tab/Esc/字母），避免背景误触
+      if (view !== 'practice') return;
+
       // 设置面板内的任何按键都不参与打字：面板里的 Select / Slider / 开关
       // 都是 button 或 input，若不过滤，调节设置时会被当成打字输入
       if (target?.closest('[data-typing-panel]')) return;
@@ -230,6 +244,7 @@ export default function TypingHome() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
+    view,
     settings.isIgnoreCase,
     resultOpen,
     pronounce,
@@ -343,17 +358,51 @@ export default function TypingHome() {
           </Button>
         </div>
 
-        <Button
-          variant={settings.panelOpen ? 'default' : 'outline'}
-          size="sm"
-          aria-pressed={settings.panelOpen}
-          onClick={settings.togglePanel}
-        >
-          <Settings2 size={15} className="mr-1.5" />
-          设置
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* 练习 / 统计 视图切换 */}
+          <div className="flex items-center rounded-lg border border-border p-0.5">
+            {(
+              [
+                ['practice', '练习', <Keyboard key="i" size={14} />],
+                ['stats', '统计', <BarChart3 key="i" size={14} />],
+              ] as const
+            ).map(([v, label, icon]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                aria-pressed={view === v}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors',
+                  view === v
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant={settings.panelOpen ? 'default' : 'outline'}
+            size="sm"
+            aria-pressed={settings.panelOpen}
+            onClick={settings.togglePanel}
+          >
+            <Settings2 size={15} className="mr-1.5" />
+            设置
+          </Button>
+        </div>
       </div>
 
+      {view === 'stats' ? (
+        <div className="min-h-0 flex-1">
+          <StatsView />
+        </div>
+      ) : (
+        <>
       {/* 练习区 + 设置面板 */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
         <div className="relative flex min-h-[16rem] flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-card px-6">
@@ -386,6 +435,8 @@ export default function TypingHome() {
               transToggleable={settings.isTransHidden}
               onToggleTrans={() => setShowAnswer((v) => !v)}
               pronunciationType={settings.pronunciationType}
+              blindMode={settings.blindMode}
+              hidePhonetic={settings.isPhoneticHidden}
               onPronounce={() => pronounce(word)}
             />
           )}
@@ -435,7 +486,9 @@ export default function TypingHome() {
         total={chapterWords.length}
         wrongCount={state.chapter.wrongCount}
         isTyping={state.chapter.isTyping}
-      />
+        />
+        </>
+      )}
 
       <ChapterResult
         open={resultOpen}
