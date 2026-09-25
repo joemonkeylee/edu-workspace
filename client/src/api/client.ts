@@ -3,6 +3,9 @@ import type { Book } from '../types';
 
 const api = axios.create({ baseURL: '/api' });
 
+/** 复用同一个 axios 实例（含鉴权与刷新拦截器），供 PDF 独立模块使用 */
+export const apiClient = api;
+
 // ── Token management ──────────────────────────────────────────────
 
 let accessToken: string | null = null;
@@ -31,6 +34,15 @@ export function clearTokens() {
   accessToken = null;
   refreshToken = null;
   localStorage.removeItem(REFRESH_KEY);
+}
+
+/**
+ * 读取当前 access token。
+ * 供 PDF 模块使用 —— pdf.js 自己发起 Range 请求，绕过了 axios 拦截器，
+ * 所以需要把 token 作为 httpHeaders 显式传给它。
+ */
+export function getAccessToken() {
+  return accessToken;
 }
 
 // Attach access token to all requests

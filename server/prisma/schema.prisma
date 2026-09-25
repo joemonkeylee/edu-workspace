@@ -36,6 +36,15 @@ model User {
   readingProgress  ReadingProgress[]
   videoProgress    VideoProgress[]
   bookFavorites    BookFavorite[]
+
+  // ── PDF 原生模块（feature/pdf-native）────────────────────────────
+  // 以下均为反向关系字段，是纯虚拟字段，不会在 user 表产生任何列，
+  // 也不会影响既有查询。仅用于 pdf_* 表的级联删除。
+  pdfAnnotations      PdfAnnotation[]
+  pdfMistakes         PdfMistake[]
+  pdfAssignments      PdfAssignment[]
+  pdfReadingProgress  PdfReadingProgress[]
+  pdfBookFavorites    PdfBookFavorite[]
 }
 
 model RefreshToken {
@@ -246,4 +255,251 @@ model VideoProgress {
   @@index([videoKey])
   @@index([userId])
   @@index([userId, videoKey])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PDF 原生模块（feature/pdf-native）
+//
+// 这是一个与既有「PDF 切图片」流程完全并行的独立模块：
+//   · 表全部使用 pdf_ 前缀，只新建表，不 ALTER 任何既有表
+//   · 与既有 Book / Annotation / Assignment 等表无任何外键关系
+//   · 仅通过 User 表共享登录体系
+// 页面位图由前端 pdf.js 直接渲染，服务端不再预生成 PNG。
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// PDF 书籍。文件采用引用式存储（照 BookVideo 范式），不复制原件。
+model PdfBook {
+  id       Int    @id @default(autoincrement())
+  title    String @db.VarChar(255)
+  category String @default("") @db.VarChar(255)
+  grade    String @default("") @db.VarChar(64)
+  subject  String @default("") @db.VarChar(64)
+  batchId  String @default("") @db.VarChar(64)
+
+  /// pdf = 正常 PDF；scan = 纯扫描件（无文本层）
+  pdfKind   String @default("pdf") @db.VarChar(16)
+  coverPage Int    @default(1)
+  totalPages Int   @default(0)
+
+  /// —— 引用式存储 ——
+  /// 当前完整绝对路径（跨平台原生分隔符）
+  filePath String @db.Text
+  /// 导入时的资源根目录，换盘时按 rootId 整体替换
+  rootPath String @db.Text
+  /// 相对根目录的路径，统一用 / 分隔，与平台无关
+  relPath  String @db.Text
+  rootId   Int?
+  /// 文件不存在（目录被移动 / 硬盘未挂载）时置为 true
+  missing  Boolean @default(false)
+  fileSize Int     @default(0)
+  /// sha256(文件)，用于与既有 Book.fileHash 建立映射
+  fileHash String? @db.VarChar(64)
+
+  /// 每页尺寸快照（pt）：[{w, h}, ...]，按页存储以防同书内尺寸混排
+  pageSizes Json?
+
+  /// 可搜索性判定结果：ok | no_text | garbled | watermark_only
+  searchable String @default("ok") @db.VarChar(16)
+  /// 判定过程数据：{ sampledPages, avgCharsPerPage, ctrlRatio }
+  textStats  Json?
+  /// 文本层是否已抽取进 pdf_page_text
+  textExtracted Boolean @default(false)
+
+  /// 目录来源：outline（PDF 自带）| parsed（文本解析）| manual
+  tocSource String @default("manual") @db.VarChar(16)
+  tocJson   Json   @default("[]")
+  attributes Json  @default("{}")
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  annotations     PdfAnnotation[]
+  mistakes        PdfMistake[]
+  assignments     PdfAssignment[]
+  readingProgress PdfReadingProgress[]
+  favorites       PdfBookFavorite[]
+  pageTexts       PdfPageText[]
+  thumbs          PdfThumb[]
+
+  @@unique([title, category])
+  @@index([fileHash])
+  @@index([category])
+  @@index([grade])
+  @@index([subject])
+  @@index([searchable])
+  @@index([missing])
+  @@map("pdf_book")
+}
+
+/// PDF 资源根目录，用于换盘时整体 repoint
+model PdfSourceRoot {
+  id        Int      @id @default(autoincrement())
+  label     String   @default("") @db.VarChar(255)
+  rootPath  String   @db.Text
+  enabled   Boolean  @default(true)
+  bookCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("pdf_source_root")
+}
+
+/// 每页文本层缓存，供全文搜索与定位高亮使用
+model PdfPageText {
+  id         Int     @id @default(autoincrement())
+  bookId     Int
+  book       PdfBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber Int
+  /// 归一化文本片段：[{ t, x, y, w, h }]，坐标 0-1
+  items      Json
+  /// 纯文本，用于 LIKE 搜索
+  plainText  String  @db.Text
+  charCount  Int     @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([bookId, pageNumber])
+  @@index([bookId])
+  @@map("pdf_page_text")
+}
+
+/// 缩略图缓存记录。pageNumber = 0 表示封面。按需生成后落盘。
+model PdfThumb {
+  id         Int     @id @default(autoincrement())
+  bookId     Int
+  book       PdfBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  /// 0 = 封面
+  pageNumber Int
+  relPath    String  @db.VarChar(512)
+  width      Int     @default(0)
+  height     Int     @default(0)
+  bytes      Int     @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([bookId, pageNumber])
+  @@index([bookId])
+  @@map("pdf_thumb")
+}
+
+model PdfAnnotation {
+  id          Int      @id @default(autoincrement())
+  bookId      Int
+  book        PdfBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pageNumber  Int
+  type        String   @db.VarChar(64)
+  contentJson Json
+  tags        String?  @db.VarChar(512)
+  createdAt   DateTime @default(now())
+
+  mistakes PdfMistake[]
+
+  @@index([userId])
+  @@index([bookId, pageNumber])
+  @@map("pdf_annotation")
+}
+
+model PdfMistake {
+  id           Int           @id @default(autoincrement())
+  annotationId Int
+  annotation   PdfAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  bookId       Int
+  book         PdfBook       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId       Int?
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pageNumber   Int
+  /// 裁图路径，位于 storage/pdf/crops 之下
+  imagePath    String        @db.VarChar(512)
+  subject      String        @default("") @db.VarChar(64)
+  tags         String?       @db.VarChar(512)
+  reviewStatus Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  @@index([bookId])
+  @@index([annotationId])
+  @@index([subject])
+  @@index([userId])
+  @@map("pdf_mistake")
+}
+
+model PdfAssignment {
+  id        Int      @id @default(autoincrement())
+  bookId    Int
+  book      PdfBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("") @db.VarChar(255)
+  subject   String   @default("") @db.VarChar(64)
+  /// draft | submitted | graded | returned
+  status    String   @default("draft") @db.VarChar(20)
+  gradedBy  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gradedAt  DateTime?
+
+  strokes PdfAssignmentStroke[]
+
+  @@index([bookId])
+  @@index([userId])
+  @@map("pdf_assignment")
+}
+
+model PdfAssignmentStroke {
+  id           Int           @id @default(autoincrement())
+  assignmentId Int
+  assignment   PdfAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  pageNumber   Int
+  /// student | teacher
+  layer        String        @default("student") @db.VarChar(10)
+  /// pen | highlighter
+  tool         String        @default("pen") @db.VarChar(20)
+  color        String        @default("#000000") @db.VarChar(20)
+  width        Float         @default(2)
+  /// [{x, y, p}] 归一化 0-1
+  points       Json
+  createdAt    DateTime      @default(now())
+
+  @@index([assignmentId])
+  @@index([assignmentId, pageNumber])
+  @@map("pdf_assignment_stroke")
+}
+
+model PdfReadingProgress {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId     Int
+  book       PdfBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber Int      @default(1)
+  /// single | double
+  pageLayout String   @default("single") @db.VarChar(20)
+  /// page | width
+  fitMode    String   @default("page") @db.VarChar(20)
+  /// 渲染倍率（对应 DPI/72），PDF 模式下替代原 DPI 概念
+  scale      Float    @default(1.5)
+  /// 页面旋转角度（度），语义与图片模式一致
+  rotation   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+  @@map("pdf_reading_progress")
+}
+
+model PdfBookFavorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId    Int
+  book      PdfBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+  @@map("pdf_book_favorite")
 }

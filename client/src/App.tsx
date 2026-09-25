@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ConfirmProvider } from './components/ConfirmDialog';
@@ -26,6 +26,25 @@ import LandingLayout from './english/components/LandingLayout';
 import EnglishPage from './english/components/EnglishPage';
 import { useAuthStore } from './store/authStore';
 
+// PDF 原生模块（feature/pdf-native）——独立于既有页面的一套流程。
+// 用 lazy 引入，pdfjs（约 1MB）只在真正进入 /pdf 路由时才下载。
+const PdfHome = lazy(() => import('./pdf/pages/PdfHome'));
+const PdfBookViewer = lazy(() => import('./pdf/pages/PdfBookViewer'));
+
+function PdfSuspense({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
+          正在加载 PDF 模块…
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
+
 export default function App() {
   const init = useAuthStore((s) => s.init);
 
@@ -44,6 +63,10 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/books" element={<Home />} />
           <Route path="/book/:id" element={<BookViewer />} />
+
+          {/* PDF 原生模块：独立路由前缀，不与上面任何一条产生交集 */}
+          <Route path="/pdf" element={<PdfSuspense><PdfHome /></PdfSuspense>} />
+          <Route path="/pdf/book/:id" element={<PdfSuspense><PdfBookViewer /></PdfSuspense>} />
 
           <Route path="/admin" element={<AuthGuard allowedRoles={['admin', 'teacher']} redirectTo="/" />}>
           <Route element={<AdminLayout />}>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Languages, Settings } from 'lucide-react';
+import { BookOpen, FileText, Languages, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import WebVitalsInfoPanel from '@/english/components/WebVitalsInfoPanel';
@@ -22,6 +22,7 @@ export default function AppHeaderRight() {
   }, []);
 
   const isBookActive = location.pathname.startsWith('/books');
+  const isPdfActive = location.pathname.startsWith('/pdf');
   const isEnglishActive = location.pathname.startsWith('/english');
 
   return (
@@ -30,6 +31,11 @@ export default function AppHeaderRight() {
         isBookActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
         <BookOpen size={16} />
         <span className="hidden sm:inline">Book</span>
+      </Link>
+      <Link to="/pdf" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
+        isPdfActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
+        <FileText size={16} />
+        <span className="hidden sm:inline">PDF</span>
       </Link>
       <Link to="/english" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
         isEnglishActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>

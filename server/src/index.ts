@@ -23,6 +23,9 @@ import annotationsRouter from './routes/annotations.js';
 import mistakesRouter from './routes/mistakes.js';
 import assignmentsRouter from './routes/assignments.js';
 import readingProgressRouter from './routes/readingProgress.js';
+// PDF 原生模块（feature/pdf-native）——独立命名空间，与上面既有路由完全并行
+import pdfRouter from './pdf/index.js';
+import { ensurePdfDirs } from './pdf/services/pdfStorage.js';
 import { getStorageRoot, initializeStorageRoot } from './services/storage.js';
 import { isAuthEnabled } from './services/auth.js';
 import { cropsAuthMiddleware } from './middleware/cropsAuth.js';
@@ -69,6 +72,9 @@ app.use('/api/mistakes', mistakesRouter);
 app.use('/api/assignments', assignmentsRouter);
 app.use('/api/reading-progress', readingProgressRouter);
 
+// PDF 原生模块：全部挂在 /api/pdf 之下，不触碰任何既有路由
+app.use('/api/pdf', pdfRouter);
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -89,6 +95,12 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 
 async function start() {
   await initializeStorageRoot();
+  // PDF 模块自己的存储目录（storage/pdf），失败不阻塞启动
+  try {
+    ensurePdfDirs();
+  } catch (e) {
+    console.warn('[edu-workspace] pdf storage dirs init failed:', e);
+  }
   // Protect crop images with auth middleware
   app.use('/storage/crops', cropsAuthMiddleware);
   app.use('/storage', (req, res, next) => express.static(getStorageRoot())(req, res, next));
