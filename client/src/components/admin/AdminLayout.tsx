@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
-import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard, Home } from 'lucide-react';
+import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard, LogOut as LogOutOuter } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '@/lib/utils';
@@ -232,10 +232,9 @@ export default function AdminLayout() {
                 </Button>
               </>
             )}
-            <div className="mx-1 h-5 w-px bg-sidebar-border" />
-            <Link to="/" title="返回首页"
+            <Link to="/" title="退出到首页"
               className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/80 transition hover:bg-sidebar-accent hover:text-sidebar-foreground">
-              <Home size={16} />
+              <LogOutOuter size={16} />
             </Link>
           </div>
         </header>
