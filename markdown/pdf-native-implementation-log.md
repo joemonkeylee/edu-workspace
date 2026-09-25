@@ -233,3 +233,24 @@ ls -d node_modules/@napi-rs/canvas server/node_modules/@napi-rs/canvas
 ### 已知剩余差距（移动端 / 视觉微差，未阻塞）
 - PdfAssignmentMode 缺双指捏合缩放 + 拖拽平移、触控笔默认行为拦截、移动端首屏自动旋转、旋转时标题逐字竖排渲染（图片版为桌面 + 触屏增强，体积较大，留待二期）。
 - 配色（钢笔三色、高亮色透明度）、部分图标尺寸等与图片版存在视觉微差。
+
+---
+
+## 八、补齐二期剩余差距（2026-09-25）
+
+把上一轮标记为「留二期」的差距全部完成。
+
+### A. AssignmentMode 移动端增强（client/src/pdf/components/PdfAssignmentMode.tsx）
+- **双指捏合缩放 / 拖拽平移**：移植图片版 `handleTouchStart/Move/End` + `updateViewport/resetViewport` + `gestureScale/panOffset` 状态；画布 div 的 transform 改为 `translate(...) rotate(...) scale(gestureScale)`，容器挂 pointer 手势监听，`touchAction: none`。`DrawingCanvas` 本身已 `if (e.pointerType === 'touch') return`，故触摸不会误触发画线，无冲突。
+- **触控笔默认行为拦截**：移植 `blockPencilDefaults`（pointer）+ `blockPencilTouchDefaults`（touch，识别 stylus/pen touchType），拦截 selectstart/contextmenu/dragstart/copy/cut + selectionchange，作用域限定在 `modeRef` 容器内。
+- **首屏自动旋转**：`ratio`（h/w）已知且非桌面浏览器时，按「页面长边对齐屏幕长边」自动 `setRotation(-90)`，`autoRotatedRef` 保证只触发一次；桌面浏览器排除（与图片版一致）。
+- **旋转时标题逐字竖排**：移植 `renderTextByCharacter`，顶栏书名/作业名/状态/保存态/页码在 `isRotated` 时加 `writing-mode:vertical-rl` + 中文逐字 `rotate(chineseRotation)`；顶栏与工具栏按 `rotatedDir`/`toolbarRotationClass`/`iconRotationAll` 做竖排与图标旋转。
+
+### B. 视觉微差对齐
+- `PEN_COLORS` 由 `['#000000','#e11d48','#2563eb']` → 图片版 `['#1a1a1a','#2563eb','#dc2626']`（钢笔三色）。
+- `HIGHLIGHT_COLOR` 由 `rgba(255,235,59,0.35)` → 图片版 `rgba(250,204,21,0.5)`；`drawStrokeFull` 高亮 `globalAlpha 0.35` 保持不变，与图片版有效透明度一致。
+- 图标尺寸：X / 翻页箭头提到 18，其余工具图标 16，与图片版对齐。
+- 验证：图片版 `PageCanvas` 阅读高亮本就用 `rgba(255,235,59,0.3)`，PDF 版已相同；批注标记色走共享 `utils/annotationColors`，本就一致 → 无需改动。
+
+### 验证
+- `client tsc --noEmit` 通过；`VITE_APP_ENV=TEST npm run build:client` 通过（仅一条与本次无关的字体 CSS 警告）。

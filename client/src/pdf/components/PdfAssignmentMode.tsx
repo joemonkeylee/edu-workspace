@@ -12,10 +12,11 @@ import {
   listAssignments, exportAssignmentPage, type PdfAssignment,
 } from '../api/pdfClient';
 import { formatAssignmentTitle } from '../../utils/assignment';
+import { isDesktopBrowser } from '../../utils/device';
 import { toast } from 'sonner';
 
-const HIGHLIGHT_COLOR = 'rgba(255, 235, 59, 0.35)';
-const PEN_COLORS = ['#000000', '#e11d48', '#2563eb'];
+const HIGHLIGHT_COLOR = 'rgba(250, 204, 21, 0.5)';
+const PEN_COLORS = ['#1a1a1a', '#2563eb', '#dc2626'];
 const AUTOSAVE_DEBOUNCE_MS = 1500;
 const AUTOSAVE_MAX_INTERVAL_MS = 10000;
 /** 导出底图的渲染宽度（PDF 是矢量，放大不失真，取大值保证清晰度） */
@@ -87,6 +88,45 @@ export default function PdfAssignmentMode({
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const [exporting, setExporting] = useState(false);
 
+  // ── 移动端手势（双指捏合缩放 / 拖拽平移） ──────────────────
+  const [gestureScale, setGestureScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const modeRef = useRef<HTMLDivElement>(null);
+  const autoRotatedRef = useRef(false);
+  const gestureScaleRef = useRef(1);
+  const panOffsetRef = useRef({ x: 0, y: 0 });
+  const touchPointsRef = useRef(new Map<number, { x: number; y: number }>());
+  const gestureRef = useRef<{
+    startScale: number;
+    startPan: { x: number; y: number };
+    startDistance: number;
+    startMidpoint: { x: number; y: number };
+  } | null>(null);
+
+  // 旋转相关的布局派生值（与图片版 AssignmentMode 一致）
+  const effectiveRotation = ((rotation % 360) + 360) % 360;
+  const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
+  const chineseRotation = effectiveRotation === 90
+    ? 90
+    : effectiveRotation === 180
+      ? 0
+      : effectiveRotation === 270
+        ? 90
+        : 0;
+  const toolbarRotationClass = effectiveRotation === 180 ? 'rotate-180' : '';
+  const rotatedDir = effectiveRotation === 90 ? 'flex-col' : 'flex-col-reverse';
+  const textFlipClass = effectiveRotation === 270 ? 'rotate-180' : '';
+  const iconRotationAll = isRotated
+    ? effectiveRotation === 90 ? '[&_button]:rotate-90' : '[&_button]:-rotate-90'
+    : '';
+  const layoutDirectionClass = effectiveRotation === 90
+    ? 'flex-row-reverse'
+    : effectiveRotation === 180
+      ? 'flex-col-reverse'
+      : effectiveRotation === 270
+        ? 'flex-row'
+        : 'flex-col';
+
   lastSavedPageRef.current = currentPage;
   strokesRef.current = strokes;
 
@@ -103,6 +143,20 @@ export default function PdfAssignmentMode({
     })();
     return () => { cancelled = true; };
   }, [doc, currentPage]);
+
+  // 首屏自动旋转：让页面长边对齐屏幕长边（与图片版一致）。
+  // 桌面浏览器排除——PC 横屏 + 教材竖页几乎每次都会触发，与鼠标工作流冲突；
+  // 触屏设备保留该行为。
+  useEffect(() => {
+    if (autoRotatedRef.current || ratio === null) return;
+    autoRotatedRef.current = true;
+    if (isDesktopBrowser()) return;
+    const isScreenLandscape = window.innerWidth > window.innerHeight;
+    const isPageLandscape = ratio < 1; // ratio = h / w
+    if (isScreenLandscape !== isPageLandscape) {
+      setRotation(-90);
+    }
+  }, [ratio]);
 
   // ── 画布尺寸（适页 / 适宽） ──────────────────────────────
   const calcSize = useCallback(() => {
@@ -128,6 +182,80 @@ export default function PdfAssignmentMode({
     ro.observe(el);
     return () => ro.disconnect();
   }, [calcSize]);
+
+  const updateViewport = useCallback((scale: number, pan: { x: number; y: number }) => {
+    const nextScale = Math.max(0.5, Math.min(4, scale));
+    gestureScaleRef.current = nextScale;
+    panOffsetRef.current = pan;
+    setGestureScale(nextScale);
+    setPanOffset(pan);
+  }, []);
+
+  const resetViewport = useCallback(() => {
+    touchPointsRef.current.clear();
+    gestureRef.current = null;
+    updateViewport(1, { x: 0, y: 0 });
+  }, [updateViewport]);
+
+  useEffect(() => {
+    resetViewport();
+  }, [currentPage, rotation, fitMode, resetViewport]);
+
+  // 拦截触控笔/选择的默认行为（与图片版一致）：在 PDF 模式下，触控笔的
+  // 系统选择、长按菜单、拖拽会干扰画线，需在模式容器内统一阻止。
+  useEffect(() => {
+    const isInsideAssignmentMode = (target: EventTarget | null) => {
+      return target instanceof Node && modeRef.current?.contains(target);
+    };
+    const blockSelectionEvent = (event: Event) => {
+      if (!isInsideAssignmentMode(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const clearAssignmentSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      const anchorInside = isInsideAssignmentMode(selection.anchorNode);
+      const focusInside = isInsideAssignmentMode(selection.focusNode);
+      if (anchorInside || focusInside) selection.removeAllRanges();
+    };
+    const blockPencilDefaults = (event: PointerEvent) => {
+      if (event.pointerType !== 'pen' || !isInsideAssignmentMode(event.target)) return;
+      event.preventDefault();
+      clearAssignmentSelection();
+    };
+    const blockPencilTouchDefaults = (event: TouchEvent) => {
+      const touches = [...event.changedTouches];
+      const hasPencilTouch = touches.some((touch) => {
+        const touchType = (touch as Touch & { touchType?: string }).touchType;
+        return touchType === 'stylus' || touchType === 'pen';
+      });
+      if (!hasPencilTouch || !isInsideAssignmentMode(event.target)) return;
+      event.preventDefault();
+      clearAssignmentSelection();
+    };
+    const blockedEvents = ['selectstart', 'contextmenu', 'dragstart', 'copy', 'cut'];
+    blockedEvents.forEach((name) => document.addEventListener(name, blockSelectionEvent, true));
+    document.addEventListener('pointerdown', blockPencilDefaults, true);
+    document.addEventListener('pointerup', blockPencilDefaults, true);
+    document.addEventListener('pointercancel', blockPencilDefaults, true);
+    document.addEventListener('touchstart', blockPencilTouchDefaults, true);
+    document.addEventListener('touchmove', blockPencilTouchDefaults, true);
+    document.addEventListener('touchend', blockPencilTouchDefaults, true);
+    document.addEventListener('touchcancel', blockPencilTouchDefaults, true);
+    document.addEventListener('selectionchange', clearAssignmentSelection, true);
+    return () => {
+      blockedEvents.forEach((name) => document.removeEventListener(name, blockSelectionEvent, true));
+      document.removeEventListener('pointerdown', blockPencilDefaults, true);
+      document.removeEventListener('pointerup', blockPencilDefaults, true);
+      document.removeEventListener('pointercancel', blockPencilDefaults, true);
+      document.removeEventListener('touchstart', blockPencilTouchDefaults, true);
+      document.removeEventListener('touchmove', blockPencilTouchDefaults, true);
+      document.removeEventListener('touchend', blockPencilTouchDefaults, true);
+      document.removeEventListener('touchcancel', blockPencilTouchDefaults, true);
+      document.removeEventListener('selectionchange', clearAssignmentSelection, true);
+    };
+  }, []);
 
   // ── 笔迹加载 ──────────────────────────────────────────────
   useEffect(() => {
@@ -365,6 +493,75 @@ export default function PdfAssignmentMode({
     })();
   }, [bookId, onAssignmentUpdate]);
 
+  // ── 双指捏合缩放 / 拖拽平移（与图片版一致） ──────────────
+  const handleTouchStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch') return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const points = [...touchPointsRef.current.values()];
+    if (points.length === 1) {
+      gestureRef.current = {
+        startScale: gestureScaleRef.current,
+        startPan: panOffsetRef.current,
+        startDistance: 0,
+        startMidpoint: points[0],
+      };
+    } else if (points.length === 2) {
+      const [first, second] = points;
+      gestureRef.current = {
+        startScale: gestureScaleRef.current,
+        startPan: panOffsetRef.current,
+        startDistance: Math.hypot(second.x - first.x, second.y - first.y),
+        startMidpoint: {
+          x: (first.x + second.x) / 2,
+          y: (first.y + second.y) / 2,
+        },
+      };
+    }
+  };
+
+  const handleTouchMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch' || !gestureRef.current) return;
+    e.preventDefault();
+    touchPointsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const points = [...touchPointsRef.current.values()];
+    const gesture = gestureRef.current;
+    if (points.length === 1) {
+      updateViewport(gesture.startScale, {
+        x: gesture.startPan.x + points[0].x - gesture.startMidpoint.x,
+        y: gesture.startPan.y + points[0].y - gesture.startMidpoint.y,
+      });
+    } else if (points.length >= 2 && gesture.startDistance > 0) {
+      const [first, second] = points;
+      const midpoint = {
+        x: (first.x + second.x) / 2,
+        y: (first.y + second.y) / 2,
+      };
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      updateViewport(gesture.startScale * distance / gesture.startDistance, {
+        x: gesture.startPan.x + midpoint.x - gesture.startMidpoint.x,
+        y: gesture.startPan.y + midpoint.y - gesture.startMidpoint.y,
+      });
+    }
+  };
+
+  const handleTouchEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch') return;
+    touchPointsRef.current.delete(e.pointerId);
+    if (touchPointsRef.current.size === 0) {
+      gestureRef.current = null;
+      return;
+    }
+    const remaining = [...touchPointsRef.current.values()][0];
+    gestureRef.current = {
+      startScale: gestureScaleRef.current,
+      startPan: panOffsetRef.current,
+      startDistance: 0,
+      startMidpoint: remaining,
+    };
+  };
+
   // ── 导出 ──────────────────────────────────────────────────
   const handleExport = async () => {
     if (!doc) return;
@@ -398,48 +595,44 @@ export default function PdfAssignmentMode({
     }
   };
 
-  const statusLabel = isGraded
-    ? <span className="text-green-400">（已批改）</span>
-    : isSubmitted
-      ? <span className="text-blue-400">（已提交）</span>
-      : isReturned
-        ? <span className="text-amber-400">（已打回）</span>
-        : null;
-
-  const saveState = saving
-    ? <span className="text-yellow-400">保存中...</span>
-    : dirty
-      ? <span className="text-orange-400">未保存</span>
-      : <span className="text-green-400">已保存</span>;
-
-  const layoutClass = rotation === 90 ? 'flex-row-reverse' : rotation === 270 ? 'flex-row' : 'flex-col';
+  const layoutClass = layoutDirectionClass;
 
   const pageNumbers = useMemo(() => pageAssignments.map((_, i) => pageAssignments.length - i), [pageAssignments]);
 
   return (
     <div
-      className="absolute inset-0 z-40 flex select-none bg-[#525659]"
-      style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+      ref={modeRef}
+      className={`absolute inset-0 z-40 flex select-none bg-[#525659] ${layoutDirectionClass}`}
+      style={{
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+      }}
+      onPointerDown={(e) => { if (e.pointerType === 'pen') e.preventDefault(); }}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
     >
       <div className={`flex ${layoutClass}`} style={{ width: '100%', height: '100%' }}>
         {/* 顶栏 */}
-        <div className={`flex items-center gap-2 bg-[#323639] px-2 py-1.5 ${rotation === 90 || rotation === 270 ? 'h-full w-12 flex-col' : 'w-full'}`}>
-          <button onClick={() => void handleExit()} title="退出做题" className="rounded p-1 text-white/80 hover:bg-white/10">
-            <X size={16} />
+        <div className={`flex items-center bg-[#323639] ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} gap-2 px-1 py-3` : 'w-full gap-2 px-3 py-1.5'}`}>
+          <button onClick={() => void handleExit()} title="退出做题" className="rounded p-1.5 text-white/80 hover:bg-white/10">
+            <X size={18} />
           </button>
 
-          <div className={`min-w-0 flex-1 ${rotation === 90 || rotation === 270 ? 'hidden' : ''}`}>
-            <div className="flex items-center gap-1.5 truncate text-xs text-white">
-              <span className="truncate">{bookTitle}</span>
-              <span className="text-white/40">/</span>
-              <span className="truncate">{formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`}</span>
-              {statusLabel}
-            </div>
-          </div>
+          <span className={`min-w-0 flex-1 overflow-hidden flex flex-col justify-center leading-tight ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`}>
+            <span className="truncate text-xs text-white/80">{renderTextByCharacter(bookTitle, chineseRotation)}</span>
+            <span className="truncate text-xs text-white/50">
+              {renderTextByCharacter(formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`, chineseRotation)}
+              {isGraded && <span className="text-green-400"> {renderTextByCharacter('(已批改)', chineseRotation)}</span>}
+              {isSubmitted && !canGrade && <span className="text-blue-400"> {renderTextByCharacter('(已提交)', chineseRotation)}</span>}
+              {isReturned && <span className="text-amber-400"> {renderTextByCharacter('(已打回)', chineseRotation)}</span>}
+            </span>
+          </span>
 
           {/* 本页作业切换器 */}
-          {pageAssignments.length > 1 && !(rotation === 90 || rotation === 270) && (
-            <div className="flex items-center gap-1">
+          {pageAssignments.length > 1 && (
+            <div className={`flex items-center gap-1 ${isRotated ? rotatedDir : ''}`}>
               {pageAssignments.map((a, i) => (
                 <button
                   key={a.id}
@@ -458,77 +651,91 @@ export default function PdfAssignmentMode({
             </div>
           )}
 
-          <div className="flex items-center gap-0.5">
+          <div className={isRotated ? `flex ${rotatedDir} items-center gap-1` : 'contents'}>
             <button onClick={() => setRotation((r) => r + 90)} title="顺时针旋转" className="rounded p-1 text-white/80 hover:bg-white/10">
-              <RotateCw size={14} />
+              <RotateCw size={16} />
             </button>
             <button onClick={() => setRotation((r) => r - 90)} title="逆时针旋转" className="rounded p-1 text-white/80 hover:bg-white/10">
-              <RotateCcw size={14} />
+              <RotateCcw size={16} />
             </button>
             <button onClick={() => setFitMode('page')} title="适应页面" className={`rounded p-1 hover:bg-white/10 ${fitMode === 'page' ? 'text-blue-400' : 'text-white/80'}`}>
-              <Minimize2 size={14} />
+              <Minimize2 size={16} />
             </button>
             <button onClick={() => setFitMode('width')} title="适应宽度" className={`rounded p-1 hover:bg-white/10 ${fitMode === 'width' ? 'text-blue-400' : 'text-white/80'}`}>
-              <Maximize2 size={14} />
+              <Maximize2 size={16} />
             </button>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className={isRotated ? `flex ${rotatedDir} items-center gap-1` : 'contents'}>
             <button
               onClick={() => void handlePageChange(currentPage - 1)}
               disabled={currentPage <= 1}
               className="rounded p-1 text-white/80 hover:bg-white/10 disabled:opacity-30"
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft size={18} />
             </button>
-            <span className="text-xs text-white/90 tabular-nums">{currentPage} / {totalPages}</span>
+            <span className={`text-white/90 text-center tabular-nums ${isRotated ? `min-w-0 [writing-mode:vertical-rl] ${textFlipClass}` : 'min-w-[90px] text-xs'}`}>{currentPage} / {totalPages}</span>
             <button
               onClick={() => void handlePageChange(currentPage + 1)}
               disabled={currentPage >= totalPages}
               className="rounded p-1 text-white/80 hover:bg-white/10 disabled:opacity-30"
             >
-              <ChevronRight size={14} />
+              <ChevronRight size={18} />
             </button>
           </div>
 
-          {!(rotation === 90 || rotation === 270) && <div className="text-[10px]">{saveState}</div>}
+          {saving && renderTextByCharacter('保存中...', chineseRotation, `text-[10px] text-yellow-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
+          {dirty && !saving && renderTextByCharacter('未保存', chineseRotation, `text-[10px] text-orange-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
+          {!dirty && !saving && renderTextByCharacter('已保存', chineseRotation, `text-[10px] text-green-400 ${isRotated ? `[writing-mode:vertical-rl] ${textFlipClass}` : ''}`)}
+
+          <div className={isRotated ? 'h-px w-5 bg-white/10 my-1' : 'w-px h-5 bg-white/10 mx-1'} />
 
           <div className="flex items-center gap-0.5">
             {canEdit && (
               <>
                 <button onClick={() => void handleSubmit()} title="提交作业" className="rounded p-1 text-blue-400 hover:bg-white/10">
-                  <Send size={14} />
+                  <Send size={16} />
                 </button>
                 <button onClick={() => void handleDeleteAssignment()} title="删除作业" className="rounded p-1 text-red-400 hover:bg-white/10">
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
               </>
             )}
             {canGrade && isSubmitted && (
               <>
                 <button onClick={() => void handleMarkGraded()} title="标记已批改" className="rounded p-1 text-green-400 hover:bg-white/10">
-                  <CheckCircle2 size={14} />
+                  <CheckCircle2 size={16} />
                 </button>
                 <button onClick={() => void handleReturn()} title="打回" className="rounded p-1 text-amber-400 hover:bg-white/10">
-                  <CornerUpLeft size={14} />
+                  <CornerUpLeft size={16} />
                 </button>
               </>
             )}
             <button onClick={() => void handleExport()} disabled={exporting} title="导出当前页" className="rounded p-1 text-white/80 hover:bg-white/10 disabled:opacity-40">
-              <Download size={14} />
+              <Download size={16} />
             </button>
           </div>
         </div>
 
         {/* 画布区 */}
-        <div ref={containerRef} className="flex flex-1 items-center justify-center overflow-auto p-4">
+        <div
+          ref={containerRef}
+          className="flex flex-1 items-center justify-center overflow-auto p-4"
+          style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
+          onPointerDown={handleTouchStart}
+          onPointerMove={handleTouchMove}
+          onPointerUp={handleTouchEnd}
+          onPointerCancel={handleTouchEnd}
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
+        >
           {canvasSize.w > 0 && canvasSize.h > 0 && (
             <div
               className="relative"
               style={{
                 width: canvasSize.w,
                 height: canvasSize.h,
-                transform: `rotate(${rotation}deg)`,
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px) rotate(${rotation}deg) scale(${gestureScale})`,
                 transformOrigin: 'center center',
               }}
             >
@@ -552,7 +759,7 @@ export default function PdfAssignmentMode({
 
         {/* 工具栏 / 只读条 */}
         {!readOnly ? (
-          <div className="flex h-12 items-center gap-2 bg-[#323639] px-3">
+          <div className={`relative z-50 flex flex-shrink-0 items-center justify-center gap-1 bg-[#323639] ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3` : 'h-12 px-3 py-2'}`}>
             <button
               onClick={() => setTool('pen')}
               className={`rounded p-1.5 ${tool === 'pen' ? 'bg-blue-600 text-white' : 'text-white/80 hover:bg-white/10'}`}
@@ -576,7 +783,7 @@ export default function PdfAssignmentMode({
             </button>
 
             {tool === 'pen' && (
-              <div className="flex items-center gap-1">
+              <div className={`flex items-center gap-1 ${isRotated ? rotatedDir : ''}`}>
                 {PEN_COLORS.map((c) => (
                   <button
                     key={c}
@@ -588,7 +795,7 @@ export default function PdfAssignmentMode({
               </div>
             )}
 
-            <div className="mx-1 h-5 w-px bg-white/20" />
+            <div className={`mx-1 h-5 w-px bg-white/20 ${isRotated ? 'hidden' : ''}`} />
 
             <button
               onClick={() => { canvasRef.current?.undo(); setDirty(!strokesEqual(strokesRef.current, savedStrokes)); }}
@@ -632,13 +839,38 @@ export default function PdfAssignmentMode({
             </button>
           </div>
         ) : (
-          <div className="flex h-12 items-center gap-2 bg-[#323639] px-3 text-xs text-white/70">
-            <FileText size={14} />
-            此作业{isGraded ? '已批改' : '已提交'}，笔迹只读
+          <div className={`flex h-12 items-center gap-2 bg-[#323639] px-3 text-xs text-white/70 ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3` : ''}`}>
+            <FileText size={16} />
+            {isGraded ? renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation) : renderTextByCharacter('此作业已提交，笔迹只读', chineseRotation)}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/** 旋转时标题逐字竖排（与图片版一致）：非中文字符原样，中文按 chineseRotation 旋转 */
+function renderTextByCharacter(text: string, rotation: number, className = '') {
+  return (
+    <span className={className}>
+      {[...text].map((character, index) => {
+        const isChineseCharacter = /[\u3400-\u9fff]/.test(character);
+        if (!isChineseCharacter) {
+          return (
+            <span key={`${character}-${index}`}>{character}</span>
+          );
+        }
+        return (
+          <span
+            key={`${character}-${index}`}
+            className="inline-block"
+            style={{ transform: `rotate(${rotation}deg)` }}
+          >
+            {character}
+          </span>
+        );
+      })}
+    </span>
   );
 }
 
