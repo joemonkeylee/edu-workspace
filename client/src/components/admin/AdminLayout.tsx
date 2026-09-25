@@ -131,17 +131,26 @@ export default function AdminLayout() {
         {/* Logo header: same structure/padding as Home header (h-14, px-6, no border).
             The bottom rule must be a border-b (55~56px), NOT the nav's border-t (56~57px) —
             otherwise it sits 1px lower than the main header's border-b and the two
-            headers read as different heights. */}
+            headers read as different heights.
+            The collapse toggle lives here (right after the logo), borderless icon only. */}
         <header
           className={cn(
-            "flex h-14 flex-shrink-0 items-center border-b border-sidebar-border",
-            collapsed ? "justify-center" : "px-6"
+            "flex h-14 flex-shrink-0 items-center gap-2 border-b border-sidebar-border",
+            collapsed ? "justify-between px-1.5" : "px-6"
           )}
         >
           <Link to="/" className="flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-foreground/80">
             <GraduationCap size={22} />
             {!collapsed && <span className="truncate text-lg font-normal">edu-workspace</span>}
           </Link>
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            title="收起/展开侧边栏 (⌘B)"
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-sidebar-foreground/60 transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+          >
+            <PanelLeftClose size={16} className={cn("transition-transform", collapsed && "rotate-180")} />
+          </button>
         </header>
 
         {/* Secondary menu (grouped by active top tab) */}
@@ -170,21 +179,12 @@ export default function AdminLayout() {
             );
           })}
         </nav>
-
-        {/* Collapse toggle on the sidebar/main boundary */}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          title="收起/展开侧边栏 (⌘B)"
-          className="absolute top-1/2 -right-3 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border border-sidebar-border bg-sidebar hover:bg-sidebar-accent"
-        >
-          <PanelLeftClose size={14} className={cn("opacity-70 transition-transform", collapsed && "rotate-180")} />
-        </button>
       </aside>
 
       {/* Main area */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top header: primary tabs + user */}
-        <header className="flex h-14 flex-shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
+        <header className="flex h-14 flex-shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-6 text-sidebar-foreground">
           {/* Top-level tabs */}
           <div className="flex items-center gap-1">
             {filteredGroups.map((group) => {
