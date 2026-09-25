@@ -5,6 +5,9 @@ import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '@/lib/utils';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import WebVitalsInfoPanel from '@/english/components/WebVitalsInfoPanel';
+import { convertMetricToVitalInfo, reportWebVitals, type Metric } from '@/english/metrics';
 
 interface MenuItem {
   path: string;
@@ -71,6 +74,17 @@ export default function AdminLayout() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const [vitals, setVitals] = useState<ReturnType<typeof convertMetricToVitalInfo>[]>([]);
+  useEffect(() => {
+    reportWebVitals((metric: Metric) => {
+      const info = convertMetricToVitalInfo(metric);
+      setVitals((prev) => {
+        const filtered = prev.filter((v) => v.name !== metric.name);
+        return [...filtered, info];
+      });
+    });
   }, []);
 
   const userRoles = Array.isArray(user?.roles) && user.roles.length > 0
@@ -182,22 +196,27 @@ export default function AdminLayout() {
 
           <div className="mx-auto" />
 
-          {/* Right side: user + logout */}
-          {authEnabled && user && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-sidebar-foreground/70">
-                {user.nickName || user.phone}
-                {roleBadge && (
-                  <span className="ml-1.5 rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-medium text-sidebar-foreground/80">
-                    {roleBadge}
-                  </span>
-                )}
-              </span>
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录" className="h-7 w-7 text-sidebar-foreground/70 hover:text-sidebar-foreground">
-                <LogOut size={16} />
-              </Button>
-            </div>
-          )}
+          {/* Right side: theme + vitals + user + logout */}
+          <div className="flex items-center gap-2">
+            <ThemeSwitcher />
+            <WebVitalsInfoPanel vitals={vitals} />
+            {authEnabled && user && (
+              <>
+                <div className="mx-1 h-5 w-px bg-sidebar-border" />
+                <span className="text-sm text-sidebar-foreground/70">
+                  {user.nickName || user.phone}
+                  {roleBadge && (
+                    <span className="ml-1.5 rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-medium text-sidebar-foreground/80">
+                      {roleBadge}
+                    </span>
+                  )}
+                </span>
+                <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录" className="h-7 w-7 text-sidebar-foreground/70 hover:text-sidebar-foreground">
+                  <LogOut size={16} />
+                </Button>
+              </>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto">
