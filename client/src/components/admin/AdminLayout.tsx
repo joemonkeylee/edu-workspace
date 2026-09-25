@@ -93,8 +93,8 @@ export default function AdminLayout() {
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="inset" collapsible="icon">
         {/* Sidebar Header: only logo */}
-        <SidebarHeader className="!p-0 !gap-0 h-14 border-b border-sidebar-border">
-          <Link to="/" className="flex h-full items-center gap-2 pl-4 pr-2 text-sidebar-foreground hover:text-sidebar-foreground/80 group-data-[collapsible=icon]:justify-center">
+        <SidebarHeader className="!flex !flex-row !items-center !p-0 !gap-0 h-[57px] border-b border-sidebar-border">
+          <Link to="/" className="flex items-center gap-2 pl-4 pr-2 text-sidebar-foreground hover:text-sidebar-foreground/80 group-data-[collapsible=icon]:justify-center">
             <GraduationCap size={22} />
             <span className="text-lg font-normal truncate group-data-[collapsible=icon]:hidden">edu-workspace</span>
           </Link>
@@ -148,7 +148,7 @@ export default function AdminLayout() {
                     if (firstItem) navigate(firstItem.path);
                   }}
                   className={cn(
-                    'flex items-center gap-1.5 h-8 px-3 rounded-md text-sm transition',
+                    'flex items-center gap-1.5 h-7 px-3 rounded-md text-sm transition',
                     activeGroupKey === group.key
                       ? 'bg-sidebar-accent text-sidebar-foreground font-medium'
                       : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
@@ -174,7 +174,7 @@ export default function AdminLayout() {
                   </span>
                 )}
               </span>
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录" className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground">
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录" className="h-7 w-7 text-sidebar-foreground/70 hover:text-sidebar-foreground">
                 <LogOut size={16} />
               </Button>
             </div>
