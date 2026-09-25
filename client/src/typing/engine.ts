@@ -182,9 +182,12 @@ export function typingReducer(state: TypingState, action: TypingAction): TypingS
       if (correctChar === undefined) return state;
 
       const inputChar = inputWord[i];
+      // displayWord 里空格被替换成 EXPLICIT_SPACE，normalize 后再比较
+      const target = correctChar === EXPLICIT_SPACE ? ' ' : correctChar;
+      const typed = inputChar === EXPLICIT_SPACE ? ' ' : inputChar;
       const isEqual = action.ignoreCase
-        ? inputChar.toLowerCase() === correctChar.toLowerCase()
-        : inputChar === correctChar;
+        ? typed.toLowerCase() === target.toLowerCase()
+        : typed === target;
 
       const nextSeq = state.effect.seq + 1;
 
