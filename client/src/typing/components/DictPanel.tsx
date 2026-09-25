@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Library, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { DICTIONARIES, searchDicts } from '../dictionaries';
+import { DICT_CATEGORIES, DICT_GROUPS, DICTIONARIES, searchDicts } from '../dictionaries';
 import { useTypingSettings } from '../settingsStore';
 
 type Props = {
@@ -10,37 +11,56 @@ type Props = {
   onChange: (id: string) => void;
 };
 
+const ALL_TAB = '__all__';
+
 /**
- * 常驻式词库列表。
+ * 常驻式词库面板：横向分类 Tabs + 扁平词库列表。
  *
- * 与练习设置面板同一套形态：不是弹窗也不是下拉，直接摆在界面左侧，
- * 可以边练边换词库、边搜边看分组。300+ 个词库靠下拉浮层找太费劲，
- * 常驻面板配搜索框才好用。
+ * 只有 6 个分类时，sticky header 分组其实是杀鸡用牛刀 —— 用户的心智模型是
+ * 「选一个大类 → 看这个类里的全部词库」，而不是「不停滚动、靠吸顶 header
+ * 知道自己在哪个分组」。
  *
- * 面板整体带 `data-typing-panel`，TypingHome 的全局键盘监听会跳过其中的按键，
- * 否则在搜索框里敲字会同时被当成打字输入。
+ * 搜索开启后强制切回「全部」Tab，搜索结果扁平合并，不再显示分类名（避免
+ * 结果被拆得太碎）。
  */
 export default function DictPanel({ value, onChange }: Props) {
   const [keyword, setKeyword] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
   const setDictPanelOpen = useTypingSettings((s) => s.setDictPanelOpen);
+  const [tab, setTab] = useState<string>(ALL_TAB);
 
-  const groups = useMemo(() => searchDicts(keyword), [keyword]);
-  const matched = useMemo(
-    () => (keyword.trim() ? groups.reduce((n, g) => n + g.items.length, 0) : DICTIONARIES.length),
-    [groups, keyword],
-  );
+  const isSearching = keyword.trim().length > 0;
 
-  // 打开时把当前词库滚进视野：300 多项里手动找很费劲
+  // 搜索时强制回到「全部」，跨分类搜索
+  useEffect(() => {
+    if (isSearching && tab !== ALL_TAB) setTab(ALL_TAB);
+  }, [isSearching, tab]);
+
+  // 按当前 tab 取扁平列表
+  const visibleItems = useMemo(() => {
+    if (isSearching) {
+      // 搜索结果跨分类扁平合并，按原 DICT_GROUPS 顺序保持
+      const grouped = searchDicts(keyword);
+      return grouped.flatMap((g) => g.items);
+    }
+    if (tab === ALL_TAB) {
+      return DICT_GROUPS.flatMap((g) => g.items);
+    }
+    const g = DICT_GROUPS.find((x) => x.category === tab);
+    return g?.items ?? [];
+  }, [tab, isSearching, keyword]);
+
+  // 当前选中词库滚进视野（面板打开时）
   useEffect(() => {
     const parent = listRef.current;
     if (!parent) return;
     const el = parent.querySelector<HTMLElement>('[data-selected="true"]');
     if (!el) return;
-    // 用 rect 计算而非 scrollIntoView，避免连带滚动整个页面
+    // 只在初始加载时滚一次，用户自己滚动了就不抢
     const p = parent.getBoundingClientRect();
     const e = el.getBoundingClientRect();
     parent.scrollTop += e.top - p.top - (p.height / 2 - e.height / 2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -65,7 +85,10 @@ export default function DictPanel({ value, onChange }: Props) {
 
       <div className="border-b border-border px-3 py-2">
         <div className="relative">
-          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            size={14}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
@@ -75,20 +98,37 @@ export default function DictPanel({ value, onChange }: Props) {
         </div>
       </div>
 
-      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto py-1">
-        {matched === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-            没有匹配「{keyword}」的词库
-          </p>
-        ) : (
-          groups.map((g) => (
-            <section key={g.category} className="px-2 py-1 first:pt-2">
-              <h3 className="sticky top-0 z-10 flex items-center justify-between bg-card px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <span>{g.category}</span>
-                <span className="tabular-nums">{g.items.length}</span>
-              </h3>
+      <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
+        <div className="border-b border-border px-2 pt-2">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger
+              value={ALL_TAB}
+              className="h-7 rounded-md bg-transparent px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none"
+            >
+              全部
+            </TabsTrigger>
+            {DICT_CATEGORIES.map((c) => (
+              <TabsTrigger
+                key={c}
+                value={c}
+                disabled={isSearching}
+                className="h-7 rounded-md bg-transparent px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none disabled:opacity-40"
+              >
+                {c}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        <TabsContent value={tab} className="m-0 flex min-h-0 flex-1 flex-col">
+          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-2 py-1">
+            {visibleItems.length === 0 ? (
+              <p className="px-2 py-8 text-center text-sm text-muted-foreground">
+                没有匹配「{keyword}」的词库
+              </p>
+            ) : (
               <ul className="space-y-0.5">
-                {g.items.map((d) => {
+                {visibleItems.map((d) => {
                   const selected = d.id === value;
                   return (
                     <li key={d.id}>
@@ -137,14 +177,25 @@ export default function DictPanel({ value, onChange }: Props) {
                   );
                 })}
               </ul>
-            </section>
-          ))
-        )}
-      </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <footer className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-        共 {DICTIONARIES.length} 个词库
-        {keyword.trim() && ` · 匹配 ${matched} 个`}
+        {isSearching ? (
+          <>
+            共 {DICTIONARIES.length} 个词库 · 匹配 {visibleItems.length} 个
+          </>
+        ) : tab === ALL_TAB ? (
+          <>
+            共 {DICTIONARIES.length} 个词库
+          </>
+        ) : (
+          <>
+            {tab} · {visibleItems.length} 个词库
+          </>
+        )}
       </footer>
     </aside>
   );
