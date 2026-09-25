@@ -177,7 +177,7 @@ export default function VirtualizedLessonSelector({
                 <div
                   className={cn(
                     'absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md border border-border bg-sidebar/95 px-1 py-1 shadow-sm backdrop-blur-sm transition-opacity',
-                    isHovered ? 'opacity-100' : 'pointer-events-none opacity-0',
+                    isHovered && isActive ? 'opacity-100' : 'pointer-events-none opacity-0',
                   )}
                   onClick={(e) => e.stopPropagation()}
                 >
