@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { recordAttempt } from '../studyRecord'
 
 const STORAGE_KEY = 'type-panel-settings'
 const DEFAULT_CHECKBOXES = { compare: true, live: false, inTime: false, focus: false, strict: false }
@@ -24,6 +26,12 @@ interface JudgeResult { passed: boolean; correctCount: number; totalWords: numbe
 
 interface Props {
   lessonName: string
+  /** 教材 id，与 lessonId 一起作为学习记录的主键 */
+  bookId?: string
+  /** 课程 id（稳定 hash）；为空表示占位课，不记录 */
+  lessonId?: string
+  /** 课在教材数组里的下标，只用于展示与跳转 */
+  lessonIdx?: number
   currentIndex: number
   totalCount: number
   targetText: string
@@ -86,11 +94,13 @@ const judge = (typedText: string, targetText: string, strict: boolean): JudgeRes
 }
 
 export default function TypePanel({
-  lessonName, currentIndex, totalCount, targetText, trans, loopEndCount = 0,
+  lessonName, bookId, lessonId, lessonIdx = 0, currentIndex, totalCount, targetText, trans, loopEndCount = 0,
   onPlay, onPrev, onNext, onStopLoop, onRedo, onInTimeChange, onFocusChange, onPassedIndexChange, isDarkMode: _isDarkMode = true,
 }: Props) {
   const loaded = loadSettings()
-  const [checkboxes, setCheckboxes] = useState<typeof DEFAULT_CHECKBOXES>(loaded.checkboxes)
+  // Live Check 已停用：边打字每停顿 300ms 就自动判卷，既刷屏也不计入学习记录。
+  // 老用户 localStorage 里可能还留着 live=true，这里强制关掉并写回。
+  const [checkboxes, setCheckboxes] = useState<typeof DEFAULT_CHECKBOXES>(() => ({ ...loaded.checkboxes, live: false }))
   const [openHelp, setOpenHelp] = useState<string | null>(null)
   const [state, setState] = useState<{ drafts: Record<number, string>; results: Record<number, JudgeResult> }>({ drafts: {}, results: {} })
   const [fontSize, setFontSize] = useState(loaded.config.fontSize)
@@ -139,10 +149,7 @@ export default function TypePanel({
 
   useEffect(() => {
     if (!checkboxes.live || !targetText) return
-    const timer = setTimeout(() => {
-      const result = judge(currentDraft, targetText, checkboxes.strict)
-      setState(prev => ({ ...prev, results: { ...prev.results, [currentIndex]: result } }))
-    }, 300)
+    const timer = setTimeout(() => commitJudgeRef.current('auto'), 300)
     return () => clearTimeout(timer)
   }, [currentDraft, checkboxes.live, checkboxes.strict, currentIndex, targetText])
 
@@ -150,11 +157,29 @@ export default function TypePanel({
 
   const setDraft = (index: number, text: string) => setState(prev => ({ ...prev, drafts: { ...prev.drafts, [index]: text } }))
 
-  const handleSubmit = useCallback(() => {
+  /**
+   * 一次判卷：更新内存结果 + 落学习记录。
+   * 只有 manual（点 Submit / 回车）才会写记录，一次算一次 attempt；
+   * auto（Live Check / In Time 自动判卷）只更新屏幕上的对错对比，不落记录。
+   */
+  const commitJudge = useCallback((source: 'manual' | 'auto') => {
     if (!targetText) return
     const result = judge(drafts[currentIndex] ?? '', targetText, checkboxes.strict)
     setState(prev => ({ ...prev, results: { ...prev.results, [currentIndex]: result } }))
-  }, [drafts, currentIndex, targetText, checkboxes.strict])
+    // 占位课（lessonId 为空）或缺少教材 id 时不记
+    if (!bookId || !lessonId) return
+    const outcome = recordAttempt({
+      bookId, lessonId, lessonIdx, title: lessonName,
+      idx: currentIndex, targetText, result, totalSentences: totalCount, source,
+    })
+    if (outcome.justCompleted) toast.success(`「${lessonName}」${totalCount} 句全部通过`)
+  }, [drafts, currentIndex, targetText, checkboxes.strict, bookId, lessonId, lessonIdx, lessonName, totalCount])
+
+  // In Time 的 effect 只依赖 loopEndCount，用 ref 拿到最新的判卷函数
+  const commitJudgeRef = useRef(commitJudge)
+  useEffect(() => { commitJudgeRef.current = commitJudge }, [commitJudge])
+
+  const handleSubmit = useCallback(() => commitJudge('manual'), [commitJudge])
 
   const handleRedo = () => {
     setState(prev => {
@@ -178,8 +203,7 @@ export default function TypePanel({
     if (!increased || !checkboxes.inTime) return
     if (currentResult?.passed) return
     if (loopEndCount % inTimeRounds !== 0) return
-    const result = judge(drafts[currentIndex] ?? '', targetText, checkboxes.strict)
-    setState(prev => ({ ...prev, results: { ...prev.results, [currentIndex]: result } }))
+    commitJudgeRef.current('auto')
     onStopLoop?.()
   }, [loopEndCount])
 
@@ -187,7 +211,7 @@ export default function TypePanel({
 
   const checkboxLabels: { key: keyof typeof checkboxes; label: string; tip: string; disabled?: boolean }[] = [
     { key: 'compare', label: 'Text Compare', tip: '提交/判卷后，在输入框下方显示每个词的对错对比。关闭则只显示最终统计。' },
-    { key: 'live', label: 'Live Check', tip: '输入后停顿 300ms 自动判卷，实时看到每个词的对错。与 In Time 互斥。', disabled: checkboxes.inTime },
+    { key: 'live', label: 'Live Check', tip: '已停用：边打字自动判卷会把同一句刷出十几次判卷，且自动判卷不计入学习记录。需要时按回车手动判卷。', disabled: true },
     { key: 'inTime', label: 'In Time', tip: '音频循环播放当前句，每轮播完你还没提交就自动判卷并暂停。与 Live Check 互斥。', disabled: checkboxes.live },
     { key: 'focus', label: 'Focus Mode', tip: '打字面板撑满屏幕，句子列表降成半透明且不可点击。' },
     { key: 'strict', label: 'Strict', tip: '严格判卷：大小写和标点符号都算错。默认宽松模式下只比对单词本身。' },

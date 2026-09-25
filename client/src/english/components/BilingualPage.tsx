@@ -14,6 +14,12 @@ interface Props {
   audioSrc: string
   title: string
   data: SentenceItem[]
+  /** 教材 id，与 lessonId 一起作为学习记录的主键 */
+  bookId?: string
+  /** 课程 id（稳定 hash） */
+  lessonId?: string
+  /** 课在教材数组里的下标 */
+  lessonIdx?: number
   playbackRate?: number
   setPlaybackRate?: (rate: number) => void
   subtitleMode?: SubtitleModeType
@@ -26,7 +32,8 @@ interface Props {
 }
 
 export default function BilingualPage({
-  audioSrc, title, data = [], playbackRate: propPlaybackRate, setPlaybackRate: propSetPlaybackRate,
+  audioSrc, title, data = [], bookId, lessonId, lessonIdx,
+  playbackRate: propPlaybackRate, setPlaybackRate: propSetPlaybackRate,
   subtitleMode: propSubtitleMode, setSubtitleMode: propSetSubtitleMode, workMode: propWorkMode, setWorkMode: propSetWorkMode,
   currentIndex, setCurrentIndex, isDarkMode: _isDarkMode = false,
 }: Props) {
@@ -294,6 +301,9 @@ export default function BilingualPage({
         {workMode === WorkModes.Type && data[typeIndex] && (
           <TypePanel
             lessonName={title}
+            bookId={bookId}
+            lessonId={lessonId}
+            lessonIdx={lessonIdx}
             currentIndex={typeIndex}
             totalCount={data.length}
             targetText={data[typeIndex].Sentence}

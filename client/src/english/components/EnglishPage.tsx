@@ -47,7 +47,7 @@ function LearningView() {
   })
 
   const [sidebarVisible, setSidebarVisible] = useState(true)
-  const [lessonData, setLessonData] = useState<{ title: string; data: any[]; words: VocabWord[]; mp3?: string } | null>(null)
+  const [lessonData, setLessonData] = useState<{ id: string; title: string; data: any[]; words: VocabWord[]; mp3?: string } | null>(null)
   const [book, setBook] = useState<BookMeta | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -127,7 +127,7 @@ function LearningView() {
         if (cancelled) return
         const words: VocabWord[] = res.newWords || []
         lesson.newWords = words
-        setLessonData({ title: lesson.title, data: res.data, words, mp3: res.mp3 })
+        setLessonData({ id: lesson.id, title: lesson.title, data: res.data, words, mp3: res.mp3 })
         setLessonError(null)
       })
       .catch(() => {
@@ -192,6 +192,9 @@ function LearningView() {
             audioSrc={`${RESOURCE_BASE_URL}/lt/${lessonData.mp3}`}
             title={lessonData.title}
             data={lessonData.data}
+            bookId={book.name}
+            lessonId={lessonData.id}
+            lessonIdx={currentLessonIdx}
             playbackRate={playbackRate}
             setPlaybackRate={setPlaybackRate}
             subtitleMode={subtitleMode}
