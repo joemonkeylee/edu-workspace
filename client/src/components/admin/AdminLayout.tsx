@@ -53,10 +53,18 @@ const MENU_GROUPS: MenuGroup[] = [
 ];
 
 function getActiveGroupKey(pathname: string, groups: MenuGroup[]): string {
+  // 收集所有匹配 (groupKey, itemPath)，取路径最长的那个（最具体匹配胜出）
+  let best: { key: string; path: string } | null = null;
   for (const group of groups) {
-    if (group.items.some((item) => pathname.startsWith(item.path))) return group.key;
+    for (const item of group.items) {
+      if (pathname.startsWith(item.path)) {
+        if (!best || item.path.length > best.path.length) {
+          best = { key: group.key, path: item.path };
+        }
+      }
+    }
   }
-  return groups[0].key;
+  return best?.key ?? groups[0].key;
 }
 
 export default function AdminLayout() {
