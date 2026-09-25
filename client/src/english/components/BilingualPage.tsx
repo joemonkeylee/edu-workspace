@@ -163,7 +163,14 @@ export default function BilingualPage({
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    const onEnded = () => { setCurrentIndex(-1); if (sentenceSectionRef.current) sentenceSectionRef.current.scrollTop = 0; setIsPlaying(false) }
+    const onEnded = () => {
+      // Type 模式：保留当前句的高亮，不要清到 -1
+      if (workModeRef.current !== WorkModes.Type) {
+        setCurrentIndex(-1)
+        if (sentenceSectionRef.current) sentenceSectionRef.current.scrollTop = 0
+      }
+      setIsPlaying(false)
+    }
     audio.addEventListener('ended', onEnded)
     return () => audio.removeEventListener('ended', onEnded)
   }, [setCurrentIndex])
@@ -313,7 +320,13 @@ export default function BilingualPage({
             onPrev={() => playSentenceWithLoop(Math.max(0, typeIndex - 1))}
             onNext={() => playSentenceWithLoop(Math.min(data.length - 1, typeIndex + 1))}
             onStopLoop={handleStopLoop}
-            onRedo={() => setLoopEndCount(0)}
+            onRedo={() => { setLoopEndCount(0); playSentenceWithLoop(typeIndex) }}
+            onResetLesson={() => {
+              // 重置整节课：回到第 0 句，重置 loop 计数，清空 passed
+              setLoopEndCount(0)
+              setPassedIndexes(new Set())
+              playSentenceWithLoop(0)
+            }}
             onInTimeChange={setTypeInTimeEnabled}
             onFocusChange={setTypeFocusEnabled}
             onPassedIndexChange={setPassedIndexes}

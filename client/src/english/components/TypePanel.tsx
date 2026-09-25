@@ -42,6 +42,8 @@ interface Props {
   onNext?: () => void
   onStopLoop?: () => void
   onRedo?: () => void
+  /** 重置整个 lesson（清空所有句子的草稿和判卷结果，回到第一句） */
+  onResetLesson?: () => void
   onInTimeChange?: (enabled: boolean) => void
   onFocusChange?: (enabled: boolean) => void
   onPassedIndexChange?: (passedIndices: Set<number>) => void
@@ -95,7 +97,7 @@ const judge = (typedText: string, targetText: string, strict: boolean): JudgeRes
 
 export default function TypePanel({
   lessonName, bookId, lessonId, lessonIdx = 0, currentIndex, totalCount, targetText, trans, loopEndCount = 0,
-  onPlay, onPrev, onNext, onStopLoop, onRedo, onInTimeChange, onFocusChange, onPassedIndexChange, isDarkMode: _isDarkMode = true,
+  onPlay, onPrev, onNext, onStopLoop, onRedo, onResetLesson, onInTimeChange, onFocusChange, onPassedIndexChange, isDarkMode: _isDarkMode = true,
 }: Props) {
   const loaded = loadSettings()
   // Live Check 已停用：边打字每停顿 300ms 就自动判卷，既刷屏也不计入学习记录。
@@ -191,6 +193,21 @@ export default function TypePanel({
     textareaRef.current?.focus()
   }
 
+  /** 重置整个 lesson：清空所有句子的输入和判卷结果，回到第 0 句 */
+  const handleResetLesson = () => {
+    setState({ drafts: {}, results: {} })
+    onResetLesson?.()
+    textareaRef.current?.focus()
+  }
+
+  /** 恢复 checkbox/字号/InTimeRounds 到默认 */
+  const handleResetSettings = () => {
+    setCheckboxes(DEFAULT_CHECKBOXES)
+    setFontSize(DEFAULT_CONFIG.fontSize)
+    setInputHeight(DEFAULT_CONFIG.inputHeight)
+    setInTimeRounds(DEFAULT_CONFIG.inTimeRounds)
+  }
+
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== 'Enter') return
     if (e.metaKey || e.ctrlKey) { e.preventDefault(); e.shiftKey ? onPrev?.() : onNext?.(); return }
@@ -248,7 +265,7 @@ export default function TypePanel({
           <label className="flex items-center gap-1.5 text-sm text-foreground" title="In Time 下循环多少轮后自动判卷">In Time Rounds
             <input type="number" min={1} max={20} value={inTimeRounds} onChange={e => setInTimeRounds(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} className="w-14 h-7 rounded border border-border bg-transparent px-2 text-center text-sm outline-none focus:border-primary" />
           </label>
-          <button type="button" className="text-[11px] px-2.5 py-0.5 border border-muted-foreground rounded bg-transparent text-muted-foreground cursor-pointer whitespace-nowrap hover:text-foreground hover:border-foreground hover:bg-muted transition-colors" onClick={() => { setCheckboxes(DEFAULT_CHECKBOXES); setFontSize(DEFAULT_CONFIG.fontSize); setInputHeight(DEFAULT_CONFIG.inputHeight); setInTimeRounds(DEFAULT_CONFIG.inTimeRounds) }} title="恢复默认设置">↺ Reset</button>
+          <button type="button" className="text-[11px] px-2.5 py-0.5 border border-muted-foreground rounded bg-transparent text-muted-foreground cursor-pointer whitespace-nowrap hover:text-foreground hover:border-foreground hover:bg-muted transition-colors" onClick={handleResetLesson} onContextMenu={(e) => { e.preventDefault(); handleResetSettings() }} title="重置本课（清空所有输入和判卷结果，回到第 0 句）。右键 = 恢复默认设置">↺ Reset</button>
         </div>
       </div>
 
