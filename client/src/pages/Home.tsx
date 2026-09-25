@@ -687,9 +687,9 @@ export default function Home() {
             <GraduationCap size={22} />
             <span className="text-lg font-normal">edu-workspace</span>
           </Link>
+          <EnvBadge />
           <span className="mx-1 h-5 w-px bg-sidebar-border" />
           <ResourceKindMenu value={resourceKind} onChange={safeSetResourceKind} counts={kindCounts} />
-          <EnvBadge />
         </div>
         <AppHeaderRight />
       </header>
