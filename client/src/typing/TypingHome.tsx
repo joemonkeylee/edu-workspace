@@ -28,7 +28,7 @@ import type { Word } from './types';
 import WordDisplay from './components/WordDisplay';
 import StatsBar from './components/StatsBar';
 import ChapterResult from './components/ChapterResult';
-import SettingsDialog from './components/SettingsDialog';
+import SettingsPanel from './components/SettingsPanel';
 
 const LAST_DICT_KEY = 'typing-last-dict';
 
@@ -49,9 +49,9 @@ export default function TypingHome() {
   const settings = useTypingSettings();
   const [dictId, setDictId] = useState<string>(readLastDict);
   const [chapter, setChapter] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   const [reviewWords, setReviewWords] = useState<Word[] | null>(null);
+  /** 「默认隐藏释义」开启时，用户主动查看释义的临时状态 */
   const [showAnswer, setShowAnswer] = useState(false);
 
   const { words, loading, error } = useDictWords(dictId);
@@ -59,6 +59,13 @@ export default function TypingHome() {
 
   const isReview = reviewWords !== null;
   const savedRef = useRef(false);
+
+  // 让发音回调保持稳定引用：读 ref 而非闭包里的 state，
+  // 避免每次按键都重建回调、进而反复解绑/绑定全局键盘监听
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const pronunciationTypeRef = useRef(settings.pronunciationType);
+  pronunciationTypeRef.current = settings.pronunciationType;
 
   const chapterWords = useMemo(() => {
     const base = isReview ? reviewWords.slice(0, CHAPTER_LENGTH) : words ? sliceChapter(words, chapter) : [];
@@ -78,6 +85,11 @@ export default function TypingHome() {
     // 也让用户有时间看清本章第一个词
     dispatch({ type: 'setup', words: chapterWords });
   }, [chapterWords]);
+
+  // 切词（含循环重打）时收起手动展开的释义
+  useEffect(() => {
+    setShowAnswer(false);
+  }, [state.chapter.index, state.chapter.loopCount]);
 
   // ── 计时 ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -119,13 +131,10 @@ export default function TypingHome() {
   }, [state.effect.seq, state.effect.type, settings.loopTimes]);
 
   // ── 新词自动发音 ────────────────────────────────────────────────
-  const pronounce = useCallback(
-    (word?: Word) => {
-      const target = word ?? currentWord(state);
-      if (target) playPronunciation(target.name, settings.pronunciationType);
-    },
-    [state, settings.pronunciationType],
-  );
+  const pronounce = useCallback((word?: Word) => {
+    const target = word ?? currentWord(stateRef.current);
+    if (target) playPronunciation(target.name, pronunciationTypeRef.current);
+  }, []);
 
   useEffect(() => {
     if (!settings.isPronunciationOpen || !state.chapter.isTyping) return;
@@ -170,9 +179,17 @@ export default function TypingHome() {
 
   // ── 键盘输入 ────────────────────────────────────────────────────
   useEffect(() => {
-    if (settingsOpen || resultOpen) return;
+    if (resultOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+
+      // 设置面板内的任何按键都不参与打字：面板里的 Select / Slider / 开关
+      // 都是 button 或 input，若不过滤，调节设置时会被当成打字输入
+      if (target?.closest('[data-typing-panel]')) return;
+      // Radix Select 的浮层通过 portal 渲染在 body 下，不在面板 DOM 内，单独排除
+      if (document.querySelector('[role="listbox"]')) return;
+
       // Ctrl/Cmd + J 发音
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
         e.preventDefault();
@@ -181,7 +198,6 @@ export default function TypingHome() {
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
       }
@@ -215,7 +231,6 @@ export default function TypingHome() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     settings.isIgnoreCase,
-    settingsOpen,
     resultOpen,
     pronounce,
     state.chapter.isTyping,
@@ -268,7 +283,9 @@ export default function TypingHome() {
 
   const dict = getDict(dictId);
   const word = currentWord(state);
-  const showTrans = (settings.isTransHidden ? showAnswer : true) || state.word.isFinished;
+  // 「默认隐藏释义」开启时必须由用户主动触发（点击或 Tab）才显示，
+  // 打完单词也不自动展开，否则这一设置等于没生效
+  const showTrans = settings.isTransHidden ? showAnswer : true;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
@@ -326,76 +343,87 @@ export default function TypingHome() {
           </Button>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
+        <Button
+          variant={settings.panelOpen ? 'default' : 'outline'}
+          size="sm"
+          aria-pressed={settings.panelOpen}
+          onClick={settings.togglePanel}
+        >
           <Settings2 size={15} className="mr-1.5" />
           设置
         </Button>
       </div>
 
-      {/* 练习区 */}
-      <div className="relative flex min-h-[16rem] flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-card px-6">
-        {loading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Keyboard size={16} className="animate-pulse" />
-            正在加载 {dict.name}…
-          </div>
-        )}
+      {/* 练习区 + 设置面板 */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+        <div className="relative flex min-h-[16rem] flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-card px-6">
+          {loading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Keyboard size={16} className="animate-pulse" />
+              正在加载 {dict.name}…
+            </div>
+          )}
 
-        {!loading && error && (
-          <div className="text-center">
-            <p className="text-sm text-destructive">词库加载失败：{error}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => handleSelectDict(dictId)}>
-              重试
-            </Button>
-          </div>
-        )}
+          {!loading && error && (
+            <div className="text-center">
+              <p className="text-sm text-destructive">词库加载失败：{error}</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => handleSelectDict(dictId)}>
+                重试
+              </Button>
+            </div>
+          )}
 
-        {!loading && !error && chapterWords.length === 0 && (
-          <p className="text-sm text-muted-foreground">当前没有可练习的单词</p>
-        )}
+          {!loading && !error && chapterWords.length === 0 && (
+            <p className="text-sm text-muted-foreground">当前没有可练习的单词</p>
+          )}
 
-        {!loading && !error && word && chapterWords.length > 0 && (
-          <WordDisplay
-            word={word}
-            state={state.word}
-            fontSize={settings.fontSize}
-            showTrans={showTrans}
-            pronunciationType={settings.pronunciationType}
-            onPronounce={() => pronounce(word)}
-          />
-        )}
+          {!loading && !error && word && chapterWords.length > 0 && (
+            <WordDisplay
+              word={word}
+              state={state.word}
+              fontSize={settings.fontSize}
+              showTrans={showTrans}
+              transToggleable={settings.isTransHidden}
+              onToggleTrans={() => setShowAnswer((v) => !v)}
+              pronunciationType={settings.pronunciationType}
+              onPronounce={() => pronounce(word)}
+            />
+          )}
 
-        {/* 未开始的引导层 */}
-        {!loading && !error && chapterWords.length > 0 && !state.chapter.isTyping && !state.chapter.isFinished && (
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'start' })}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/80 backdrop-blur-sm transition hover:bg-card/70"
-          >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Play size={20} />
+          {/* 未开始的引导层 */}
+          {!loading && !error && chapterWords.length > 0 && !state.chapter.isTyping && !state.chapter.isFinished && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'start' })}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/80 backdrop-blur-sm transition hover:bg-card/70"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Play size={20} />
+              </span>
+              <span className="text-sm text-muted-foreground">点击或按任意字母键开始</span>
+            </button>
+          )}
+
+          {/* 错误过多时提示可跳过 */}
+          {state.chapter.isShowSkip && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'skipWord' })}
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              跳过（Esc）
+              <SkipForward size={13} />
+            </button>
+          )}
+
+          {isReview && (
+            <span className="absolute left-3 top-3 rounded-md bg-accent px-2 py-0.5 text-xs text-accent-foreground">
+              错词复习
             </span>
-            <span className="text-sm text-muted-foreground">点击或按任意字母键开始</span>
-          </button>
-        )}
+          )}
+        </div>
 
-        {/* 错误过多时提示可跳过 */}
-        {state.chapter.isShowSkip && (
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'skipWord' })}
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            跳过（Esc）
-            <SkipForward size={13} />
-          </button>
-        )}
-
-        {isReview && (
-          <span className="absolute left-3 top-3 rounded-md bg-accent px-2 py-0.5 text-xs text-accent-foreground">
-            错词复习
-          </span>
-        )}
+        {settings.panelOpen && <SettingsPanel />}
       </div>
 
       {/* 统计 */}
@@ -425,8 +453,6 @@ export default function TypingHome() {
           handleNextChapter();
         }}
       />
-
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }
