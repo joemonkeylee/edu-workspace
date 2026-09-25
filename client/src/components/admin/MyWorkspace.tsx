@@ -48,8 +48,17 @@ function formatTime(dateStr: string) {
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return '昨天';
-  const sameYear = d.getFullYear() === now.getFullYear();
-  return sameYear ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+  // 更早的一律带年份，避免跨年后分不清「9/25」是哪一年
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 页码摘要：单页显示「第 N 页」，多页列出前三个并带总数 */
+function formatPages(pages: number[] | null | undefined) {
+  if (!pages || pages.length === 0) return '';
+  const sorted = [...pages].sort((a, b) => a - b);
+  if (sorted.length === 1) return `第 ${sorted[0]} 页`;
+  if (sorted.length <= 3) return `第 ${sorted.join('、')} 页`;
+  return `第 ${sorted.slice(0, 3).join('、')} 等 ${sorted.length} 页`;
 }
 
 /**
@@ -245,10 +254,10 @@ export default function MyWorkspace() {
                             </span>
                           )}
                         </span>
-                        {row.pages && row.pages.length > 0 && (
+                        {formatPages(row.pages) && (
                           <span className="flex flex-shrink-0 items-center gap-0.5">
                             <Layers size={9} />
-                            {row.pages.length} 页
+                            {formatPages(row.pages)}
                           </span>
                         )}
                         {/* 服务端在保存笔迹时会同步 updatedAt，所以它就是「最后一次动手时间」 */}

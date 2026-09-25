@@ -1,10 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
-import {
-  Sidebar, SidebarContent, SidebarHeader, SidebarFooter,
-  SidebarMenu, SidebarMenuButton, SidebarGroup,
-  SidebarProvider, SidebarInset, SidebarRail,
-} from "@/components/ui/sidebar"
 import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -64,6 +60,18 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, authEnabled } = useAuthStore();
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setCollapsed((c) => !c);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const userRoles = Array.isArray(user?.roles) && user.roles.length > 0
     ? user.roles
@@ -90,51 +98,62 @@ export default function AdminLayout() {
   })();
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      <Sidebar variant="inset" collapsible="icon">
-        {/* Sidebar Header: only logo */}
-        <SidebarHeader className="!flex !flex-row !items-center !p-0 !gap-0 h-[57px] border-b border-sidebar-border">
-          <Link to="/" className="flex items-center gap-2 pl-4 pr-2 text-sidebar-foreground hover:text-sidebar-foreground/80 group-data-[collapsible=icon]:justify-center">
+    <div className="flex h-full bg-surface">
+      {/* Left sidebar: native, logo header mirrors the front-site header exactly */}
+      <aside
+        className={cn(
+          "relative flex flex-shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+          collapsed ? "w-12" : "w-60"
+        )}
+      >
+        {/* Logo header: same structure/padding as Home header (h-14, px-6, no border) */}
+        <header className={cn("flex h-14 flex-shrink-0 items-center", collapsed ? "justify-center" : "px-6")}>
+          <Link to="/" className="flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-foreground/80">
             <GraduationCap size={22} />
-            <span className="text-lg font-normal truncate group-data-[collapsible=icon]:hidden">edu-workspace</span>
+            {!collapsed && <span className="truncate text-lg font-normal">edu-workspace</span>}
           </Link>
-        </SidebarHeader>
+        </header>
 
-        {/* Sidebar Content: secondary menu (grouped by active tab) */}
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarMenu>
-              {activeGroup?.items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuButton asChild tooltip={item.label} key={item.path}>
-                    {/* end：否则 /admin 这一项在任意子页面上都显示为选中 */}
-                    <NavLink to={item.path} end>
-                      {({ isActive }) => (
-                        <>
-                          <Icon size={15} />
-                          <span className={cn(isActive ? 'font-medium' : '')}>{item.label}</span>
-                        </>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroup>
-        </SidebarContent>
+        {/* Secondary menu (grouped by active top tab) */}
+        <nav className="flex-1 overflow-auto border-t border-sidebar-border p-2">
+          {activeGroup?.items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end
+                title={item.label}
+                className={({ isActive }) =>
+                  cn(
+                    "mb-0.5 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition",
+                    isActive
+                      ? "bg-sidebar-accent font-medium text-sidebar-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                    collapsed && "justify-center px-0"
+                  )
+                }
+              >
+                <Icon size={15} />
+                {!collapsed && <span>{item.label}</span>}
+              </NavLink>
+            );
+          })}
+        </nav>
 
-        {/* Sidebar Footer: spacer only */}
-        <SidebarFooter />
-
-        <SidebarRail className="!flex !items-center !justify-center !top-1/2 !-translate-y-1/2 !-right-3 !h-8 !w-8 !rounded-md !border !border-sidebar-border !bg-sidebar hover:!bg-sidebar-accent [&>svg]:opacity-70 hover:[&>svg]:opacity-100 after:hidden" title="收起/展开侧边栏 (B)">
-          <PanelLeftClose size={14} className="opacity-70 group-data-[collapsible=icon]:rotate-180 transition-transform" />
-        </SidebarRail>
-      </Sidebar>
+        {/* Collapse toggle on the sidebar/main boundary */}
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          title="收起/展开侧边栏 (⌘B)"
+          className="absolute top-1/2 -right-3 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border border-sidebar-border bg-sidebar hover:bg-sidebar-accent"
+        >
+          <PanelLeftClose size={14} className={cn("opacity-70 transition-transform", collapsed && "rotate-180")} />
+        </button>
+      </aside>
 
       {/* Main area */}
-      <SidebarInset className="bg-background">
-        {/* Top header: logo + primary tabs + user */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Top header: primary tabs + user */}
         <header className="flex h-14 flex-shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
           {/* Top-level tabs */}
           <div className="flex items-center gap-1">
@@ -148,10 +167,10 @@ export default function AdminLayout() {
                     if (firstItem) navigate(firstItem.path);
                   }}
                   className={cn(
-                    'flex items-center gap-1.5 h-7 px-3 rounded-md text-sm transition',
+                    'flex h-7 items-center gap-1.5 rounded-md px-3 text-sm transition',
                     activeGroupKey === group.key
-                      ? 'bg-sidebar-accent text-sidebar-foreground font-medium'
-                      : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                      ? 'bg-sidebar-accent font-medium text-sidebar-foreground'
+                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                   )}
                 >
                   <GroupIcon size={14} />
@@ -181,10 +200,10 @@ export default function AdminLayout() {
           )}
         </header>
 
-        <main className="overflow-auto">
+        <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   );
 }
