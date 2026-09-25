@@ -24,6 +24,8 @@ export interface Lesson {
 }
 
 export interface BookMeta {
+  /** 稳定 UUID（与 BOOKS 数组的 id 一致） */
+  id?: string
   name: string
   data?: Lesson[]
   tag?: string

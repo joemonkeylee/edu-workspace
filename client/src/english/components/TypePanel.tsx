@@ -162,7 +162,7 @@ export default function TypePanel({
    * 只有 manual（点 Submit / 回车）才会写记录，一次算一次 attempt；
    * auto（Live Check / In Time 自动判卷）只更新屏幕上的对错对比，不落记录。
    */
-  const commitJudge = useCallback((source: 'manual' | 'auto') => {
+  const commitJudge = useCallback((source: 'manual' | 'inTime' | 'auto') => {
     if (!targetText) return
     const result = judge(drafts[currentIndex] ?? '', targetText, checkboxes.strict)
     setState(prev => ({ ...prev, results: { ...prev.results, [currentIndex]: result } }))
@@ -203,7 +203,7 @@ export default function TypePanel({
     if (!increased || !checkboxes.inTime) return
     if (currentResult?.passed) return
     if (loopEndCount % inTimeRounds !== 0) return
-    commitJudgeRef.current('auto')
+    commitJudgeRef.current('inTime')
     onStopLoop?.()
   }, [loopEndCount])
 

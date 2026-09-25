@@ -89,12 +89,13 @@ function LearningView() {
     let cancelled = false
     setLoading(true)
     const safeBookIdx = Math.min(Math.max(currentBookIdx, 0), BOOKS.length - 1)
-    const bookId = BOOKS[safeBookIdx].id
+    const meta = BOOKS[safeBookIdx]
+    const bookId = meta.id
 
     loadBookData(bookId)
       .then((mod) => {
         if (cancelled) return
-        setBook({ name: bookId, data: mod.data, count: mod.data.length })
+        setBook({ id: meta.id, name: meta.name, data: mod.data, count: mod.data.length })
         setLoadError(null)
       })
       .catch((e) => {
@@ -192,7 +193,7 @@ function LearningView() {
             audioSrc={`${RESOURCE_BASE_URL}/lt/${lessonData.mp3}`}
             title={lessonData.title}
             data={lessonData.data}
-            bookId={book.name}
+            bookId={book.id || book.name}
             lessonId={lessonData.id}
             lessonIdx={currentLessonIdx}
             playbackRate={playbackRate}

@@ -13,10 +13,11 @@
  *     回 lesson JSON 取原文即可。
  *   · errors 是独立计数器（每次判卷 !passed 就 +1），不能由 attempts 反推 ——
  *     「错→对→错→对」真实错 2 次，而 attempts-1 会算成 3。
- *   · 只有手动判卷（Submit / 回车）才记录。Live Check 每停顿 300ms 就判一次，
- *     In Time 是超时后自动判卷，两者都不是「我提交了一份答案」，
- *     记进去只会让 attempts/errors 变成噪音。
+ *   · manual / inTime 才算 attempt（回车 Submit 或 In Time 超时判卷）；
+ *     auto（Live Check 边打字 300ms 自动判卷）跳过，只更新屏幕上的对错对比。
  */
+
+import { toast } from 'sonner'
 
 const KEY = 'english-study-record'
 
@@ -91,11 +92,21 @@ export function getLessonRecord(bookId: string, lessonId: string): LessonRecord 
   return loadStudyRecord()[lessonKey(bookId, lessonId)] || null
 }
 
+let quotaWarned = false
+
 function write(all: StudyRecordMap): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(all))
-  } catch {
-    // localStorage 写满（QuotaExceededError）时不该影响打字练习本身
+  } catch (e) {
+    // QuotaExceededError — 学习记录存不下了，不该阻断打字本身，但要告诉用户
+    if (!quotaWarned) {
+      quotaWarned = true
+      console.warn('[studyRecord] localStorage quota exceeded, study progress not saved.', e)
+      toast.warning('学习记录存满了', {
+        description: 'localStorage 已达上限，本次学习记录不会保存。清除旧的学习记录可恢复。',
+        duration: 6000,
+      })
+    }
   }
 }
 
@@ -108,8 +119,8 @@ export interface RecordAttemptArgs {
   targetText: string
   result: JudgeLike
   totalSentences: number
-  /** manual = 点 Submit / 回车；auto = Live Check / In Time 自动判卷 */
-  source: 'manual' | 'auto'
+  /** manual = Submit/回车; inTime = In Time 超时自动判卷（算 attempt）; auto = Live Check 边打字判卷（跳过） */
+  source: 'manual' | 'inTime' | 'auto'
   now?: number
 }
 
@@ -145,8 +156,8 @@ export function recordAttempt(args: RecordAttemptArgs): RecordAttemptOutcome {
   const prevStat = prevLesson.sentenceStats[statKey]
   const ratio = result.totalWords > 0 ? result.correctCount / result.totalWords : 0
 
-  // 自动判卷直接跳过：不计数、不写盘
-  if (source !== 'manual') return { record: prevLesson, counted: false, justCompleted: false }
+  // 只有 Live Check 的边打字自动判卷（auto）跳过；manual 和 In Time 超时判卷都算 attempt
+  if (source === 'auto') return { record: prevLesson, counted: false, justCompleted: false }
 
   const nextStat: SentenceStat = {
     idx,
