@@ -5,6 +5,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import prisma from '../prisma.js';
 import { getBookRoot } from '../services/storage.js';
+import { getAvailableDpisAsync } from '../services/pdfProcessor.js';
 import { authRequired, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -64,6 +65,78 @@ router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Respo
     page,
     pageSize,
   });
+}));
+
+// ── List assignments across books (home "我的提交" panel) ───────────
+// Home needs a cross-book view of *my* work; GET / requires one book at a time.
+// Declared before /:id so "mine" is not swallowed as an id.
+
+router.get('/mine', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
+  const take = Math.min(200, Math.max(1, parseInt(req.query.limit as string) || 60));
+
+  // Always scoped to the caller. Teachers/admins see other people's work in
+  // /admin/assignments — this endpoint is deliberately personal.
+  const userId = req.user?.userId;
+  const where: any = userId ? { userId } : {};
+
+  // An assignment nobody drew on is an empty shell created by opening the
+  // assignment mode and walking away; it carries no work to show.
+  const shellFilter = {
+    OR: [
+      { status: { not: 'draft' } },
+      { strokes: { some: {} } },
+    ],
+  };
+
+  const [rows, grouped] = await Promise.all([
+    prisma.assignment.findMany({
+      where: { ...where, ...shellFilter },
+      select: {
+        id: true, bookId: true, userId: true, title: true, subject: true,
+        status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
+        _count: { select: { strokes: true } },
+        strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
+        book: { select: { id: true, title: true, subject: true, category: true, coverPage: true, totalPages: true, storagePath: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take,
+    }),
+    prisma.assignment.groupBy({
+      by: ['status'],
+      where: { ...where, ...shellFilter },
+      _count: { _all: true },
+    }),
+  ]);
+
+  // Covers live under books/{id}/{dpi}/, so the client needs the dpi list to
+  // build a thumbnail URL. Cached per book — repeated assignments share one read.
+  const dpiCache = new Map<number, number[]>();
+  const data = [];
+  for (const a of rows) {
+    const bookId = a.book?.id;
+    let availableDpis: number[] = [];
+    if (bookId) {
+      if (!dpiCache.has(bookId)) {
+        dpiCache.set(bookId, await getAvailableDpisAsync(getBookRoot(bookId)).catch(() => []));
+      }
+      availableDpis = dpiCache.get(bookId) || [];
+    }
+    const { strokes, book, ...rest } = a;
+    data.push({
+      ...rest,
+      pages: strokes.map(s => s.pageNumber),
+      book: book ? { ...book, availableDpis } : null,
+    });
+  }
+
+  const counts = { draft: 0, submitted: 0, graded: 0, returned: 0, all: 0 };
+  for (const g of grouped) {
+    const n = g._count._all || 0;
+    counts.all += n;
+    if (g.status in counts) counts[g.status as keyof typeof counts] += n;
+  }
+
+  res.json({ data, counts, limit: take });
 }));
 
 // ── Get assignment detail ─────────────────────────────────────────
@@ -276,6 +349,10 @@ router.post('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest
         points: s.points || [],
       })),
     })] : []),
+    // Touch the parent so updatedAt really means "last time this assignment
+    // was worked on". Without it the list could only sort by creation time and
+    // a draft the student is still drawing on sinks to the bottom of 「我的提交」.
+    prisma.assignment.update({ where: { id }, data: { updatedAt: new Date() } }),
   ]);
 
   res.json({ success: true, count: strokes.length });

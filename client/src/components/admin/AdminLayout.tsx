@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
 import {
   Sidebar, SidebarContent, SidebarHeader, SidebarFooter,
@@ -91,11 +91,11 @@ export default function AdminLayout() {
     <SidebarProvider defaultOpen={true}>
       <Sidebar variant="inset" collapsible="icon">
         {/* Sidebar Header: only logo */}
-        <SidebarHeader className="border-b border-sidebar-border px-2 py-2">
-          <div className="flex items-center gap-2 px-2 py-1.5">
+        <SidebarHeader className="!p-0 !gap-0 h-14 border-b border-sidebar-border">
+          <Link to="/" className="flex h-full items-center gap-2 px-2 text-sidebar-foreground hover:text-sidebar-foreground/80 group-data-[collapsible=icon]:justify-center">
             <GraduationCap size={22} />
             <span className="text-base font-medium truncate group-data-[collapsible=icon]:hidden">edu-workspace</span>
-          </div>
+          </Link>
         </SidebarHeader>
 
         {/* Sidebar Content: secondary menu (grouped by active tab) */}

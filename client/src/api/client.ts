@@ -740,9 +740,26 @@ export interface AssignmentStroke {
   createdAt: string;
 }
 
+export interface AssignmentListResult {
+  data: Assignment[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export async function getAssignments(bookId: number, params?: { page?: number; pageSize?: number }) {
   const { data } = await api.get('/assignments', { params: { bookId, ...params } });
-  return data as { data: Assignment[]; total: number; page: number; pageSize: number };
+  return data as AssignmentListResult;
+}
+
+/** 首屏「我的提交」用：跨书的作业列表（含书籍信息 + 各状态计数） */
+export async function getMyAssignments(limit = 60) {
+  const { data } = await api.get('/assignments/mine', { params: { limit } });
+  return data as {
+    data: (Assignment & { book: { id: number; title: string; subject: string; category: string; coverPage: number; totalPages: number; storagePath: string; availableDpis: number[] } | null })[];
+    counts: { all: number; draft: number; submitted: number; graded: number; returned: number };
+    limit: number;
+  };
 }
 
 export async function getAssignment(id: number) {
