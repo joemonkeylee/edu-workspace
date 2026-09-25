@@ -129,7 +129,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Secondary menu (grouped by active top tab) */}
-        <nav className="flex-1 overflow-auto border-t border-sidebar-border p-2">
+        <nav key={activeGroupKey} className="flex-1 overflow-auto border-t border-sidebar-border p-2">
           {activeGroup?.items.map((item) => {
             const Icon = item.icon;
             return (
