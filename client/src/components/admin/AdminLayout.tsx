@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
-import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard } from 'lucide-react';
+import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard, Home } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '@/lib/utils';
@@ -128,8 +128,16 @@ export default function AdminLayout() {
           collapsed ? "w-12" : "w-60"
         )}
       >
-        {/* Logo header: same structure/padding as Home header (h-14, px-6, no border) */}
-        <header className={cn("flex h-14 flex-shrink-0 items-center", collapsed ? "justify-center" : "px-6")}>
+        {/* Logo header: same structure/padding as Home header (h-14, px-6, no border).
+            The bottom rule must be a border-b (55~56px), NOT the nav's border-t (56~57px) —
+            otherwise it sits 1px lower than the main header's border-b and the two
+            headers read as different heights. */}
+        <header
+          className={cn(
+            "flex h-14 flex-shrink-0 items-center border-b border-sidebar-border",
+            collapsed ? "justify-center" : "px-6"
+          )}
+        >
           <Link to="/" className="flex items-center gap-2 text-sidebar-foreground hover:text-sidebar-foreground/80">
             <GraduationCap size={22} />
             {!collapsed && <span className="truncate text-lg font-normal">edu-workspace</span>}
@@ -137,7 +145,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Secondary menu (grouped by active top tab) */}
-        <nav key={activeGroupKey} className="flex-1 overflow-auto border-t border-sidebar-border p-2">
+        <nav key={activeGroupKey} className="flex-1 overflow-auto p-2">
           {activeGroup?.items.map((item) => {
             const Icon = item.icon;
             return (
@@ -204,7 +212,7 @@ export default function AdminLayout() {
 
           <div className="mx-auto" />
 
-          {/* Right side: theme + vitals + user + logout */}
+          {/* Right side: theme + vitals + user + logout + exit-to-home */}
           <div className="flex items-center gap-2">
             <ThemeSwitcher />
             <WebVitalsInfoPanel vitals={vitals} />
@@ -224,6 +232,11 @@ export default function AdminLayout() {
                 </Button>
               </>
             )}
+            <div className="mx-1 h-5 w-px bg-sidebar-border" />
+            <Link to="/" title="返回首页"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/80 transition hover:bg-sidebar-accent hover:text-sidebar-foreground">
+              <Home size={16} />
+            </Link>
           </div>
         </header>
 
