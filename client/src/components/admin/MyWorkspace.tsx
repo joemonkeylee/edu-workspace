@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, RefreshCw, Send, Trash2, ExternalLink, Clock, Layers, PenLine } from 'lucide-react';
+import { FileText, RefreshCw, Send, Trash2, ExternalLink, Clock, Layers, PenLine, X } from 'lucide-react';
 import { getMyAssignments, updateAssignment, deleteAssignment, type Assignment } from '../../api/client';
 import { toast } from 'sonner';
 import { useConfirm } from '../ConfirmDialog';
@@ -23,6 +23,8 @@ type Row = Assignment & {
 type Counts = { all: number; draft: number; submitted: number; graded: number; returned: number };
 
 type TabKey = 'all' | 'draft' | 'returned' | 'submitted' | 'graded';
+
+type BookOption = { id: number; title: string; subject: string; count: number };
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'all', label: '全部' },
@@ -76,13 +78,16 @@ export default function MyWorkspace() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('all');
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [books, setBooks] = useState<BookOption[]>([]);
+  const [selectedBook, setSelectedBook] = useState<string>('');
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await getMyAssignments(80);
+      const res = await getMyAssignments(80, selectedBook ? Number(selectedBook) : undefined);
       setRows(res.data);
       setCounts(res.counts);
+      setBooks(res.books || []);
     } catch (e: any) {
       toast.error('加载作业失败: ' + (e?.message || ''));
     } finally {
@@ -90,7 +95,7 @@ export default function MyWorkspace() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [selectedBook]);
 
   const tabCount = (key: TabKey) => (key === 'all' ? counts.all : counts[key as keyof Counts] || 0);
 
@@ -174,7 +179,34 @@ export default function MyWorkspace() {
         <div className="flex flex-shrink-0 items-center gap-2 border-b border-border px-3 py-2">
           <FileText size={14} className="text-muted-foreground" />
           <span className="text-xs font-medium text-foreground">我的提交</span>
-          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
+          {books.length > 0 && (
+            <div className="relative max-w-[220px] min-w-0 flex-1 sm:max-w-[260px]">
+              <select
+                value={selectedBook}
+                onChange={(e) => setSelectedBook(e.target.value)}
+                className="w-full appearance-none truncate rounded-md border border-border bg-card py-0.5 pl-2 pr-6 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                title="按书本筛选"
+              >
+                <option value="">全部书本 ({books.length})</option>
+                {books.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.title} ({b.count})
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">▾</span>
+              {selectedBook && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedBook('')}
+                  className="absolute right-5 top-1/2 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground/30 text-white transition hover:bg-muted-foreground/50"
+                  title="清除筛选"
+                >
+                  <X size={9} strokeWidth={3} />
+                </button>
+              )}
+            </div>
+          )}
             {TABS.map((t) => (
               <button
                 key={t.key}
@@ -190,7 +222,6 @@ export default function MyWorkspace() {
                 <span className="ml-0.5 tabular-nums opacity-60">{tabCount(t.key)}</span>
               </button>
             ))}
-          </div>
           <div className="flex-1" />
           <button
             type="button"

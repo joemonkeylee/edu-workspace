@@ -3,6 +3,7 @@ import { Search, X, Layers, BookOpen, Clock } from 'lucide-react'
 import { BOOKS } from '../constants'
 import { loadProgress, learnedLessons, type ProgressMap } from '../progress'
 import { cn } from '@/lib/utils'
+import { useEnglishLibraryStore } from '../libraryStore'
 
 type BookEntry = (typeof BOOKS)[number]
 
@@ -62,11 +63,17 @@ const TILE_LIMIT = 8
 const tileCols = (n: number) => (n <= 4 ? 2 : n <= 9 ? 3 : 4)
 
 export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => void }) {
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState<string>(ALL)
-  const [sort, setSort] = useState<'default' | 'recent' | 'lessons' | 'difficulty_asc' | 'difficulty_desc'>('default')
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [progress] = useState<ProgressMap>(() => loadProgress())
+
+  // 筛选状态从 zustand + localStorage 持久化读取
+  const search = useEnglishLibraryStore((s) => s.search)
+  const setSearch = useEnglishLibraryStore((s) => s.setSearch)
+  const category = useEnglishLibraryStore((s) => s.category)
+  const setCategory = useEnglishLibraryStore((s) => s.setCategory)
+  const sort = useEnglishLibraryStore((s) => s.sort)
+  const setSort = useEnglishLibraryStore((s) => s.setSort)
+  const expanded = useEnglishLibraryStore((s) => s.expanded)
+  const toggleExpanded = useEnglishLibraryStore((s) => s.toggleExpanded)
 
   // 系列骨架：按 series 字段聚合，单本教材自成一个系列
   const seriesBase = useMemo<Series[]>(() => {
@@ -333,7 +340,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                       {hidden > 0 && (
                         <button
                           type="button"
-                          onClick={() => setExpanded(prev => ({ ...prev, [s.key]: true }))}
+                          onClick={() => toggleExpanded(s.key)}
                           className="flex items-center justify-center rounded-md border border-dashed border-border px-2 py-1.5 text-[11px] text-muted-foreground transition hover:border-primary hover:text-primary"
                         >
                           +{hidden} 套
@@ -342,7 +349,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                       {isExpanded && s.members.length > TILE_LIMIT && (
                         <button
                           type="button"
-                          onClick={() => setExpanded(prev => ({ ...prev, [s.key]: false }))}
+                          onClick={() => toggleExpanded(s.key)}
                           className="flex items-center justify-center rounded-md border border-dashed border-border px-2 py-1.5 text-[11px] text-muted-foreground transition hover:border-primary hover:text-primary"
                         >
                           收起

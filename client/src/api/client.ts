@@ -753,11 +753,13 @@ export async function getAssignments(bookId: number, params?: { page?: number; p
 }
 
 /** 首屏「我的提交」用：跨书的作业列表（含书籍信息 + 各状态计数） */
-export async function getMyAssignments(limit = 60) {
-  const { data } = await api.get('/assignments/mine', { params: { limit } });
+export async function getMyAssignments(limit = 60, bookId?: number) {
+  const { data } = await api.get('/assignments/mine', { params: { limit, ...(bookId ? { bookId } : {}) } });
   return data as {
     data: (Assignment & { book: { id: number; title: string; subject: string; category: string; coverPage: number; totalPages: number; storagePath: string; availableDpis: number[] } | null })[];
     counts: { all: number; draft: number; submitted: number; graded: number; returned: number };
+    /** 该用户做过作业的书本（distinct），用于概览页的书本筛选下拉 */
+    books: { id: number; title: string; subject: string; count: number }[];
     limit: number;
   };
 }

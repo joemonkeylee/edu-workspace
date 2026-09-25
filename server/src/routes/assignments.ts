@@ -73,11 +73,12 @@ router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Respo
 
 router.get('/mine', authRequired, asyncHandler(async (req: AuthedRequest, res: Response) => {
   const take = Math.min(200, Math.max(1, parseInt(req.query.limit as string) || 60));
+  const bookId = parseInt(req.query.bookId as string);
 
   // Always scoped to the caller. Teachers/admins see other people's work in
   // /admin/assignments — this endpoint is deliberately personal.
   const userId = req.user?.userId;
-  const where: any = userId ? { userId } : {};
+  const scope: any = userId ? { userId } : {};
 
   // An assignment nobody drew on is an empty shell created by opening the
   // assignment mode and walking away; it carries no work to show.
@@ -88,9 +89,16 @@ router.get('/mine', authRequired, asyncHandler(async (req: AuthedRequest, res: R
     ],
   };
 
-  const [rows, grouped] = await Promise.all([
+  // The filter picker is always built from the caller's whole scope, never from
+  // the currently selected book — otherwise selecting one book shrinks the list to one.
+  // Rows + counts follow the selection so every number on screen is filter-consistent.
+  const bookFilter = isNaN(bookId) ? {} : { bookId };
+  const where: any = { ...scope, ...shellFilter, ...bookFilter };
+  const scopeWhere: any = { ...scope, ...shellFilter };
+
+  const [rows, grouped, bookGroups] = await Promise.all([
     prisma.assignment.findMany({
-      where: { ...where, ...shellFilter },
+      where,
       select: {
         id: true, bookId: true, userId: true, title: true, subject: true,
         status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
@@ -103,23 +111,46 @@ router.get('/mine', authRequired, asyncHandler(async (req: AuthedRequest, res: R
     }),
     prisma.assignment.groupBy({
       by: ['status'],
-      where: { ...where, ...shellFilter },
+      where,
       _count: { _all: true },
     }),
+    prisma.assignment.groupBy({
+      by: ['bookId'],
+      where: scopeWhere,
+      _count: { _all: true },
+      _max: { updatedAt: true },
+    }),
   ]);
+
+  // Filter options: every book this caller has worked on, most recently touched first.
+  const bookMeta = await prisma.book.findMany({
+    where: { id: { in: bookGroups.map((g) => g.bookId) } },
+    select: { id: true, title: true, subject: true },
+  });
+  const bookMap = new Map(bookMeta.map((b) => [b.id, b]));
+  const books = bookGroups
+    .map((g) => ({
+      ...bookMap.get(g.bookId),
+      id: g.bookId,
+      count: g._count._all || 0,
+      lastUpdatedAt: g._max.updatedAt,
+    }))
+    .filter((b) => Boolean(bookMap.get(b.id)))
+    .sort((a, b) => (b.lastUpdatedAt?.getTime() || 0) - (a.lastUpdatedAt?.getTime() || 0))
+    .map(({ lastUpdatedAt, ...rest }) => rest);
 
   // Covers live under books/{id}/{dpi}/, so the client needs the dpi list to
   // build a thumbnail URL. Cached per book — repeated assignments share one read.
   const dpiCache = new Map<number, number[]>();
   const data = [];
   for (const a of rows) {
-    const bookId = a.book?.id;
+    const bid = a.book?.id;
     let availableDpis: number[] = [];
-    if (bookId) {
-      if (!dpiCache.has(bookId)) {
-        dpiCache.set(bookId, await getAvailableDpisAsync(getBookRoot(bookId)).catch(() => []));
+    if (bid) {
+      if (!dpiCache.has(bid)) {
+        dpiCache.set(bid, await getAvailableDpisAsync(getBookRoot(bid)).catch(() => []));
       }
-      availableDpis = dpiCache.get(bookId) || [];
+      availableDpis = dpiCache.get(bid) || [];
     }
     const { strokes, book, ...rest } = a;
     data.push({
@@ -136,7 +167,7 @@ router.get('/mine', authRequired, asyncHandler(async (req: AuthedRequest, res: R
     if (g.status in counts) counts[g.status as keyof typeof counts] += n;
   }
 
-  res.json({ data, counts, limit: take });
+  res.json({ data, counts, books, limit: take });
 }));
 
 // ── Get assignment detail ─────────────────────────────────────────
