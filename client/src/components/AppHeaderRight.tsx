@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, FileText, Languages, Settings } from 'lucide-react';
+import { BookOpen, FileText, Languages, Keyboard, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import WebVitalsInfoPanel from '@/english/components/WebVitalsInfoPanel';
@@ -24,6 +24,7 @@ export default function AppHeaderRight() {
   const isBookActive = location.pathname.startsWith('/books');
   const isPdfActive = location.pathname.startsWith('/pdf');
   const isEnglishActive = location.pathname.startsWith('/english');
+  const isTypingActive = location.pathname.startsWith('/typing');
 
   return (
     <div className="flex items-center gap-2">
@@ -41,6 +42,11 @@ export default function AppHeaderRight() {
         isEnglishActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
         <Languages size={16} />
         <span className="hidden sm:inline">English</span>
+      </Link>
+      <Link to="/typing" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
+        isTypingActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
+        <Keyboard size={16} />
+        <span className="hidden sm:inline">Typing</span>
       </Link>
       <div className="mx-1 h-5 w-px bg-sidebar-border" />
       <ThemeSwitcher />

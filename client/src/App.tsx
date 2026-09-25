@@ -31,13 +31,15 @@ import { useAuthStore } from './store/authStore';
 // 用 lazy 引入，pdfjs（约 1MB）只在真正进入 /pdf 路由时才下载。
 const PdfHome = lazy(() => import('./pdf/pages/PdfHome'));
 const PdfBookViewer = lazy(() => import('./pdf/pages/PdfBookViewer'));
+// 单词打字练习模块：词库 JSON 在运行时按需 fetch，代码本身很小
+const TypingHome = lazy(() => import('./typing/TypingHome'));
 
 function PdfSuspense({ children }: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400 text-sm">
-          正在加载 PDF 模块…
+          正在加载模块…
         </div>
       }
     >
@@ -87,6 +89,8 @@ export default function App() {
 
           <Route path="/english" element={<LandingLayout><EnglishPage /></LandingLayout>} />
         <Route path="/english/:bookIdx/:lessonIdx" element={<LandingLayout><EnglishPage /></LandingLayout>} />
+
+        <Route path="/typing" element={<LandingLayout><PdfSuspense><TypingHome /></PdfSuspense></LandingLayout>} />
 
         <Route path="*" element={<NotFound />} />
         </Routes>

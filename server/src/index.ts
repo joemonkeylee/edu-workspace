@@ -23,6 +23,7 @@ import annotationsRouter from './routes/annotations.js';
 import mistakesRouter from './routes/mistakes.js';
 import assignmentsRouter from './routes/assignments.js';
 import readingProgressRouter from './routes/readingProgress.js';
+import typingRouter from './routes/typing.js';
 // PDF 原生模块（feature/pdf-native）——独立命名空间，与上面既有路由完全并行
 import pdfRouter from './pdf/index.js';
 import { ensurePdfDirs } from './pdf/services/pdfStorage.js';
@@ -71,6 +72,8 @@ app.use('/api/annotations', annotationsRouter);
 app.use('/api/mistakes', mistakesRouter);
 app.use('/api/assignments', assignmentsRouter);
 app.use('/api/reading-progress', readingProgressRouter);
+// 单词打字练习模块
+app.use('/api/typing', typingRouter);
 
 // PDF 原生模块：全部挂在 /api/pdf 之下，不触碰任何既有路由
 app.use('/api/pdf', pdfRouter);

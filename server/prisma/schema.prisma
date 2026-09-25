@@ -36,6 +36,8 @@ model User {
   readingProgress  ReadingProgress[]
   videoProgress    VideoProgress[]
   bookFavorites    BookFavorite[]
+  typingChapters   TypingChapterRecord[]
+  typingWords      TypingWordRecord[]
 
   // ── PDF 原生模块（feature/pdf-native）────────────────────────────
   // 以下均为反向关系字段，是纯虚拟字段，不会在 user 表产生任何列，
@@ -502,4 +504,57 @@ model PdfBookFavorite {
   @@index([userId])
   @@index([bookId])
   @@map("pdf_book_favorite")
+}
+
+// ── 单词打字练习模块（typing）────────────────────────────────────
+// 数据结构参考 VideoProgress：一条记录 = 一个学习对象，userId 可空以兼容
+// AUTH_ENABLED=false 的独立单机模式（此时全部数据由前端 localStorage 承载）。
+
+/// 一次章节练习的整体记录（相当于 VideoProgress 的「一次学习会话」）
+model TypingChapterRecord {
+  id       Int    @id @default(autoincrement())
+  /// 词库 id，如 cet4 / kaoyan / ielts
+  dictId   String @db.VarChar(64)
+  /// 章节序号，0 起
+  chapter  Int
+  userId   Int?
+  user     User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 用时（秒）
+  timeSec  Int    @default(0)
+  /// 正确输入的「字母」数
+  correctCount Int @default(0)
+  /// 输错的「字母」数
+  wrongCount   Int @default(0)
+  /// 实际完成的单词数
+  wordCount    Int @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, dictId])
+  @@index([userId, createdAt])
+  @@map("typing_chapter_record")
+}
+
+/// 单词粒度的练习记录：错词本与熟练度统计的数据源。
+/// 同一 (userId, dictId, word) 只保留一条，重复练习时累加 wrongCount。
+model TypingWordRecord {
+  id     Int     @id @default(autoincrement())
+  userId Int?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dictId String  @db.VarChar(64)
+  /// 所属章节；-1 表示来自错词复习等无章节场景
+  chapter Int    @default(-1)
+  word    String @db.VarChar(128)
+  /// 累计打错次数
+  wrongCount Int @default(0)
+  /// 相邻字母输入时间差（ms），用于衡量熟练度
+  timing     Json?
+  /// { [字母下标]: ['错输的字符', ...] }
+  mistakes   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dictId, word])
+  @@index([userId, dictId, wrongCount])
+  @@index([userId, updatedAt])
+  @@map("typing_word_record")
 }

@@ -920,3 +920,73 @@ export async function testDbConnection(conn: Partial<DbConnection>) {
 }
 
 export default api;
+
+// ── 单词打字练习（typing）───────────────────────────────────────
+
+export type TypingWordRecordPayload = {
+  word: string;
+  wrongCount: number;
+  timing?: number[];
+  mistakes?: Record<number, string[]>;
+};
+
+export type TypingWrongWord = {
+  word: string;
+  dictId: string;
+  chapter: number;
+  wrongCount: number;
+  mistakes: Record<string, string[]>;
+  updatedAt: string;
+};
+
+export type TypingChapterStat = {
+  chapter: number;
+  sessions: number;
+  wordCount: number;
+  timeSec: number;
+};
+
+export type TypingSummary = {
+  practicedWords: number;
+  wrongWords: number;
+  chapters: number;
+  totalTimeSec: number;
+  totalWords: number;
+};
+
+export async function saveTypingWordRecords(dictId: string, chapter: number, records: TypingWordRecordPayload[]) {
+  const { data } = await api.post('/typing/word-records', { dictId, chapter, records });
+  return data as { success: boolean };
+}
+
+export async function saveTypingChapterRecord(payload: {
+  dictId: string;
+  chapter: number;
+  timeSec: number;
+  correctCount: number;
+  wrongCount: number;
+  wordCount: number;
+}) {
+  const { data } = await api.post('/typing/chapter-records', payload);
+  return data.data as { id: number };
+}
+
+export async function listTypingWrongWords(dictId?: string, limit = 200) {
+  const { data } = await api.get('/typing/wrong-words', { params: { dictId, limit } });
+  return data.data as TypingWrongWord[];
+}
+
+export async function listTypingChapterStats(dictId: string) {
+  const { data } = await api.get('/typing/chapter-records', { params: { dictId } });
+  return data.data as TypingChapterStat[];
+}
+
+export async function getTypingSummary() {
+  const { data } = await api.get('/typing/summary');
+  return data.data as TypingSummary | null;
+}
+
+export async function clearTypingRecords(dictId?: string) {
+  const { data } = await api.delete('/typing/records', { params: { dictId } });
+  return data as { success: boolean };
+}
