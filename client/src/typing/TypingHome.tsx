@@ -10,16 +10,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { DICTIONARIES, getDict } from './dictionaries';
+import { DEFAULT_DICT_ID, getDict, isValidDictId } from './dictionaries';
 import { CHAPTER_LENGTH, createInitialState, currentWord, typingReducer } from './engine';
 import { playCorrectSound, playKeySound, playWrongSound } from './sounds';
 import { playPronunciation } from './pronunciation';
@@ -31,6 +24,7 @@ import WordDisplay from './components/WordDisplay';
 import StatsBar from './components/StatsBar';
 import ChapterResult from './components/ChapterResult';
 import SettingsPanel from './components/SettingsPanel';
+import DictPicker from './components/DictPicker';
 import StatsView from './components/stats/StatsView';
 
 const LAST_DICT_KEY = 'typing-last-dict';
@@ -42,9 +36,11 @@ const WRONG_LOCK_DELAY = 300;
 
 function readLastDict(): string {
   try {
-    return localStorage.getItem(LAST_DICT_KEY) ?? DICTIONARIES[0].id;
+    const saved = localStorage.getItem(LAST_DICT_KEY);
+    // 词库清单更新后旧 id 可能已不存在，直接回落到默认词库
+    return isValidDictId(saved) ? (saved as string) : DEFAULT_DICT_ID;
   } catch {
-    return DICTIONARIES[0].id;
+    return DEFAULT_DICT_ID;
   }
 }
 
@@ -307,18 +303,7 @@ export default function TypingHome() {
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={dictId} onValueChange={handleSelectDict}>
-            <SelectTrigger className="h-9 w-[11rem]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DICTIONARIES.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DictPicker value={dictId} onChange={handleSelectDict} />
 
           {isReview ? (
             <Button variant="outline" size="sm" onClick={exitReview}>
