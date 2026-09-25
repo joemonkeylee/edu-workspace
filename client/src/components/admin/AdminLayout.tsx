@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button"
 import {
   Sidebar, SidebarContent, SidebarHeader, SidebarFooter,
   SidebarMenu, SidebarMenuButton, SidebarGroup,
-  SidebarProvider, SidebarInset, SidebarTrigger, SidebarRail,
+  SidebarProvider, SidebarInset, SidebarRail,
 } from "@/components/ui/sidebar"
-import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut } from 'lucide-react';
+import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,8 @@ const MENU_GROUPS: MenuGroup[] = [
     label: '数据',
     icon: BookOpen,
     items: [
+      // /admin 就是概览页。放在首位，点顶部的「数据」分组也会回到这里。
+      { path: '/admin', label: '概览', icon: LayoutDashboard },
       { path: '/admin/scan', label: 'PDF切图', icon: Scan, roles: ['admin'] },
       { path: '/admin/books', label: '书籍资产', icon: BookOpen },
       { path: '/admin/book-pairs', label: '教材配对', icon: Link2 },
@@ -94,7 +96,7 @@ export default function AdminLayout() {
         <SidebarHeader className="!p-0 !gap-0 h-14 border-b border-sidebar-border">
           <Link to="/" className="flex h-full items-center gap-2 px-2 text-sidebar-foreground hover:text-sidebar-foreground/80 group-data-[collapsible=icon]:justify-center">
             <GraduationCap size={22} />
-            <span className="text-base font-medium truncate group-data-[collapsible=icon]:hidden">edu-workspace</span>
+            <span className="text-lg font-normal truncate group-data-[collapsible=icon]:hidden">edu-workspace</span>
           </Link>
         </SidebarHeader>
 
@@ -106,7 +108,8 @@ export default function AdminLayout() {
                 const Icon = item.icon;
                 return (
                   <SidebarMenuButton asChild tooltip={item.label} key={item.path}>
-                    <NavLink to={item.path}>
+                    {/* end：否则 /admin 这一项在任意子页面上都显示为选中 */}
+                    <NavLink to={item.path} end>
                       {({ isActive }) => (
                         <>
                           <Icon size={15} />
@@ -124,15 +127,15 @@ export default function AdminLayout() {
         {/* Sidebar Footer: spacer only */}
         <SidebarFooter />
 
-        <SidebarRail />
+        <SidebarRail className="!flex !items-center !justify-center !top-1/2 !-translate-y-1/2 !-right-3 !h-8 !w-8 !rounded-md !border !border-sidebar-border !bg-sidebar hover:!bg-sidebar-accent [&>svg]:opacity-70 hover:[&>svg]:opacity-100 after:hidden" title="收起/展开侧边栏 (B)">
+          <PanelLeftClose size={14} className="opacity-70 group-data-[collapsible=icon]:rotate-180 transition-transform" />
+        </SidebarRail>
       </Sidebar>
 
       {/* Main area */}
       <SidebarInset className="bg-background">
-        {/* Top header: SidebarTrigger + logo + primary tabs + user */}
+        {/* Top header: logo + primary tabs + user */}
         <header className="flex h-14 flex-shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground">
-          <SidebarTrigger className="h-8 w-8 text-sidebar-foreground/70 hover:text-sidebar-foreground" title="收起/展开侧边栏 (B)" />
-
           {/* Top-level tabs */}
           <div className="flex items-center gap-1">
             {filteredGroups.map((group) => {

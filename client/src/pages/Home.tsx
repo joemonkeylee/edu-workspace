@@ -18,7 +18,6 @@ import { toast } from 'sonner';
 import BookCover from '../components/BookCover';
 import ResourceKindMenu from '../components/ResourceKindMenu';
 import AppHeaderRight from '@/components/AppHeaderRight';
-import MyWorkspace from '../components/MyWorkspace';
 import { updateBook, deleteBook } from '../api/client';
 
 const PAGE_SIZE = 16; // legacy default, replaced by dynamic pageSize
@@ -688,7 +687,7 @@ export default function Home() {
 
   return (
     <div className="h-full flex flex-col bg-surface">
-      <header className="bg-sidebar text-sidebar-foreground px-6 py-4 flex items-center justify-between flex-shrink-0 h-14">
+      <header className="flex h-14 flex-shrink-0 items-center justify-between bg-sidebar px-6 text-sidebar-foreground">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
             <GraduationCap size={22} />
@@ -700,9 +699,9 @@ export default function Home() {
         <AppHeaderRight />
       </header>
 
-      <main className="flex flex-1 flex-col overflow-hidden px-6 pt-4 pb-3">
+      <main className={`flex-1 px-6 pt-4 pb-3 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
         {/* Row 1: filters + sort + edit toggle */}
-        <div className="mb-3 flex flex-shrink-0 flex-wrap items-center gap-1.5">
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-muted-foreground mr-1">筛选</span> */}
           <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-16 sm:w-20" />
           <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-16 sm:w-20" />
@@ -817,8 +816,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Row 2: 资源列表（独立滚动，筛选条与底部工作区始终可见） */}
-        <div className="min-h-0 flex-1 overflow-auto">
         {loading ? (
           viewMode === 'preview' ? (
             <div className="relative flex flex-wrap gap-3">
@@ -1274,11 +1271,10 @@ export default function Home() {
             </table>
           </div>
         )}
-        </div>
 
-        {/* Row 3: Pager (below the list): select actions on left, pager on right */}
+        {/* Pager (below the list): select actions on left, pager on right */}
         {total > 0 && (
-          <div className="mt-2 flex flex-shrink-0 items-center gap-3">
+          <div className="mt-2 flex items-center gap-3">
             {/* Col 1: page size config + view toggle (left) */}
             <div className="flex items-center justify-start gap-1.5 w-1/3">
               {/* View toggle */}
@@ -1393,11 +1389,6 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        {/* Row 4: 底部工作区 —— 我的提交 + 学习概览（占用原来的空白，始终可见） */}
-        <div className="mt-3 flex-shrink-0">
-          <MyWorkspace />
-        </div>
       </main>
 
       {/* Save prompt modal */}

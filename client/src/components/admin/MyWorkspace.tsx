@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FileText, RefreshCw, Send, Trash2, ExternalLink, Clock, Layers, PenLine, BarChart3 } from 'lucide-react';
-import { getMyAssignments, updateAssignment, deleteAssignment, type Assignment } from '../api/client';
+import { FileText, RefreshCw, Send, Trash2, ExternalLink, Clock, Layers, PenLine } from 'lucide-react';
+import { getMyAssignments, updateAssignment, deleteAssignment, type Assignment } from '../../api/client';
 import { toast } from 'sonner';
-import { useConfirm } from './ConfirmDialog';
-import { formatAssignmentTitle } from '../utils/assignment';
-import { useAuthStore } from '../store/authStore';
-import BookCover from './BookCover';
+import { useConfirm } from '../ConfirmDialog';
+import { formatAssignmentTitle } from '../../utils/assignment';
+import { useAuthStore } from '../../store/authStore';
+import BookCover from '../BookCover';
 
 type Row = Assignment & {
   book: {
@@ -53,9 +53,11 @@ function formatTime(dateStr: string) {
 }
 
 /**
- * 首页底部工作区。左侧是「我的提交」——草稿 / 已提交 / 已批改 / 已打回 全在一处，
- * 点任意一条直接跳到这本书的作业模式；右侧是学习概览。
- * 打卡热力墙会接进右列的下半部分，等到 /stats 系列接口落地后替换占位。
+ * admin 概览页的工作台，纵向两块：
+ * 1. 「学习概览」4 个指标平铺一行。
+ * 2. 「我的提交」整宽卡片 —— 草稿 / 已提交 / 已批改 / 已打回 全在一处，
+ *    点任意一条直接跳到这本书的作业模式；列表自然高度，卡片内不滚动。
+ * english 打卡墙等后续模块插在两块之间或继续往下追加新行即可。
  */
 export default function MyWorkspace() {
   const confirm = useConfirm();
@@ -142,9 +144,24 @@ export default function MyWorkspace() {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-      {/* ── 左：我的提交 ─────────────────────────────────────────── */}
-      <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card lg:col-span-2">
+    <div className="flex flex-col gap-3">
+      {/* ── 学习概览：4 个指标平铺一行；english 打卡墙等后续模块往中间插 ── */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+        {[
+          { label: '草稿待提交', value: counts.draft, tone: 'text-foreground' },
+          { label: '待批改', value: counts.submitted, tone: 'text-blue-600 dark:text-blue-300' },
+          { label: '已批改', value: counts.graded, tone: 'text-green-600 dark:text-green-300' },
+          { label: '已打回', value: counts.returned, tone: 'text-amber-600 dark:text-amber-300' },
+        ].map((s) => (
+          <div key={s.label} className="bg-card px-4 py-3">
+            <div className={`text-xl font-semibold tabular-nums ${s.tone}`}>{s.value}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 我的提交：整宽一块，列表自然高度，不在卡片内部滚动 ────── */}
+      <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
         <div className="flex flex-shrink-0 items-center gap-2 border-b border-border px-3 py-2">
           <FileText size={14} className="text-muted-foreground" />
           <span className="text-xs font-medium text-foreground">我的提交</span>
@@ -177,11 +194,11 @@ export default function MyWorkspace() {
           </button>
         </div>
 
-        <div className="h-[150px] overflow-auto xl:h-[188px]">
+        <div>
           {loading && rows.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">加载中...</div>
+            <div className="flex items-center justify-center py-10 text-xs text-muted-foreground">加载中...</div>
           ) : filtered.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center gap-1.5 py-10 text-muted-foreground">
               <PenLine size={22} />
               <p className="text-xs">
                 {rows.length === 0
@@ -273,42 +290,6 @@ export default function MyWorkspace() {
               })}
             </div>
           )}
-        </div>
-      </div>
-
-      {/* ── 右：学习概览 ─────────────────────────────────────────── */}
-      <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
-        <div className="flex flex-shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-          <BarChart3 size={14} className="text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground">学习概览</span>
-          <div className="flex-1" />
-          <span className="text-[11px] text-muted-foreground">累计 {counts.all} 份</span>
-        </div>
-        <div className="grid grid-cols-2 gap-px bg-border">
-          {[
-            { label: '草稿待提交', value: counts.draft, tone: 'text-foreground' },
-            { label: '待批改', value: counts.submitted, tone: 'text-blue-600 dark:text-blue-300' },
-            { label: '已批改', value: counts.graded, tone: 'text-green-600 dark:text-green-300' },
-            { label: '已打回', value: counts.returned, tone: 'text-amber-600 dark:text-amber-300' },
-          ].map((s) => (
-            <div key={s.label} className="bg-card px-3 py-2.5">
-              <div className={`text-lg font-semibold tabular-nums ${s.tone}`}>{s.value}</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">{s.label}</div>
-            </div>
-          ))}
-        </div>
-        {/* 打卡进度墙的预留位：/stats/activity 落地后替换 */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-1 border-t border-dashed border-border px-3 py-3 text-center">
-          <div className="mb-0.5 flex h-4 items-end gap-0.5 opacity-40">
-            {Array.from({ length: 18 }).map((_, i) => (
-              <span
-                key={i}
-                className="w-1.5 rounded-sm bg-muted-foreground/60"
-                style={{ height: `${6 + ((i * 7) % 14)}px` }}
-              />
-            ))}
-          </div>
-          <span className="text-[11px] text-muted-foreground">打卡进度墙 · 待接入</span>
         </div>
       </div>
     </div>

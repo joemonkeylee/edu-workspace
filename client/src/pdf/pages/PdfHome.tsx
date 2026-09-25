@@ -664,7 +664,7 @@ export default function PdfHome() {
 
   return (
     <div className="h-full flex flex-col bg-surface">
-      <header className="bg-sidebar text-sidebar-foreground px-6 py-4 flex items-center justify-between flex-shrink-0 h-14">
+      <header className="flex h-14 flex-shrink-0 items-center justify-between bg-sidebar px-6 text-sidebar-foreground">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
             <GraduationCap size={22} />

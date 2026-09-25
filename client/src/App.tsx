@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import Home from './pages/Home';
@@ -13,6 +13,7 @@ import ScrollToTop from './components/ScrollToTop';
 import AdminLayout from './components/admin/AdminLayout';
 import AuthGuard from './components/admin/AuthGuard';
 import PdfScanImport from './components/admin/PdfScanImport';
+import AdminDashboard from './components/admin/AdminDashboard';
 import BooksTable from './components/admin/BooksTable';
 import AnnotationsTable from './components/admin/AnnotationsTable';
 import MistakesTable from './components/admin/MistakesTable';
@@ -70,7 +71,7 @@ export default function App() {
 
           <Route path="/admin" element={<AuthGuard allowedRoles={['admin', 'teacher']} redirectTo="/" />}>
           <Route element={<AdminLayout />}>
-            <Route index element={<Navigate to="/admin/books" replace />} />
+            <Route index element={<AdminDashboard />} />
             <Route path="scan" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><PdfScanImport /></AuthGuard>} />
             <Route path="books" element={<BooksTable />} />
             <Route path="book-pairs" element={<BookPairs />} />
