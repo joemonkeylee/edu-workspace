@@ -19,6 +19,7 @@ interface Series {
   total: number
   learned: number
   lastAt: number
+  difficulty: number
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -43,6 +44,14 @@ const getTagColor = (tag?: string) => {
   return TAG_COLORS[tag] || 'bg-secondary text-secondary-foreground'
 }
 
+/** 难度 1-10 的颜色标签 */
+const getDifficultyColor = (d: number) => {
+  if (d <= 3) return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+  if (d <= 5) return 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30'
+  if (d <= 7) return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+  return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+}
+
 const ALL = 'all'
 const CONTINUE = 'continue'
 const UNTAGGED = 'untagged'
@@ -55,7 +64,7 @@ const tileCols = (n: number) => (n <= 4 ? 2 : n <= 9 ? 3 : 4)
 export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => void }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string>(ALL)
-  const [sort, setSort] = useState<'default' | 'recent' | 'lessons'>('default')
+  const [sort, setSort] = useState<'default' | 'recent' | 'lessons' | 'difficulty_asc' | 'difficulty_desc'>('default')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [progress] = useState<ProgressMap>(() => loadProgress())
 
@@ -80,6 +89,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
       total: 0,
       learned: 0,
       lastAt: 0,
+      difficulty: 0,
     }))
   }, [])
 
@@ -120,13 +130,18 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
       const total = members.reduce((a, m) => a + m.book.count, 0)
       const learned = members.reduce((a, m) => a + Math.min(learnedLessons(progress[m.book.id]), m.book.count), 0)
       const lastAt = members.reduce((a, m) => Math.max(a, progress[m.book.id]?.updatedAt || 0), 0)
-      list.push({ ...s, members, total, learned, lastAt })
+      const avgDifficulty = members.reduce((a, m) => a + (m.book.difficulty ?? 5), 0) / members.length
+      list.push({ ...s, members, total, learned, lastAt, difficulty: Math.round(avgDifficulty * 10) / 10 })
     })
 
     if (sort === 'recent') {
       list.sort((a, b) => (b.lastAt && !a.lastAt ? 1 : !b.lastAt && a.lastAt ? -1 : b.lastAt - a.lastAt))
     } else if (sort === 'lessons') {
       list.sort((a, b) => b.total - a.total)
+    } else if (sort === 'difficulty_asc') {
+      list.sort((a, b) => a.difficulty - b.difficulty)
+    } else if (sort === 'difficulty_desc') {
+      list.sort((a, b) => b.difficulty - a.difficulty)
     }
     return list
   }, [seriesBase, category, progress, search, sort])
@@ -204,6 +219,8 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
             className="ml-auto rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="default">默认顺序</option>
+            <option value="difficulty_asc">难度从低到高</option>
+            <option value="difficulty_desc">难度从高到低</option>
             <option value="recent">最近学习</option>
             <option value="lessons">课数从多到少</option>
           </select>
@@ -231,6 +248,9 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                   {/* 标题行 */}
                   <div className="flex items-baseline gap-2">
                     <h3 className="min-w-0 flex-1 truncate text-sm font-normal" title={s.name}>{s.name}</h3>
+                    <span className={cn('rounded border px-1.5 py-0.5 text-[10px] font-medium tabular-nums', getDifficultyColor(s.difficulty))}>
+                      难度 {s.difficulty}
+                    </span>
                     <span className="flex-shrink-0 text-[11px] tabular-nums text-muted-foreground">
                       {single ? `${s.total} 课` : `${s.members.length} 套 · ${s.total} 课`}
                     </span>
@@ -278,12 +298,13 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                       {shown.map(({ book, idx }) => {
                         const done = learnedLessons(progress[book.id])
                         const pct = book.count > 0 ? Math.min(100, (done / book.count) * 100) : 0
+                        const bd = book.difficulty ?? 5
                         return (
                           <button
                             key={book.id}
                             type="button"
                             onClick={() => onSelect(idx)}
-                            title={`${book.name} · ${book.count} 课${done > 0 ? ` · 上次第 ${done} 课` : ''}`}
+                            title={`${book.name} · ${book.count} 课 · 难度 ${bd}${done > 0 ? ` · 上次第 ${done} 课` : ''}`}
                             className={cn(
                               'flex flex-col rounded-md border px-2 py-1.5 text-left transition',
                               done > 0
@@ -291,8 +312,14 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                                 : 'border-border bg-muted/40 hover:border-primary hover:bg-accent',
                             )}
                           >
-                            <span className={cn('line-clamp-2 text-[11px] leading-tight', done > 0 && 'text-primary')}>
-                              {book.name}
+                            <span className="flex items-start gap-1">
+                              <span className={cn('line-clamp-2 flex-1 text-[11px] leading-tight', done > 0 && 'text-primary')}>
+                                {book.name}
+                              </span>
+                              <span
+                                className={cn('flex-shrink-0 mt-0.5 h-1.5 w-1.5 rounded-full border', getDifficultyColor(bd))}
+                                title={`难度 ${bd}`}
+                              />
                             </span>
                             <span className="mt-1 text-[11px] tabular-nums text-muted-foreground">
                               {done > 0 ? `${done} / ${book.count}` : `${book.count} 课`}
