@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { Library, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpDown, Library, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { DICT_CATEGORIES, DICT_GROUPS, DICTIONARIES, searchDicts } from '../dictionaries';
 import { ALL_DICT_TAB, useTypingSettings } from '../settingsStore';
+
+type SortMode = 'name-asc' | 'name-desc' | 'length-asc' | 'length-desc';
 
 type Props = {
   value: string;
@@ -21,6 +23,7 @@ export default function DictPanel({ value, onChange }: Props) {
   const { dictTab, dictKeyword, setDictTab, setDictKeyword, setDictPanelOpen } =
     useTypingSettings();
   const listRef = useRef<HTMLDivElement>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('name-asc');
 
   const isSearching = dictKeyword.trim().length > 0;
 
@@ -29,18 +32,33 @@ export default function DictPanel({ value, onChange }: Props) {
     if (isSearching && dictTab !== ALL_DICT_TAB) setDictTab(ALL_DICT_TAB);
   }, [isSearching, dictTab, setDictTab]);
 
-  // 按当前 tab 取扁平列表
+  // 按当前 tab 取扁平列表 + 排序
   const visibleItems = useMemo(() => {
+    let raw;
     if (isSearching) {
-      const grouped = searchDicts(dictKeyword);
-      return grouped.flatMap((g) => g.items);
+      raw = searchDicts(dictKeyword).flatMap((g) => g.items);
+    } else if (dictTab === ALL_DICT_TAB) {
+      raw = DICT_GROUPS.flatMap((g) => g.items);
+    } else {
+      raw = DICT_GROUPS.find((x) => x.category === dictTab)?.items ?? [];
     }
-    if (dictTab === ALL_DICT_TAB) {
-      return DICT_GROUPS.flatMap((g) => g.items);
+    const sorted = raw.slice();
+    switch (sortMode) {
+      case 'name-asc':
+        sorted.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+        break;
+      case 'name-desc':
+        sorted.sort((a, b) => b.name.localeCompare(a.name, 'zh-CN'));
+        break;
+      case 'length-asc':
+        sorted.sort((a, b) => a.length - b.length);
+        break;
+      case 'length-desc':
+        sorted.sort((a, b) => b.length - a.length);
+        break;
     }
-    const g = DICT_GROUPS.find((x) => x.category === dictTab);
-    return g?.items ?? [];
-  }, [dictTab, isSearching, dictKeyword]);
+    return sorted;
+  }, [dictTab, isSearching, dictKeyword, sortMode]);
 
   // 当前选中词库滚进视野（面板打开时）
   useEffect(() => {
@@ -169,20 +187,29 @@ export default function DictPanel({ value, onChange }: Props) {
         </TabsContent>
       </Tabs>
 
-      <footer className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-        {isSearching ? (
-          <>
-            共 {DICTIONARIES.length} 个词库 · 匹配 {visibleItems.length} 个
-          </>
-        ) : dictTab === ALL_DICT_TAB ? (
-          <>
-            共 {DICTIONARIES.length} 个词库
-          </>
-        ) : (
-          <>
-            {dictTab} · {visibleItems.length} 个词库
-          </>
-        )}
+      <footer className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground">
+        <span className="truncate">
+          {isSearching ? (
+            <>共 {DICTIONARIES.length} 个 · 匹配 {visibleItems.length}</>
+          ) : dictTab === ALL_DICT_TAB ? (
+            <>共 {DICTIONARIES.length} 个词库</>
+          ) : (
+            <>{dictTab} · {visibleItems.length} 个</>
+          )}
+        </span>
+        <label className="flex shrink-0 items-center gap-1">
+          <ArrowUpDown size={11} />
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="h-6 rounded-md border border-input bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="name-asc">名称 A→Z</option>
+            <option value="name-desc">名称 Z→A</option>
+            <option value="length-desc">词数 多→少</option>
+            <option value="length-asc">词数 少→多</option>
+          </select>
+        </label>
       </footer>
     </aside>
   );
