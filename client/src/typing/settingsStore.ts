@@ -9,6 +9,7 @@ import { DEFAULT_TYPING_SETTINGS, type TypingSettings } from './types';
  * 不持有任何本地副本 —— 这样面板、快捷键、词表计算看到的值永远一致。
  */
 export const ALL_DICT_TAB = '__all__';
+const MAX_RECENT_DICTS = 5;
 
 export type TypingSettingsState = TypingSettings & {
   /** 设置面板是否展开。一并持久化，下次进来保持用户习惯 */
@@ -19,6 +20,8 @@ export type TypingSettingsState = TypingSettings & {
   dictTab: string;
   /** 词库面板当前搜索词 */
   dictKeyword: string;
+  /** 最近看过/练习过的词库 id，最多 5 个，最新在前 */
+  recentDictIds: string[];
   /** 合并式更新，只传变化的字段 */
   update: (patch: Partial<TypingSettings>) => void;
   togglePanel: () => void;
@@ -27,6 +30,8 @@ export type TypingSettingsState = TypingSettings & {
   setDictPanelOpen: (v: boolean) => void;
   setDictTab: (v: string) => void;
   setDictKeyword: (v: string) => void;
+  recordRecentDict: (id: string) => void;
+  clearRecentDicts: () => void;
   /** 恢复默认（面板展开状态保留，属于界面偏好不算练习设置） */
   reset: () => void;
 };
@@ -52,6 +57,7 @@ const PERSIST_KEYS = [
   'dictPanelOpen',
   'dictTab',
   'dictKeyword',
+  'recentDictIds',
 ] as const satisfies readonly (keyof TypingSettingsState)[];
 
 export const useTypingSettings = create<TypingSettingsState>()(
@@ -63,6 +69,7 @@ export const useTypingSettings = create<TypingSettingsState>()(
       dictPanelOpen: true,
       dictTab: ALL_DICT_TAB,
       dictKeyword: '',
+      recentDictIds: [],
 
       update: (patch) => set(patch),
       togglePanel: () => set({ panelOpen: !get().panelOpen }),
@@ -71,6 +78,12 @@ export const useTypingSettings = create<TypingSettingsState>()(
       setDictPanelOpen: (v) => set({ dictPanelOpen: v }),
       setDictTab: (v) => set({ dictTab: v }),
       setDictKeyword: (v) => set({ dictKeyword: v }),
+      recordRecentDict: (id) => {
+        const cur = get().recentDictIds.filter((x) => x !== id);
+        cur.unshift(id);
+        set({ recentDictIds: cur.slice(0, MAX_RECENT_DICTS) });
+      },
+      clearRecentDicts: () => set({ recentDictIds: [] }),
       reset: () => set({ ...DEFAULT_TYPING_SETTINGS }),
     }),
     {
@@ -96,6 +109,8 @@ export const useTypingSettings = create<TypingSettingsState>()(
         setDictPanelOpen: current.setDictPanelOpen,
         setDictTab: current.setDictTab,
         setDictKeyword: current.setDictKeyword,
+        recordRecentDict: current.recordRecentDict,
+        clearRecentDicts: current.clearRecentDicts,
         reset: current.reset,
       }),
     },
