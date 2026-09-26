@@ -23,6 +23,7 @@ import {
   pdfFileUrl, type PdfAnnotation, type PdfBookDetail, type PdfAssignment,
 } from '../api/pdfClient';
 import { getCachedDocument, getPageSize } from '../lib/pdfjs';
+import { APP_NAME, withEnvPrefix } from '../../lib/appEnv';
 
 type FitMode = 'width' | 'page' | null;
 type PageLayout = 'single' | 'double';
@@ -237,7 +238,7 @@ export default function PdfBookViewer() {
 
   useEffect(() => {
     if (!book) return;
-    document.title = [book.grade, book.subject, book.title].filter(Boolean).join(' ') || 'edu-workspace';
+    document.title = withEnvPrefix([book.grade, book.subject, book.title].filter(Boolean).join(' ') || APP_NAME);
   }, [book]);
 
   // ── 左侧栏拖拽 ────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import * as api from '../api/client';
+import { APP_NAME, withEnvPrefix } from '../lib/appEnv';
 import { pageImageUrl, withAuthToken, getReadingProgress, saveReadingProgress } from '../api/client';
 import TocTree from '../components/TocTree';
 import PageCanvas from '../components/PageCanvas';
@@ -457,7 +458,7 @@ export default function BookViewer() {
   useEffect(() => {
     if (!currentBook) return;
     const parts = [currentBook.grade, currentBook.subject, currentBook.title].filter(Boolean);
-    document.title = parts.join(' ') || 'edu-workspace';
+    document.title = withEnvPrefix(parts.join(' ') || APP_NAME);
   }, [currentBook]);
 
   useEffect(() => {
