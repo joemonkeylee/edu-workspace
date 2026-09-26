@@ -1,14 +1,8 @@
 #!/bin/zsh
 set -euo pipefail
 
-# --force / --yes: skip the interactive "not on main" confirmation and deploy anyway.
-DEPLOY_FORCE=0
-for arg in "$@"; do
-  case "$arg" in
-    --force|--yes|-f|-y) DEPLOY_FORCE=1 ;;
-  esac
-done
-
+# Any branch may be deployed directly; there is no main-only restriction and no
+# interactive confirmation prompt. (Kept the script name for backwards refs.)
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK_DIR="/tmp/edu-workspace-auto-deploy.lock"
 PID_FILE="$LOCK_DIR/pid"
@@ -75,20 +69,7 @@ CURRENT_BRANCH="$(git branch --show-current)"
 DEPLOY_BRANCH="$CURRENT_BRANCH"
 
 if [[ "$CURRENT_BRANCH" != "main" ]]; then
-  if [[ "$DEPLOY_FORCE" == "1" ]]; then
-    info "Current branch is '$CURRENT_BRANCH' (not main); --force set, will deploy this branch."
-  elif [[ -t 0 ]]; then
-    print -r -- "[deploy] [警告] 当前分支不是 main（而是 '$CURRENT_BRANCH'）。"
-    print -rn -- "[deploy] 仍要发布该分支吗？[y/N] "
-    read -r ans || ans=""
-    case "$ans" in
-      y|Y|yes|YES|是) info "Proceeding to deploy branch '$CURRENT_BRANCH'." ;;
-      *) info "Skipped: 用户取消发布非 main 分支。"; exit 0 ;;
-    esac
-  else
-    info "Skipped: current branch is not main and no interactive TTY to confirm."
-    exit 0
-  fi
+  info "Deploying branch '$CURRENT_BRANCH' (non-main branches are allowed, no confirmation required)."
 fi
 
 info "Checking origin/$DEPLOY_BRANCH..."
