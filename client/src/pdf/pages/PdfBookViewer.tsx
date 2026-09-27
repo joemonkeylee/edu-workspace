@@ -115,6 +115,7 @@ export default function PdfBookViewer() {
   const [layers, setLayers] = useState({ annotations: true, highlights: true, assignments: true, grading: true });
   const [layerDropdownOpen, setLayerDropdownOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [pairOpen, setPairOpen] = useState(false);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<number | null>(null);
   // 点批注跳转页面时不清除选中态（与图片版一致）
   const skipClearRef = useRef(false);
@@ -667,6 +668,70 @@ export default function PdfBookViewer() {
             <PanelLeft size={18} />
           </button>
           <h1 className="truncate text-sm text-foreground" title={book.title}>{book.title}</h1>
+
+          {book.pairSummary && (
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setPairOpen(!pairOpen)}
+                className={`ml-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition ${
+                  book.pairSummary.role === 'textbook'
+                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 hover:bg-sky-500/25'
+                    : 'bg-teal-500/15 text-teal-700 dark:text-teal-300 hover:bg-teal-500/25'
+                }`}
+                title={book.pairSummary.role === 'textbook'
+                  ? `已绑定 ${book.pairSummary.partnerCount} 本答案，点击查看`
+                  : '这是答案书，点击跳转到对应教材'}
+              >
+                {book.pairSummary.role === 'textbook' ? (
+                  <>✓ 答案{book.pairSummary.partnerCount > 0 ? ` ${book.pairSummary.partnerCount}` : ''}</>
+                ) : (
+                  <>✓ 答案书</>
+                )}
+              </button>
+              {pairOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setPairOpen(false)} />
+                  <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border bg-popover py-1 shadow-xl">
+                    {book.pairSummary.role === 'textbook' ? (
+                      book.pairSummary.partners.length > 0 ? (
+                        book.pairSummary.partners.map((p) => (
+                          <a
+                            key={p.id}
+                            href={`/book/${p.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setPairOpen(false)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground transition hover:bg-muted"
+                          >
+                            <span className="text-teal-400">答案</span>
+                            <span className="flex-1 truncate">{p.title}</span>
+                          </a>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">暂无答案</div>
+                      )
+                    ) : book.pairSummary.partners.length > 0 ? (
+                      book.pairSummary.partners.map((p) => (
+                        <a
+                          key={p.id}
+                          href={`/book/${p.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setPairOpen(false)}
+                          className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground transition hover:bg-muted"
+                        >
+                          <span className="text-sky-400">教材</span>
+                          <span className="flex-1 truncate">{p.title}</span>
+                        </a>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">所属教材未知</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           <button
             onClick={handleToggleFavorite}

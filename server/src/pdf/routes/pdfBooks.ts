@@ -7,6 +7,7 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 import { extractPageText, hashFile, inspectPdf, openPdf } from '../services/pdfMeta.js';
 import { ensureCover, ensureThumb } from '../services/pdfRender.js';
 import { ensurePdfDirs, getPdfRoot, getThumbPath, joinRootRel, splitRootRel } from '../services/pdfStorage.js';
+import { buildPairSummary, getBookIndex } from '../../services/bookIndex.js';
 
 const router = Router();
 router.use(authRequired);
@@ -302,12 +303,27 @@ router.get('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
   if (!book) return res.status(404).json({ error: 'pdf book not found' });
 
   const resolved = await resolveBookFile(book);
+
+  // 通过 fileHash 映射到 legacy Book，复用其教材/答案配对信息（pairSummary）
+  let pairSummary: any = null;
+  if (book.fileHash) {
+    const legacy = await prisma.book.findFirst({
+      where: { fileHash: book.fileHash, isDeleted: false },
+      select: { id: true, attributes: true },
+    });
+    if (legacy?.attributes) {
+      const summary = buildPairSummary(legacy.attributes, legacy.id, await getBookIndex());
+      pairSummary = summary.role ? summary : null;
+    }
+  }
+
   res.json({
     data: {
       ...book,
       fileUrl: `/api/pdf/books/${id}/file`,
       coverUrl: `/api/pdf/books/${id}/cover`,
       missing: resolved.missing,
+      pairSummary,
     },
   });
 }));

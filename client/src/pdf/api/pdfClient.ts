@@ -25,6 +25,12 @@ export interface PdfBookSummary {
   favoriteAt?: string | null;
 }
 
+export interface PairSummary {
+  role: 'textbook' | 'answer' | null;
+  partnerCount: number;
+  partners: Array<{ id: number; title: string }>;
+}
+
 export interface PdfBookDetail extends PdfBookSummary {
   filePath: string;
   rootPath: string;
@@ -38,6 +44,7 @@ export interface PdfBookDetail extends PdfBookSummary {
   attributes: Record<string, unknown>;
   fileUrl: string;
   coverUrl: string;
+  pairSummary?: PairSummary | null;
 }
 
 export interface PageTextItem {
