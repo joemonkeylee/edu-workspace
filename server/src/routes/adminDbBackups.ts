@@ -39,7 +39,7 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB
   fileFilter: (_req, file, cb) => {
     const name = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    if (!/^[a-zA-Z0-9._-]+\.sql(\.gz)?$/.test(name)) {
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.sql(\.gz)?$/.test(name)) {
       return cb(null, false);
     }
     cb(null, true);

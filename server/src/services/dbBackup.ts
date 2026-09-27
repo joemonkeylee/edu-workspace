@@ -122,7 +122,8 @@ function formatTimestamp(d: Date): string {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
-const SAFE_NAME = /^[a-zA-Z0-9._-]+\.sql(\.gz)?$/;
+// Must start with alphanumeric — excludes macOS hidden files (._*, .DS_Store)
+const SAFE_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.sql(\.gz)?$/;
 
 export function getBackupsRoot(): string {
   return path.join(getStorageRoot(), 'db-backups');
