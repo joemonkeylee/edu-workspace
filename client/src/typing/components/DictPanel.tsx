@@ -9,11 +9,11 @@ import { ALL_DICT_TAB, useTypingSettings } from '../settingsStore';
 
 type SortMode = 'name-asc' | 'name-desc' | 'length-asc' | 'length-desc' | 'difficulty-asc' | 'difficulty-desc';
 
-/** 难度 1-10 的颜色标签（与 /english 一致：低=绿 高=红） */
+/** 难度 1-10 的颜色标签（低=绿 中=蓝 中高=紫 高=红；避开与 accent 琥珀色冲突） */
 const difficultyColor = (d: number) => {
   if (d <= 3) return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
   if (d <= 5) return 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30';
-  if (d <= 7) return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+  if (d <= 7) return 'bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30';
   return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
 };
 
@@ -21,7 +21,7 @@ const difficultyColor = (d: number) => {
 const difficultyDot = (d: number) => {
   if (d <= 3) return 'bg-emerald-500';
   if (d <= 5) return 'bg-sky-500';
-  if (d <= 7) return 'bg-amber-500';
+  if (d <= 7) return 'bg-violet-500';
   return 'bg-rose-500';
 };
 
