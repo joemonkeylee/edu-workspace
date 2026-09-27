@@ -22,10 +22,9 @@ export default function Landing() {
         </div>
         <AppHeaderRight />
       </header>
-      <main className="flex-1 overflow-auto px-6 py-4">
-        <div className="mx-auto w-full max-w-[1400px]">
-          <StudentOverview />
-        </div>
+      <main className="flex-1 overflow-auto px-4 py-3 sm:px-6 sm:py-4">
+        {/* 通栏宽版：不限制最大宽度，统计区铺满整个视口 */}
+        <StudentOverview />
       </main>
     </div>
   );

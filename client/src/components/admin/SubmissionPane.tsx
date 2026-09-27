@@ -7,6 +7,9 @@ import BookCover from '../BookCover';
 import PdfBookCover from '../../pdf/components/PdfBookCover';
 import { formatAssignmentTitle } from '../../utils/assignment';
 import {
+  SUBMISSION_PAGE_SIZES, usePageSizeStore,
+} from '../../store/pageSizeStore';
+import {
   gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
 } from '../../utils/gradeResult';
 
@@ -44,12 +47,6 @@ export type SubCounts = { all: number; draft: number; submitted: number; graded:
 export type SubBookOption = { id: number; title: string; subject: string; count: number };
 
 type TabKey = 'all' | 'draft' | 'returned' | 'submitted' | 'graded' | 'issue';
-
-/**
- * 每页行数。概览页（admin 与首页共用）不希望出现纵向滚动条，
- * 所以列表一律分页展示，翻页在卡片内部完成，卡片高度保持恒定。
- */
-const PAGE_SIZE = 5;
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'all', label: '全部' },
@@ -111,6 +108,9 @@ export default function SubmissionPane({
 }: Props) {
   const [tab, setTab] = useState<TabKey>('all');
   const [page, setPage] = useState(1);
+  // 每页条数走 store：书籍/PDF 两栏、首页/admin 共用同一份，且刷新后保持
+  const pageSize = usePageSizeStore((s) => s.submissionPageSize);
+  const setPageSize = usePageSizeStore((s) => s.setSubmissionPageSize);
 
   const issueCount = useMemo(() => rows.filter((r) => hasIssue(r)).length, [rows]);
 
@@ -128,44 +128,52 @@ export default function SubmissionPane({
   }, [rows, tab]);
 
   // 行数会随刷新/筛选变化，页码一律在此收敛，避免停在一个空白页上
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageRows = useMemo(
-    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filtered, safePage],
+    () => filtered.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filtered, safePage, pageSize],
   );
+
+  /** 改变每页条数时尽量停在同一批数据上：按当前偏移量换算新页码 */
+  const changePageSize = (next: number) => {
+    const firstIndex = (safePage - 1) * pageSize;
+    setPageSize(next);
+    setPage(Math.floor(firstIndex / next) + 1);
+  };
 
   const isPdf = kind === 'pdf';
   const Icon = isPdf ? FileText : BookOpen;
-  const heading = isPdf ? '我的提交 · PDF' : '我的提交 · 书籍';
+  // 只留「书籍 / PDF」：头部还要放下拉、6 个 tab 和刷新，「我的提交」四个字挤不下
+  const heading = isPdf ? 'PDF' : '书籍';
 
   return (
     <div className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
-      <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-border px-3 py-2">
-        <Icon size={14} className="text-muted-foreground" />
-        <span className="text-xs font-medium text-foreground">{heading}</span>
+      <div className="flex h-8 flex-shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border px-3">
+        <Icon size={14} className="flex-shrink-0 text-muted-foreground" />
+        <span className="flex-shrink-0 whitespace-nowrap text-xs font-medium leading-none text-foreground">{heading}</span>
 
         {books.length > 0 && (
-          <div className="relative min-w-0 flex-1 sm:max-w-[180px]">
+          <div className="relative h-6 w-[104px] flex-shrink-0 sm:w-[128px]">
             <select
               value={selectedBook}
               onChange={(e) => onSelectBook(e.target.value)}
-              className="w-full appearance-none truncate rounded-md border border-border bg-card py-0.5 pl-2 pr-6 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-6 w-full appearance-none truncate rounded-md border border-border bg-card py-0 pl-1.5 pr-5 text-[11px] leading-none text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               title="按书本筛选"
             >
-              <option value="">全部书本 ({books.length})</option>
+              <option value="">全部 ({books.length})</option>
               {books.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.title} ({b.count})
                 </option>
               ))}
             </select>
-            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">▾</span>
+            <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">▾</span>
             {selectedBook && (
               <button
                 type="button"
                 onClick={() => onSelectBook('')}
-                className="absolute right-5 top-1/2 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground/30 text-white transition hover:bg-muted-foreground/50"
+                className="absolute right-4 top-1/2 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground/30 text-white transition hover:bg-muted-foreground/50"
                 title="清除筛选"
               >
                 <X size={9} strokeWidth={3} />
@@ -179,7 +187,7 @@ export default function SubmissionPane({
             key={t.key}
             type="button"
             onClick={() => { setTab(t.key); setPage(1); }}
-            className={`rounded px-1.5 py-0.5 text-[11px] transition ${
+            className={`flex flex-shrink-0 items-center whitespace-nowrap rounded px-1 py-0.5 text-[11px] leading-none transition ${
               tab === t.key
                 ? 'bg-card font-medium text-foreground shadow-sm'
                 : t.key === 'issue' && tabCount('issue') > 0
@@ -197,7 +205,7 @@ export default function SubmissionPane({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="flex items-center rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+          className="flex flex-shrink-0 items-center rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
           title="刷新"
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
@@ -325,34 +333,52 @@ export default function SubmissionPane({
               );
             })}
           </div>
-          {filtered.length > PAGE_SIZE && (
+          {filtered.length > 0 && (
             <div className="flex flex-shrink-0 items-center justify-between gap-2 border-t border-border px-3 py-1.5">
-              <span className="text-[11px] text-muted-foreground">
-                共 {filtered.length} 条 · 每页 {PAGE_SIZE} 条
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, Math.min(p, totalPages) - 1))}
-                  disabled={safePage <= 1}
-                  className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
-                  title="上一页"
-                >
-                  <ChevronLeft size={13} />
-                </button>
-                <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {safePage} / {totalPages}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground">
+                  共 {filtered.length} 条
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, Math.min(p, totalPages) + 1))}
-                  disabled={safePage >= totalPages}
-                  className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
-                  title="下一页"
-                >
-                  <ChevronRight size={13} />
-                </button>
+                <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  每页
+                  <select
+                    value={pageSize}
+                    onChange={(e) => changePageSize(Number(e.target.value))}
+                    className="h-5 appearance-none rounded border border-border bg-card px-1 text-[11px] leading-none text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    title="每页条数"
+                  >
+                    {SUBMISSION_PAGE_SIZES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  条
+                </label>
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, Math.min(p, totalPages) - 1))}
+                    disabled={safePage <= 1}
+                    className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                    title="上一页"
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                    {safePage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, Math.min(p, totalPages) + 1))}
+                    disabled={safePage >= totalPages}
+                    className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                    title="下一页"
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
           </>

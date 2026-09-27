@@ -28,7 +28,7 @@ export default function PdfBooksTable() {
   const [books, setBooks] = useState<PdfAdminBook[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [batchFilter, setBatchFilter] = useState('all');

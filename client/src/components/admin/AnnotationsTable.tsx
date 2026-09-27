@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminGetAnnotations, adminDeleteAnnotation } from '../../api/client';
-import { Search, Trash2, ChevronLeft, ChevronRight, Highlighter, FileText } from 'lucide-react';
+import { Search, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Highlighter, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button"
-
-const PAGE_SIZE = 10;
 
 const TYPE_LABELS: Record<string, string> = {
   highlight: '高亮',
@@ -16,6 +14,7 @@ export default function AnnotationsTable() {
   const [items, setItems] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [filterBookId, setFilterBookId] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [loading, setLoading] = useState(false);
@@ -23,19 +22,19 @@ export default function AnnotationsTable() {
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, any> = { page, pageSize: PAGE_SIZE };
+      const params: Record<string, any> = { page, pageSize };
       if (filterBookId) params.bookId = filterBookId;
       if (filterType !== 'all') params.type = filterType;
       const res = await adminGetAnnotations(params);
       setItems(res.data);
       setTotal(res.total);
     } finally { setLoading(false); }
-  }, [page, filterBookId, filterType]);
+  }, [page, pageSize, filterBookId, filterType]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   const handleFilter = () => { setPage(1); fetch(); };
-  const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   const handleDelete = async (id: number) => {
     if (!confirm('确认删除此批注？')) return;
@@ -157,28 +156,36 @@ export default function AnnotationsTable() {
         </div>
 
         {/* Pagination */}
-        {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
-            <span className="text-sm text-muted-foreground">共 {total} 条</span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded hover:bg-muted disabled:opacity-30"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border/50">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>共 <span className="text-foreground font-medium">{total}</span> 条</span>
+            <span className="text-border">|</span>
+            <span>每页</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="h-7 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span>条</span>
           </div>
-        )}
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(1)} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="首页">
+              <ChevronsLeft size={18} />
+            </button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="上一页">
+              <ChevronLeft size={18} />
+            </button>
+            <span className="px-2 text-sm text-foreground/80">第 <span className="text-foreground font-medium">{page}</span> / {totalPages} 页</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="下一页">
+              <ChevronRight size={18} />
+            </button>
+            <button onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="末页">
+              <ChevronsRight size={18} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
