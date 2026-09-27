@@ -699,11 +699,14 @@ export default function BookViewer() {
 
   // Assignment mode callbacks (memoized for stable references)
   const handleExitAssignmentMode = useCallback(() => {
-    setSearchParams({}, { replace: true });
+    // Preserve grading context so answer links & sidebar state stay correct
+    const next: Record<string, string> = {};
+    if (gradingEntry) next.grading = '1';
+    setSearchParams(next, { replace: true });
     setCurrentAssignment(null);
     setAssignmentMode(false);
-    setRightOpen(true);
-  }, [setSearchParams]);
+    setRightOpen(!gradingEntry);
+  }, [setSearchParams, gradingEntry]);
 
   const handleAssignmentUpdate = useCallback(() => {
     setAssignmentRefresh(v => v + 1);

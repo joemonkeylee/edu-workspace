@@ -591,11 +591,14 @@ export default function PdfBookViewer() {
   }, [setSearchParams, isTeacher]);
 
   const handleExitAssignmentMode = useCallback(() => {
-    setSearchParams({}, { replace: true });
+    // Preserve grading context so answer links & sidebar state stay correct
+    const next: Record<string, string> = {};
+    if (gradingEntry) next.grading = '1';
+    setSearchParams(next, { replace: true });
     setCurrentAssignment(null);
     setAssignmentMode(false);
-    setRightOpen(true);
-  }, [setSearchParams]);
+    setRightOpen(!gradingEntry);
+  }, [setSearchParams, gradingEntry]);
 
   const pageAssignmentsMemo = useMemo(() => {
     const filtered = allAssignments.filter((a) => a.pages?.includes(page));
