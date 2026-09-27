@@ -38,15 +38,15 @@ export default function AppHeaderRight() {
         <FileText size={16} />
         <span className="hidden sm:inline">Pdf</span>
       </Link>
-      <Link to="/english" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
-        isEnglishActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
-        <Languages size={16} />
-        <span className="hidden sm:inline">Listening</span>
-      </Link>
       <Link to="/typing" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
         isTypingActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
         <Keyboard size={16} />
         <span className="hidden sm:inline">Word</span>
+      </Link>
+      <Link to="/english" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
+        isEnglishActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
+        <Languages size={16} />
+        <span className="hidden sm:inline">Listening</span>
       </Link>
       <div className="mx-1 h-5 w-px bg-sidebar-border" />
       <ThemeSwitcher />

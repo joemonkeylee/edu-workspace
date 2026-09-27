@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { DEFAULT_TYPING_SETTINGS, type TypingSettings } from './types';
+import { DEFAULT_TYPING_SETTINGS, type DictSortMode, type TypingSettings } from './types';
+import { DEFAULT_DICT_ID, isValidDictId } from './dictionaries';
 
 /**
  * 练习设置的唯一数据源。
@@ -20,6 +21,10 @@ export type TypingSettingsState = TypingSettings & {
   dictTab: string;
   /** 词库面板当前搜索词 */
   dictKeyword: string;
+  /** 词库列表排序方式 */
+  dictSortMode: DictSortMode;
+  /** 当前选中的词库 id（二级选择） */
+  selectedDictId: string;
   /** 最近看过/练习过的词库 id，最多 5 个，最新在前 */
   recentDictIds: string[];
   /** 合并式更新，只传变化的字段 */
@@ -30,6 +35,8 @@ export type TypingSettingsState = TypingSettings & {
   setDictPanelOpen: (v: boolean) => void;
   setDictTab: (v: string) => void;
   setDictKeyword: (v: string) => void;
+  setDictSortMode: (v: DictSortMode) => void;
+  setSelectedDictId: (v: string) => void;
   recordRecentDict: (id: string) => void;
   clearRecentDicts: () => void;
   /** 恢复默认（面板展开状态保留，属于界面偏好不算练习设置） */
@@ -57,6 +64,8 @@ const PERSIST_KEYS = [
   'dictPanelOpen',
   'dictTab',
   'dictKeyword',
+  'dictSortMode',
+  'selectedDictId',
   'recentDictIds',
 ] as const satisfies readonly (keyof TypingSettingsState)[];
 
@@ -69,6 +78,8 @@ export const useTypingSettings = create<TypingSettingsState>()(
       dictPanelOpen: true,
       dictTab: ALL_DICT_TAB,
       dictKeyword: '',
+      dictSortMode: 'name-asc',
+      selectedDictId: DEFAULT_DICT_ID,
       recentDictIds: [],
 
       update: (patch) => set(patch),
@@ -78,6 +89,8 @@ export const useTypingSettings = create<TypingSettingsState>()(
       setDictPanelOpen: (v) => set({ dictPanelOpen: v }),
       setDictTab: (v) => set({ dictTab: v }),
       setDictKeyword: (v) => set({ dictKeyword: v }),
+      setDictSortMode: (v) => set({ dictSortMode: v }),
+      setSelectedDictId: (v) => set({ selectedDictId: v }),
       recordRecentDict: (id) => {
         const cur = get().recentDictIds.filter((x) => x !== id);
         cur.unshift(id);
@@ -99,20 +112,41 @@ export const useTypingSettings = create<TypingSettingsState>()(
         return out as Partial<TypingSettingsState>;
       },
       // 老版本没有 panelOpen / 新增字段时，用默认值补齐
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as Partial<TypingSettingsState>),
-        update: current.update,
-        togglePanel: current.togglePanel,
-        setPanelOpen: current.setPanelOpen,
-        toggleDictPanel: current.toggleDictPanel,
-        setDictPanelOpen: current.setDictPanelOpen,
-        setDictTab: current.setDictTab,
-        setDictKeyword: current.setDictKeyword,
-        recordRecentDict: current.recordRecentDict,
-        clearRecentDicts: current.clearRecentDicts,
-        reset: current.reset,
-      }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<TypingSettingsState>;
+        // selectedDictId 可能是已删除的旧词库 id，回落到默认
+        if (p.selectedDictId && !isValidDictId(p.selectedDictId)) {
+          p.selectedDictId = DEFAULT_DICT_ID;
+        }
+        // 老版本把「上次选词库」存在单独的 typing-last-dict key，迁移进 store
+        if (!p.selectedDictId) {
+          try {
+            const legacy = localStorage.getItem('typing-last-dict');
+            if (legacy && isValidDictId(legacy)) p.selectedDictId = legacy;
+          } catch { /* ignore */ }
+        }
+        // dictSortMode 防呆：不在枚举内则回落到默认
+        const validSortModes: DictSortMode[] = ['name-asc', 'name-desc', 'length-asc', 'length-desc', 'difficulty-asc', 'difficulty-desc'];
+        if (p.dictSortMode && !validSortModes.includes(p.dictSortMode)) {
+          p.dictSortMode = 'name-asc';
+        }
+        return {
+          ...current,
+          ...p,
+          update: current.update,
+          togglePanel: current.togglePanel,
+          setPanelOpen: current.setPanelOpen,
+          toggleDictPanel: current.toggleDictPanel,
+          setDictPanelOpen: current.setDictPanelOpen,
+          setDictTab: current.setDictTab,
+          setDictKeyword: current.setDictKeyword,
+          setDictSortMode: current.setDictSortMode,
+          setSelectedDictId: current.setSelectedDictId,
+          recordRecentDict: current.recordRecentDict,
+          clearRecentDicts: current.clearRecentDicts,
+          reset: current.reset,
+        };
+      },
     },
   ),
 );

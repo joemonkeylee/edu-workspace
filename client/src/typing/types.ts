@@ -34,8 +34,11 @@ export type LetterMistakes = Record<number, string[]>;
 /** 发音口音 */
 export type PronunciationType = 'us' | 'uk';
 
-/** 听写/盲打模式：控制单词中哪些字母被下划线占位 */
+/** 盲打/听写模式：控制单词中哪些字母被下划线占位 */
 export type BlindMode = 'off' | 'all' | 'vowel' | 'consonant' | 'random';
+
+/** 词库列表排序方式 */
+export type DictSortMode = 'name-asc' | 'name-desc' | 'length-asc' | 'length-desc' | 'difficulty-asc' | 'difficulty-desc';
 
 /** 模块设置（持久化到 localStorage）
  *

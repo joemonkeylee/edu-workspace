@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { DEFAULT_DICT_ID, getDict, isValidDictId } from './dictionaries';
+import { getDict } from './dictionaries';
 import { CHAPTER_LENGTH, createInitialState, currentWord, typingReducer } from './engine';
 import { playCorrectSound, playKeySound, playWrongSound } from './sounds';
 import { playPronunciation } from './pronunciation';
@@ -28,26 +28,14 @@ import SettingsPanel from './components/SettingsPanel';
 import DictPanel from './components/DictPanel';
 import StatsView from './components/stats/StatsView';
 
-const LAST_DICT_KEY = 'typing-last-dict';
-
 /** 单章完成后停留一下再进入下一个词，让用户看到完整的绿色单词 */
 const ADVANCE_DELAY = 350;
 /** 输错后锁定输入的时间 */
 const WRONG_LOCK_DELAY = 300;
 
-function readLastDict(): string {
-  try {
-    const saved = localStorage.getItem(LAST_DICT_KEY);
-    // 词库清单更新后旧 id 可能已不存在，直接回落到默认词库
-    return isValidDictId(saved) ? (saved as string) : DEFAULT_DICT_ID;
-  } catch {
-    return DEFAULT_DICT_ID;
-  }
-}
-
 export default function TypingHome() {
   const settings = useTypingSettings();
-  const [dictId, setDictId] = useState<string>(readLastDict);
+  const dictId = settings.selectedDictId;
   const [chapter, setChapter] = useState(0);
   const [resultOpen, setResultOpen] = useState(false);
   const [reviewWords, setReviewWords] = useState<Word[] | null>(null);
@@ -251,14 +239,9 @@ export default function TypingHome() {
 
   // ── 交互 ────────────────────────────────────────────────────────
   const handleSelectDict = (id: string) => {
-    setDictId(id);
+    settings.setSelectedDictId(id);
     setChapter(0);
     setReviewWords(null);
-    try {
-      localStorage.setItem(LAST_DICT_KEY, id);
-    } catch {
-      /* ignore */
-    }
   };
 
   const handleNextChapter = () => {

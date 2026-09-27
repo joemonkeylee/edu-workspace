@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ArrowUpDown, Clock, Library, Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -6,8 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { DICT_CATEGORIES, DICT_GROUPS, DICT_MAP, DICTIONARIES, CATEGORY_DIFFICULTY, CATEGORY_ORIGINAL_NAME, searchDicts } from '../dictionaries';
 import { ALL_DICT_TAB, useTypingSettings } from '../settingsStore';
+import type { DictSortMode } from '../types';
 
-type SortMode = 'name-asc' | 'name-desc' | 'length-asc' | 'length-desc' | 'difficulty-asc' | 'difficulty-desc';
+type SortMode = DictSortMode;
 
 /** 难度 1-10 的颜色标签（低=绿 中=蓝 中高=紫 高=红；避开与 accent 琥珀色冲突） */
 const difficultyColor = (d: number) => {
@@ -43,14 +44,16 @@ export default function DictPanel({ value, onChange }: Props) {
   const {
     dictTab,
     dictKeyword,
+    dictSortMode,
     setDictTab,
     setDictKeyword,
+    setDictSortMode,
     setDictPanelOpen,
     recentDictIds,
     recordRecentDict,
   } = useTypingSettings();
   const listRef = useRef<HTMLDivElement>(null);
-  const [sortMode, setSortMode] = useState<SortMode>('name-asc');
+  const sortMode = dictSortMode;
 
   const isSearching = dictKeyword.trim().length > 0;
 
@@ -140,7 +143,7 @@ export default function DictPanel({ value, onChange }: Props) {
             <ArrowUpDown size={11} className="text-muted-foreground" />
             <select
               value={sortMode}
-              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              onChange={(e) => setDictSortMode(e.target.value as SortMode)}
               className="h-6 rounded-md border border-input bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="name-asc">名称 A→Z</option>
