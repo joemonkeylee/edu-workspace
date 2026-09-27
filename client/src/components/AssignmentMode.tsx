@@ -114,7 +114,8 @@ export default function AssignmentMode({
   const isSubmitted = assignment?.status === 'submitted';
   const isReturned = assignment?.status === 'returned';
   const canEdit = assignment?.status === 'draft' || isReturned;
-  const readOnly = isGraded || (isSubmitted && !canGrade);
+  // 只读只针对学生；教师（canGrade）对已提交/已批改的作业都能继续在批改层修改
+  const readOnly = !canGrade && (isGraded || isSubmitted);
   const layer = canGrade ? 'teacher' : 'student';
   const gradedIssues = parseGradeIssues(assignment?.gradeIssues);
   const gradeSuffix = !isGraded

@@ -265,9 +265,10 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
     // Status transition rules (only enforced when auth is enabled)
     if (req.user) {
       if (isTeacher) {
-        // Teacher can move to graded or returned from submitted
+        // Teacher can move to graded or returned from submitted;
+        // 已批改/已打回的作业教师可以再进入继续修改（重新批改或打回）
         if (newStatus === 'graded' || newStatus === 'returned') {
-          if (currentStatus !== 'submitted') {
+          if (currentStatus !== 'submitted' && currentStatus !== 'graded' && currentStatus !== 'returned') {
             return res.status(403).json({ error: '只能批改已提交的作业' });
           }
         } else {
@@ -376,7 +377,10 @@ router.post('/:id/strokes', authRequired, asyncHandler(async (req: AuthedRequest
   const assignment = await prisma.assignment.findUnique({ where: { id } });
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
   if (!canAccessAssignment(req, assignment)) return res.status(403).json({ error: 'no permission to modify this assignment' });
-  if (assignment.status === 'graded') return res.status(403).json({ error: 'assignment is graded, read-only' });
+  // 已批改的作业对学生只读；教师仍可在自己的批改层继续修改（layer 限制见下）
+  if (assignment.status === 'graded' && !canGradeAssignment(req)) {
+    return res.status(403).json({ error: 'assignment is graded, read-only' });
+  }
 
   // Layer permission enforcement:
   // - Teachers can only write to 'teacher' layer (grading layer)

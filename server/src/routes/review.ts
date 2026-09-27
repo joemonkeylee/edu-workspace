@@ -62,11 +62,10 @@ function serialize(row: any) {
 router.get('/items', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const domain = typeof req.query.domain === 'string' ? req.query.domain : '';
   if (!VALID_DOMAINS.includes(domain)) return res.status(400).json({ error: 'invalid domain' });
-  if (!req.user) return res.json({ data: [] });
 
   const limit = clampInt(req.query.limit, 1, 20000, 20000);
   const rows = await prisma.reviewItemState.findMany({
-    where: { userId: req.user.userId, domain },
+    where: { userId: req.user!.userId, domain },
     orderBy: { updatedAt: 'desc' },
     take: limit,
   });
@@ -81,9 +80,8 @@ router.post('/items', asyncHandler(async (req: AuthedRequest, res: Response) => 
     return res.status(400).json({ error: 'invalid domain' });
   }
   if (!Array.isArray(items) || items.length === 0) return res.json({ success: true, data: { count: 0 } });
-  if (!req.user) return res.json({ success: true, data: { count: 0 } });
 
-  const userId = req.user.userId;
+  const userId = req.user!.userId;
   const batch = items.slice(0, 500);
 
   const result = await prisma.$transaction(
@@ -118,11 +116,10 @@ router.post('/items', asyncHandler(async (req: AuthedRequest, res: Response) => 
 router.get('/summary', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const domain = typeof req.query.domain === 'string' ? req.query.domain : '';
   if (!VALID_DOMAINS.includes(domain)) return res.status(400).json({ error: 'invalid domain' });
-  if (!req.user) return res.json({ data: null });
 
   const grouped = await prisma.reviewItemState.groupBy({
     by: ['status'],
-    where: { userId: req.user.userId, domain },
+    where: { userId: req.user!.userId, domain },
     _count: { _all: true },
   });
 
@@ -137,8 +134,7 @@ router.get('/summary', asyncHandler(async (req: AuthedRequest, res: Response) =>
  * 幂等 —— 已经存在的 key 不会被覆盖，只对尚无 review_item_state 记录的单词补一条 wrong。
  */
 router.post('/migrate-word-wrongs', asyncHandler(async (req: AuthedRequest, res: Response) => {
-  if (!req.user) return res.json({ success: true, data: { inserted: 0 } });
-  const userId = req.user.userId;
+  const userId = req.user!.userId;
 
   const rows = await prisma.typingWordRecord.findMany({
     where: { userId, wrongCount: { gt: 0 } },
@@ -179,9 +175,8 @@ router.post('/migrate-word-wrongs', asyncHandler(async (req: AuthedRequest, res:
 router.delete('/items', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const domain = typeof req.query.domain === 'string' ? req.query.domain : '';
   if (!VALID_DOMAINS.includes(domain)) return res.status(400).json({ error: 'invalid domain' });
-  if (!req.user) return res.json({ success: true });
 
-  await prisma.reviewItemState.deleteMany({ where: { userId: req.user.userId, domain } });
+  await prisma.reviewItemState.deleteMany({ where: { userId: req.user!.userId, domain } });
   res.json({ success: true });
 }));
 

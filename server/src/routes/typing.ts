@@ -43,10 +43,7 @@ router.post('/word-records', asyncHandler(async (req: AuthedRequest, res: Respon
   if (typeof dictId !== 'string' || !dictId) return res.status(400).json({ error: 'dictId is required' });
   if (!Array.isArray(records) || records.length === 0) return res.json({ success: true });
 
-  // 独立单机模式：云端不可用，前端完全依赖 localStorage
-  if (!req.user) return res.json({ success: true });
-
-  const userId = req.user.userId;
+  const userId = req.user!.userId;
   const chapterNo = typeof chapter === 'number' ? chapter : -1;
   const batch = records.slice(0, 200);
 
@@ -96,11 +93,10 @@ router.post('/word-records', asyncHandler(async (req: AuthedRequest, res: Respon
 router.post('/chapter-records', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const { dictId, chapter, timeSec, correctCount, wrongCount, wordCount } = req.body ?? {};
   if (typeof dictId !== 'string' || !dictId) return res.status(400).json({ error: 'dictId is required' });
-  if (!req.user) return res.json({ success: true });
 
   const record = await prisma.typingChapterRecord.create({
     data: {
-      userId: req.user.userId,
+      userId: req.user!.userId,
       dictId,
       chapter: typeof chapter === 'number' ? chapter : 0,
       timeSec: typeof timeSec === 'number' ? Math.max(0, Math.trunc(timeSec)) : 0,
@@ -117,10 +113,9 @@ router.post('/chapter-records', asyncHandler(async (req: AuthedRequest, res: Res
 router.get('/wrong-words', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const dictId = typeof req.query.dictId === 'string' ? req.query.dictId : undefined;
   const limit = Math.min(Number(req.query.limit) || 200, 1000);
-  if (!req.user) return res.json({ data: [] });
 
   const rows = await prisma.typingWordRecord.findMany({
-    where: { userId: req.user.userId, wrongCount: { gt: 0 }, ...(dictId ? { dictId } : {}) },
+    where: { userId: req.user!.userId, wrongCount: { gt: 0 }, ...(dictId ? { dictId } : {}) },
     orderBy: [{ wrongCount: 'desc' }, { updatedAt: 'desc' }],
     take: limit,
   });
@@ -141,11 +136,10 @@ router.get('/wrong-words', asyncHandler(async (req: AuthedRequest, res: Response
 router.get('/chapter-records', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const dictId = typeof req.query.dictId === 'string' ? req.query.dictId : undefined;
   if (!dictId) return res.status(400).json({ error: 'dictId is required' });
-  if (!req.user) return res.json({ data: [] });
 
   const grouped = await prisma.typingChapterRecord.groupBy({
     by: ['chapter'],
-    where: { userId: req.user.userId, dictId },
+    where: { userId: req.user!.userId, dictId },
     _count: { _all: true },
     _sum: { wordCount: true, timeSec: true },
   });
@@ -163,10 +157,9 @@ router.get('/chapter-records', asyncHandler(async (req: AuthedRequest, res: Resp
 // ── 读取：最近章节记录（统计页时间序列用）──────────────────────
 router.get('/history', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const limit = Math.min(Number(req.query.limit) || 200, 500);
-  if (!req.user) return res.json({ data: [] });
 
   const rows = await prisma.typingChapterRecord.findMany({
-    where: { userId: req.user.userId },
+    where: { userId: req.user!.userId },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
@@ -187,8 +180,7 @@ router.get('/history', asyncHandler(async (req: AuthedRequest, res: Response) =>
 
 // ── 读取：总览统计 ──────────────────────────────────────────────
 router.get('/summary', asyncHandler(async (req: AuthedRequest, res: Response) => {
-  if (!req.user) return res.json({ data: null });
-  const userId = req.user.userId;
+  const userId = req.user!.userId;
 
   const [practicedWords, wrongWords, chapters, timeAgg] = await Promise.all([
     prisma.typingWordRecord.count({ where: { userId } }),
@@ -211,8 +203,7 @@ router.get('/summary', asyncHandler(async (req: AuthedRequest, res: Response) =>
 // ── 清理：清空练习记录 ──────────────────────────────────────────
 router.delete('/records', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const dictId = typeof req.query.dictId === 'string' ? req.query.dictId : undefined;
-  if (!req.user) return res.json({ success: true });
-  const where = { userId: req.user.userId, ...(dictId ? { dictId } : {}) };
+  const where = { userId: req.user!.userId, ...(dictId ? { dictId } : {}) };
 
   await prisma.$transaction([
     prisma.typingWordRecord.deleteMany({ where }),

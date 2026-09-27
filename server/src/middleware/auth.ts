@@ -7,13 +7,17 @@ export interface AuthedRequest extends Request {
 }
 
 /**
- * standalone 模式（AUTH_ENABLED=false）下用于签发 SSE 凭证的占位身份。
- * 注意：仅用于「免登录签发一次性 SSE 票据」，切勿把它当成真实 userId 落库——
- * 用户相关数据在 standalone 模式下统一以 userId=null（匿名）写入，
- * 否则会触发外键约束（User 表里不存在 id=0 的行）。
+ * standalone 模式（AUTH_ENABLED=false）下的合成用户。
+ * 数据库里会真实存在 User(id=0) 行，所有业务表都挂了 FK → User.id，
+ * 所以可以放心拿 userId=0 落库 —— 多机器部署时数据自动云端同步。
  */
 export function getStandaloneUser(): AuthedRequest['user'] {
   return { userId: 0, phone: 'standalone', isAdmin: true, role: 'admin', roles: ['admin'] };
+}
+
+function injectStandalone(req: AuthedRequest, next: NextFunction): void {
+  req.user = getStandaloneUser();
+  next();
 }
 
 function extractToken(req: Request): string | null {
@@ -44,7 +48,7 @@ function trySseTicket(req: Request): { userId: number; phone: string; isAdmin: b
 
 export function authRequired(req: AuthedRequest, res: Response, next: NextFunction): void {
   if (!isAuthEnabled()) {
-    return next();
+    return injectStandalone(req, next);
   }
 
   // Try SSE ticket first (one-time use, URL-safe)
@@ -77,7 +81,7 @@ export function authRequired(req: AuthedRequest, res: Response, next: NextFuncti
 
 export function adminRequired(req: AuthedRequest, res: Response, next: NextFunction): void {
   if (!isAuthEnabled()) {
-    return next();
+    return injectStandalone(req, next);
   }
 
   // Try SSE ticket first (one-time use, URL-safe)
@@ -117,7 +121,7 @@ export function adminRequired(req: AuthedRequest, res: Response, next: NextFunct
 
 export function teacherOrAdminRequired(req: AuthedRequest, res: Response, next: NextFunction): void {
   if (!isAuthEnabled()) {
-    return next();
+    return injectStandalone(req, next);
   }
 
   // Try SSE ticket first (one-time use, URL-safe)
@@ -163,6 +167,7 @@ export function teacherOrAdminRequired(req: AuthedRequest, res: Response, next: 
  */
 export async function optionalAuth(req: AuthedRequest, _res: Response, next: NextFunction): Promise<void> {
   if (!isAuthEnabled()) {
+    req.user = getStandaloneUser();
     return next();
   }
   const ticketUser = trySseTicket(req);

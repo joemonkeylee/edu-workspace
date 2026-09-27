@@ -25,9 +25,8 @@ function validPayload(v: unknown): boolean {
 
 /** 读取该用户全部课程记录（量级：几百行 × 几 KB，可接受） */
 router.get('/records', asyncHandler(async (req: AuthedRequest, res: Response) => {
-  if (!req.user) return res.json({ data: [] });
   const rows = await prisma.englishStudyRecord.findMany({
-    where: { userId: req.user.userId },
+    where: { userId: req.user!.userId },
     orderBy: { updatedAt: 'desc' },
     take: 5000,
   });
@@ -46,9 +45,8 @@ router.post('/records', asyncHandler(async (req: AuthedRequest, res: Response) =
   if (!Array.isArray(records) || records.length === 0) {
     return res.json({ success: true, data: { count: 0 } });
   }
-  if (!req.user) return res.json({ success: true, data: { count: 0 } });
 
-  const userId = req.user.userId;
+  const userId = req.user!.userId;
   const batch = records.slice(0, MAX_RECORDS_PER_REQUEST);
 
   const ops = [];
@@ -73,9 +71,8 @@ router.post('/records', asyncHandler(async (req: AuthedRequest, res: Response) =
 // ── 按天统计 ────────────────────────────────────────────────────
 
 router.get('/daily', asyncHandler(async (req: AuthedRequest, res: Response) => {
-  if (!req.user) return res.json({ data: [] });
   const rows = await prisma.englishDailyStat.findMany({
-    where: { userId: req.user.userId },
+    where: { userId: req.user!.userId },
     orderBy: { date: 'desc' },
     take: 400,
   });
@@ -89,9 +86,8 @@ router.post('/daily', asyncHandler(async (req: AuthedRequest, res: Response) => 
   if (!Array.isArray(days) || days.length === 0) {
     return res.json({ success: true, data: { count: 0 } });
   }
-  if (!req.user) return res.json({ success: true, data: { count: 0 } });
 
-  const userId = req.user.userId;
+  const userId = req.user!.userId;
   const ops = [];
   for (const raw of days.slice(0, MAX_RECORDS_PER_REQUEST)) {
     const date = typeof raw?.date === 'string' && DATE_RE.test(raw.date) ? raw.date : '';

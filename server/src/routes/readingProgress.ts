@@ -11,15 +11,10 @@ router.get('/:bookId', asyncHandler(async (req: AuthedRequest, res: Response) =>
   const bookId = parseInt(req.params.bookId, 10);
   if (isNaN(bookId)) return res.status(400).json({ error: 'invalid bookId' });
 
-  // In standalone mode, progress is stored client-side via localStorage
-  if (!req.user) {
-    return res.json({ data: null });
-  }
-
   const progress = await prisma.readingProgress.findUnique({
     where: {
       userId_bookId: {
-        userId: req.user.userId,
+        userId: req.user!.userId,
         bookId,
       },
     },
@@ -32,11 +27,6 @@ router.get('/:bookId', asyncHandler(async (req: AuthedRequest, res: Response) =>
 router.put('/:bookId', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const bookId = parseInt(req.params.bookId, 10);
   if (isNaN(bookId)) return res.status(400).json({ error: 'invalid bookId' });
-
-  // In standalone mode, progress is stored client-side
-  if (!req.user) {
-    return res.status(400).json({ error: 'not available in standalone mode' });
-  }
 
   const { pageNumber, pageLayout, fitMode, rotation } = req.body;
   const data: any = {};
@@ -52,12 +42,12 @@ router.put('/:bookId', asyncHandler(async (req: AuthedRequest, res: Response) =>
   const progress = await prisma.readingProgress.upsert({
     where: {
       userId_bookId: {
-        userId: req.user.userId,
+        userId: req.user!.userId,
         bookId,
       },
     },
     create: {
-      userId: req.user.userId,
+      userId: req.user!.userId,
       bookId,
       ...data,
     },

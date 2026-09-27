@@ -245,8 +245,9 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
 
     if (req.user) {
       if (isTeacher) {
+        // 已批改/已打回的作业教师可以再进入继续修改（重新批改或打回）
         if (newStatus === 'graded' || newStatus === 'returned') {
-          if (currentStatus !== 'submitted') {
+          if (currentStatus !== 'submitted' && currentStatus !== 'graded' && currentStatus !== 'returned') {
             return res.status(403).json({ error: '只能批改已提交的作业' });
           }
         } else {
@@ -339,7 +340,10 @@ router.post('/:id/strokes', asyncHandler(async (req: AuthedRequest, res: Respons
   const assignment = await prisma.pdfAssignment.findUnique({ where: { id } });
   if (!assignment) return res.status(404).json({ error: 'assignment not found' });
   if (!canAccess(req, assignment)) return res.status(403).json({ error: 'no permission to modify this assignment' });
-  if (assignment.status === 'graded') return res.status(403).json({ error: 'assignment is graded, read-only' });
+  // 已批改的作业对学生只读；教师仍可在自己的批改层继续修改（layer 限制见下）
+  if (assignment.status === 'graded' && !canGrade(req)) {
+    return res.status(403).json({ error: 'assignment is graded, read-only' });
+  }
 
   if (req.user && !req.user.isAdmin) {
     const isTeacher = req.user.roles.includes('teacher');
