@@ -60,7 +60,7 @@ export type TypingSettings = {
   hintSoundVolume: number;
 
   // ── speech ──
-  /** 切到新词时自动朗读（手动发音 Ctrl/Cmd+J 不受此项限制） */
+  /** 切到新词时自动朗读（手动发音 ` 或 Ctrl/Cmd+J 不受此项限制） */
   isPronunciationOpen: boolean;
   pronunciationType: PronunciationType;
 

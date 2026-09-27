@@ -18,8 +18,12 @@
  */
 
 import { toast } from 'sonner'
+import { bumpDayAgg, localDateKey, pruneDays, type DailyLogMap } from './studyStats'
+import { scheduleEnglishStudySync } from './studySync'
 
 const KEY = 'english-study-record'
+/** 按天聚合日志：key = YYYY-MM-DD（首页「最近三天」视图的数据源） */
+const DAILY_KEY = 'english-daily-log'
 
 /** preview 截断长度 */
 const PREVIEW_LEN = 60
@@ -88,8 +92,41 @@ export function loadStudyRecord(): StudyRecordMap {
   }
 }
 
+/** 云端合并后整体写回（studySync 专用；常规写入请走 recordAttempt） */
+export function writeStudyRecordMap(all: StudyRecordMap): void {
+  write(all)
+}
+
 export function getLessonRecord(bookId: string, lessonId: string): LessonRecord | null {
   return loadStudyRecord()[lessonKey(bookId, lessonId)] || null
+}
+
+// ── 按天聚合日志 ────────────────────────────────────────────────
+
+export function loadDailyLog(): DailyLogMap {
+  try {
+    const raw = localStorage.getItem(DAILY_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return {}
+    // 读取时顺手清掉 90 天前的旧数据，防止无限增长
+    return pruneDays(parsed as DailyLogMap)
+  } catch {
+    return {}
+  }
+}
+
+function writeDailyLog(log: DailyLogMap): void {
+  try {
+    localStorage.setItem(DAILY_KEY, JSON.stringify(pruneDays(log)))
+  } catch {
+    /* quota —— 与学习记录同策略：不打断学习 */
+  }
+}
+
+/** 云端合并后整体写回按天日志（studySync 专用；常规写入请走 recordAttempt） */
+export function writeDailyLogMap(log: DailyLogMap): void {
+  writeDailyLog(log)
 }
 
 let quotaWarned = false
@@ -191,6 +228,17 @@ export function recordAttempt(args: RecordAttemptArgs): RecordAttemptOutcome {
 
   all[key] = nextLesson
   write(all)
+
+  // 按天聚合 + 云端同步（「新句子」口径：该句有记录以来的第一次判卷）
+  const day = localDateKey(now)
+  const dailyLog = loadDailyLog()
+  dailyLog[day] = bumpDayAgg(dailyLog[day], day, {
+    lessonKey: key,
+    passed: result.passed,
+    isFirstAttemptOfSentence: !prevStat,
+  }, now)
+  writeDailyLog(dailyLog)
+  scheduleEnglishStudySync([key], [day])
 
   return { record: nextLesson, counted: true, justCompleted }
 }

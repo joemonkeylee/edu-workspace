@@ -22,6 +22,7 @@ type BookRow = {
   title: string;
   status: string;
   updatedAt: string;
+  submittedAt?: string | null;
   pages?: number[] | null;
   book: {
     id: number;
@@ -42,7 +43,7 @@ type BookRow = {
  *    两侧数据来自两张互不相干的表，按 kind 区分，点击分别跳 /book/:id 与 /pdf/book/:id。
  * english 打卡墙等后续模块插在两块之间或继续往下追加新行即可。
  */
-export default function MyWorkspace() {
+export default function MyWorkspace({ allowGrading = false }: { allowGrading?: boolean }) {
   const confirm = useConfirm();
   const { user, authEnabled } = useAuthStore();
 
@@ -68,6 +69,7 @@ export default function MyWorkspace() {
     title: r.title,
     status: r.status,
     updatedAt: r.updatedAt,
+    submittedAt: (r as any).submittedAt ?? null,
     gradeResult: (r as any).gradeResult ?? null,
     gradeIssues: (r as any).gradeIssues ?? null,
     gradeComment: (r as any).gradeComment ?? '',
@@ -127,9 +129,13 @@ export default function MyWorkspace() {
     [allRows, issueTotal],
   );
 
-  /** 按类型跳到对应的阅读器。教师开批改层（grading=1），其余一律只读查看 */
+  /** 按类型跳到对应的阅读器。
+   *  - allowGrading=true（教师后台）且是已提交作业 → 带 grading=1 进入批改模式
+   *  - 学生首页 → 一律学生/只读视角查看自己的作业
+   *  - 独立模式（无鉴权）单用户需要批改自己的作业，也允许 */
   const open = (row: SubRow) => {
-    const canGrade = !authEnabled || Boolean(user?.isAdmin || user?.roles?.includes('teacher'));
+    const isTeacher = !authEnabled || Boolean(user?.isAdmin || user?.roles?.includes('teacher'));
+    const canGrade = (allowGrading || !authEnabled) && isTeacher;
     const suffix = canGrade && row.status === 'submitted' ? '&grading=1' : '';
     const base = row.kind === 'pdf' ? `/pdf/book/${row.bookId}` : `/book/${row.bookId}`;
     window.open(`${base}?assignmentId=${row.id}${suffix}`, '_blank');
@@ -238,6 +244,7 @@ export default function MyWorkspace() {
           onSubmit={handleSubmit}
           onDelete={handleDelete}
           busyId={busyIdFor(bookRows)}
+          isAdmin={allowGrading}
         />
         <SubmissionPane
           kind="pdf"
@@ -252,6 +259,7 @@ export default function MyWorkspace() {
           onSubmit={handleSubmit}
           onDelete={handleDelete}
           busyId={busyIdFor(pdfRows)}
+          isAdmin={allowGrading}
         />
       </div>
     </div>

@@ -1080,3 +1080,43 @@ export async function migrateWordWrongs() {
   const { data } = await api.post('/review/migrate-word-wrongs');
   return data.data as { inserted: number };
 }
+
+// ── 英语精听学习记录同步（english-study）──────────────────────
+
+/** 服务端存的是整课/整天的聚合体，客户端负责解释（studyRecord.ts / studyStats.ts） */
+export type EnglishStudyRow = {
+  bookId: string;
+  lessonId: string;
+  payload: Record<string, unknown>;
+  updatedAt: number;
+};
+
+export type EnglishDailyRow = {
+  date: string;
+  payload: Record<string, unknown>;
+  updatedAt: number;
+};
+
+export async function listEnglishStudyRecords() {
+  const { data } = await api.get('/english-study/records');
+  return data.data as EnglishStudyRow[];
+}
+
+export async function saveEnglishStudyRecords(
+  records: { bookId: string; lessonId: string; payload: Record<string, unknown> }[],
+) {
+  if (records.length === 0) return { count: 0 };
+  const { data } = await api.post('/english-study/records', { records });
+  return data.data as { count: number };
+}
+
+export async function listEnglishDailyStats() {
+  const { data } = await api.get('/english-study/daily');
+  return data.data as EnglishDailyRow[];
+}
+
+export async function saveEnglishDailyStats(days: { date: string; payload: Record<string, unknown> }[]) {
+  if (days.length === 0) return { count: 0 };
+  const { data } = await api.post('/english-study/daily', { days });
+  return data.data as { count: number };
+}

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchChapterHistory, fetchSummary } from '../typing/records';
-import { calcStreak, wordsToday, type ChapterLike } from '../typing/stats';
+import { aggregateDaily, calcStreak, wordsToday, type ChapterLike } from '../typing/stats';
 import { useTypingSettings } from '../typing/settingsStore';
 import type { TypingSummary } from '@/api/client';
 
@@ -50,12 +50,14 @@ export default function TypingStatsPanel() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<TypingSummary | null>(null);
   const [history, setHistory] = useState<ChapterLike[]>([]);
+  /** 0 = 今天，1 = 昨天，2 = 前天 */
+  const [dayOffset, setDayOffset] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [s, rows] = await Promise.all([fetchSummary(), fetchChapterHistory(200)]);
+        const [s, rows] = await Promise.all([fetchSummary(), fetchChapterHistory(500)]);
         if (cancelled) return;
         setSummary(s);
         setHistory(rows);
@@ -79,6 +81,13 @@ export default function TypingStatsPanel() {
   const today = wordsToday(history);
   const goal = dailyGoal > 0 ? dailyGoal : 0;
   const goalPct = goal > 0 ? Math.min(100, Math.round((today / goal) * 100)) : 0;
+
+  // 最近三天按天聚合（aggregateDaily 返回 [前天, 昨天, 今天]）
+  const daily3 = aggregateDaily(history, 3);
+  const dayAgg = daily3[2 - dayOffset];
+  const dayAcc =
+    dayAgg.correct + dayAgg.wrong > 0 ? Math.round((dayAgg.correct / (dayAgg.correct + dayAgg.wrong)) * 100) : null;
+  const DAY_LABELS = ['今天', '昨天', '前天'] as const;
 
   return (
     <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
@@ -122,6 +131,35 @@ export default function TypingStatsPanel() {
           hint={streak.longest > streak.current ? `最长 ${streak.longest} 天` : undefined}
           accent={streak.current > 0 ? 'amber' : 'default'}
         />
+      </div>
+
+      {/* 最近三天切换（按天口径：章节数 / 词数 / 用时 / 正确率） */}
+      <div className="flex items-center gap-2 border-t border-border px-4 py-2">
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {DAY_LABELS.map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setDayOffset(i)}
+              className={`px-2.5 py-0.5 text-[11px] transition ${
+                dayOffset === i
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">
+          {loading
+            ? '—'
+            : dayAgg.chapters === 0
+              ? '当天没有练习'
+              : `${dayAgg.chapters} 章 · ${dayAgg.words} 词 · ${formatDuration(dayAgg.timeSec)}${
+                  dayAcc !== null ? ` · ${dayAcc}%` : ''
+                }`}
+        </span>
       </div>
 
       {/* 今日目标 + 快捷设置（始终展示，未设置目标时可在此直接选择） */}

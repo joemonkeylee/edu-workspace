@@ -25,6 +25,7 @@ import { buildMixedQueue, pickSpotCheck } from '../client/src/review/queue.ts';
 import { DEFAULT_REVIEW_CONFIG, type ReviewConfig, type ReviewInput, type ReviewProgress, type ReviewTransition } from '../client/src/review/types.ts';
 import { sentenceKey, sentenceKeys, parseSentenceKey } from '../client/src/review/sentenceKeys.ts';
 import { judge, judgeMistakes } from '../client/src/english/judge.ts';
+import { bumpDayAgg, emptyDayAgg, localDateKey, pruneDays, dayKeysOfLastDays } from '../client/src/english/studyStats.ts';
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -418,6 +419,39 @@ check('听写判卷：错位散布的错误能定位到具体哪个词', () => {
   assert.ok(values.includes('wrld'));
   // 全对的句子不该产生 mistakes（出池即丢，也就没什么可记的）
   assert.equal(judgeMistakes(judge('hello world', 'hello world', false).diff), undefined);
+});
+
+// ── 英语按天统计（studyStats）────────────────────────────────
+
+check('按天聚合：判错/通过/新句/首对 各口径累加正确', () => {
+  const now = new Date('2026-09-27T10:00:00').getTime();
+  const day = localDateKey(now);
+  let agg = bumpDayAgg(undefined, day, { lessonKey: 'b1::l1', passed: false, isFirstAttemptOfSentence: true }, now);
+  agg = bumpDayAgg(agg, day, { lessonKey: 'b1::l1', passed: true, isFirstAttemptOfSentence: false }, now + 1);
+  agg = bumpDayAgg(agg, day, { lessonKey: 'b1::l2', passed: true, isFirstAttemptOfSentence: true }, now + 2);
+  assert.equal(agg.attempts, 3);
+  assert.equal(agg.errors, 1);
+  assert.equal(agg.passes, 2);
+  assert.equal(agg.newSentences, 2);
+  assert.equal(agg.firstPasses, 1); // b1::l1 首次错了，b1::l2 首次就对
+  assert.deepEqual(agg.lessons.sort(), ['b1::l1', 'b1::l2']);
+  // 日期不匹配时重开新的一天，而不是在旧聚合上累加
+  const day2 = localDateKey(now + 86_400_000);
+  const next = bumpDayAgg(agg, day2, { lessonKey: 'b1::l1', passed: true, isFirstAttemptOfSentence: false }, now + 86_400_000);
+  assert.equal(next.attempts, 1);
+  assert.equal(next.date, day2);
+});
+
+check('按天日志清理：只保留最近 N 天', () => {
+  const now = new Date('2026-09-27T10:00:00').getTime();
+  const keys = dayKeysOfLastDays(3, now); // [前天, 昨天, 今天]
+  assert.equal(keys.length, 3);
+  const log: Record<string, ReturnType<typeof emptyDayAgg>> = {};
+  for (const k of keys) log[k] = emptyDayAgg(k, now);
+  log['2026-05-01'] = emptyDayAgg('2026-05-01', now); // 太老，应被清掉
+  const pruned = pruneDays(log, 90, now);
+  assert.equal(Object.keys(pruned).length, 3);
+  assert.ok(!('2026-05-01' in pruned));
 });
 
 console.log(`\n全部通过：${passed} 项断言\n`);

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { getDashboard, getBookStats, getWrongSentences, loadStudyRecord, type Dashboard } from '../../english/studyRecord'
+import { getDashboard, getBookStats, getWrongSentences, loadDailyLog, loadStudyRecord, type Dashboard } from '../../english/studyRecord'
+import { syncEnglishStudyOnce } from '../../english/studySync'
+import { localDateKey, type DayAgg } from '../../english/studyStats'
 import { BOOKS } from '../../english/constants'
 
 // 教材 id → 名称（含 series）
@@ -50,17 +52,24 @@ export default function EnglishStudyPanel({ compact = false }: { compact?: boole
   const [bookStats, setBookStats] = useState<Record<string, Dashboard>>({})
   const [wrongCount, setWrongCount] = useState(0)
   const [totalLessons, setTotalLessons] = useState(0)
+  const [dailyLog, setDailyLog] = useState<Record<string, DayAgg>>({})
+  /** 0 = 今天，1 = 昨天，2 = 前天 */
+  const [dayOffset, setDayOffset] = useState(0)
 
-  // localStorage 变化（比如开着两个 tab）时自动刷新
+  const readAll = () => {
+    setDash(getDashboard())
+    setBookStats(getBookStats())
+    setWrongCount(getWrongSentences().length)
+    setTotalLessons(Object.keys(loadStudyRecord()).length)
+    setDailyLog(loadDailyLog())
+  }
+
+  // 挂载时先读本地，再拉云端合并一次（幂等），合并完刷新视图；
+  // localStorage 变化（比如开着两个 tab）时也自动刷新
   useEffect(() => {
-    const refresh = () => {
-      setDash(getDashboard())
-      setBookStats(getBookStats())
-      setWrongCount(getWrongSentences().length)
-      setTotalLessons(Object.keys(loadStudyRecord()).length)
-    }
-    refresh()
-    const handler = () => refresh()
+    readAll()
+    void syncEnglishStudyOnce().then(readAll)
+    const handler = () => readAll()
     window.addEventListener('storage', handler)
     return () => window.removeEventListener('storage', handler)
   }, [])
@@ -70,13 +79,22 @@ export default function EnglishStudyPanel({ compact = false }: { compact?: boole
   const practiced = dash.practicedSentences
   const passRate = practiced > 0 ? dash.passedSentences / practiced : 0
 
+  // 最近三天：选中那天的按天聚合
+  const dayDate = new Date()
+  dayDate.setDate(dayDate.getDate() - dayOffset)
+  const dayAgg = dailyLog[localDateKey(dayDate)]
+  const dayText =
+    !dayAgg || dayAgg.attempts === 0
+      ? '当天没有练习'
+      : `判卷 ${dayAgg.attempts} · 判错 ${dayAgg.errors} · 通过 ${dayAgg.passes} · 新句 ${dayAgg.newSentences}`
+
   return (
     <section className="rounded-lg border border-border bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div>
           <h2 className="text-sm font-semibold text-foreground">英语精听学习</h2>
           <p className="text-xs text-muted-foreground">
-            数据保存在浏览器本地（localStorage），换设备不会同步。共 {totalLessons} 课有记录。
+            数据已接入云端同步 · 共 {totalLessons} 课有记录。
           </p>
         </div>
         <button
@@ -113,6 +131,30 @@ export default function EnglishStudyPanel({ compact = false }: { compact?: boole
           hint={`判错 ${fmtNum(dash.totalErrors)} 次 · 错句 ${wrongCount} 句`}
           accent={wrongCount > 0 ? 'amber' : 'green'}
         />
+      </div>
+
+      {/* 最近三天切换（按天口径：判卷 / 判错 / 通过 / 新句） */}
+      <div
+        className="flex items-center gap-2 border-t border-border px-4 py-2"
+        title="按天统计从该功能上线日起累计，之前的日子没有数据"
+      >
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {['今天', '昨天', '前天'].map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setDayOffset(i)}
+              className={`px-2.5 py-0.5 text-[11px] transition ${
+                dayOffset === i
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background text-muted-foreground hover:bg-accent hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{dayText}</span>
       </div>
 
       {/* 按教材聚合 */}

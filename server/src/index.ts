@@ -25,6 +25,7 @@ import assignmentsRouter from './routes/assignments.js';
 import readingProgressRouter from './routes/readingProgress.js';
 import typingRouter from './routes/typing.js';
 import reviewRouter from './routes/review.js';
+import englishStudyRouter from './routes/englishStudy.js';
 // PDF 原生模块（feature/pdf-native）——独立命名空间，与上面既有路由完全并行
 import pdfRouter from './pdf/index.js';
 import { ensurePdfDirs } from './pdf/services/pdfStorage.js';
@@ -77,6 +78,7 @@ app.use('/api/reading-progress', readingProgressRouter);
 app.use('/api/typing', typingRouter);
 // 泛型复习引擎（错题/备用/毕业三池），同时服务单词与后续的单句
 app.use('/api/review', reviewRouter);
+app.use('/api/english-study', englishStudyRouter);
 
 // PDF 原生模块：全部挂在 /api/pdf 之下，不触碰任何既有路由
 app.use('/api/pdf', pdfRouter);

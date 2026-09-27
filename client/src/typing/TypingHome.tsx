@@ -295,8 +295,8 @@ export default function TypingHome() {
       // Radix Select 的浮层通过 portal 渲染在 body 下，不在面板 DOM 内，单独排除
       if (document.querySelector('[role="listbox"]')) return;
 
-      // Ctrl/Cmd + J 发音
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
+      // 发音快捷键：反引号 `（推荐，单键、无浏览器冲突）或 Ctrl/Cmd+J
+      if (e.key === '`' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j')) {
         e.preventDefault();
         pronounce();
         return;

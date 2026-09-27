@@ -121,7 +121,7 @@ export default function WordDisplay({
         <button
           type="button"
           onClick={onPronounce}
-          title="发音（Ctrl/Cmd + J）"
+          title="发音（` 或 Ctrl/Cmd + J）"
           className="flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-muted hover:text-foreground"
         >
           <Volume2 size={16} />

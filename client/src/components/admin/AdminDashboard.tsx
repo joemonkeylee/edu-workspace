@@ -17,7 +17,7 @@ export default function AdminDashboard() {
 
       <EnglishStudyPanel />
 
-      <MyWorkspace />
+      <MyWorkspace allowGrading />
     </div>
   );
 }

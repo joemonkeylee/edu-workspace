@@ -165,7 +165,7 @@ export default function SettingsPanel() {
         </Group>
 
         <Group title="发音">
-          <Row label="切词自动发音" hint="手动发音（Ctrl/Cmd + J）始终可用">
+          <Row label="切词自动发音" hint="手动发音（` 或 Ctrl/Cmd+J）始终可用">
             <Select
               value={s.pronunciationType}
               onValueChange={(v) => update({ pronunciationType: v === 'uk' ? 'uk' : 'us' })}

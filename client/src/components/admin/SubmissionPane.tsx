@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   FileText, BookOpen, RefreshCw, Send, Trash2, ExternalLink, Clock, Layers, PenLine, X,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import BookCover from '../BookCover';
 import PdfBookCover from '../../pdf/components/PdfBookCover';
@@ -30,6 +30,7 @@ export type SubRow = {
   title: string;
   status: string;
   updatedAt: string;
+  submittedAt?: string | null;
   /** 教师批改结论：'' 未下结论 | perfect 全对 | issue 有问题 */
   gradeResult?: string | null;
   gradeIssues?: unknown;
@@ -47,6 +48,8 @@ export type SubCounts = { all: number; draft: number; submitted: number; graded:
 export type SubBookOption = { id: number; title: string; subject: string; count: number };
 
 type TabKey = 'all' | 'draft' | 'returned' | 'submitted' | 'graded' | 'issue';
+type SortKey = 'page' | 'submittedAt' | 'updatedAt';
+type SortDir = 'asc' | 'desc';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'all', label: '全部' },
@@ -55,6 +58,12 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'submitted', label: '已提交' },
   { key: 'graded', label: '已批改' },
   { key: 'issue', label: '有问题' },
+];
+
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'updatedAt', label: '修改时间' },
+  { key: 'submittedAt', label: '提交时间' },
+  { key: 'page', label: '页码' },
 ];
 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
@@ -100,14 +109,19 @@ interface Props {
   onDelete: (row: SubRow) => void;
   /** 正在提交/删除的作业 id，避免连点 */
   busyId: number | null;
+  /** admin 场景默认按修改时间排序，学生首页默认按提交时间排序 */
+  isAdmin?: boolean;
 }
 
 export default function SubmissionPane({
   kind, rows, counts, loading, books, selectedBook, onSelectBook,
-  onRefresh, onOpen, onSubmit, onDelete, busyId,
+  onRefresh, onOpen, onSubmit, onDelete, busyId, isAdmin = false,
 }: Props) {
   const [tab, setTab] = useState<TabKey>('all');
   const [page, setPage] = useState(1);
+  // 排序：admin 默认修改时间降序，学生首页默认提交时间降序
+  const [sortKey, setSortKey] = useState<SortKey>(isAdmin ? 'updatedAt' : 'submittedAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   // 每页条数走 store：书籍/PDF 两栏、首页/admin 共用同一份，且刷新后保持
   const pageSize = usePageSizeStore((s) => s.submissionPageSize);
   const setPageSize = usePageSizeStore((s) => s.setSubmissionPageSize);
@@ -122,10 +136,20 @@ export default function SubmissionPane({
 
   // 「有问题」不是一种状态而是已批改作业里的结论，所以单独过滤
   const filtered = useMemo(() => {
-    if (tab === 'all') return rows;
-    if (tab === 'issue') return rows.filter((r) => hasIssue(r));
-    return rows.filter((r) => r.status === tab);
-  }, [rows, tab]);
+    const list = tab === 'all' ? rows : tab === 'issue' ? rows.filter((r) => hasIssue(r)) : rows.filter((r) => r.status === tab);
+    const dir = sortDir === 'desc' ? -1 : 1;
+    const sorted = [...list].sort((a, b) => {
+      if (sortKey === 'page') {
+        const pa = a.pages?.length ? Math.min(...a.pages) : 0;
+        const pb = b.pages?.length ? Math.min(...b.pages) : 0;
+        return (pb - pa) * dir;
+      }
+      const ka = sortKey === 'submittedAt' ? (a.submittedAt ? new Date(a.submittedAt).getTime() : 0) : new Date(a.updatedAt).getTime();
+      const kb = sortKey === 'submittedAt' ? (b.submittedAt ? new Date(b.submittedAt).getTime() : 0) : new Date(b.updatedAt).getTime();
+      return (kb - ka) * dir;
+    });
+    return sorted;
+  }, [rows, tab, sortKey, sortDir]);
 
   // 行数会随刷新/筛选变化，页码一律在此收敛，避免停在一个空白页上
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -182,23 +206,45 @@ export default function SubmissionPane({
           </div>
         )}
 
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => { setTab(t.key); setPage(1); }}
-            className={`flex flex-shrink-0 items-center whitespace-nowrap rounded px-1 py-0.5 text-[11px] leading-none transition ${
-              tab === t.key
-                ? 'bg-card font-medium text-foreground shadow-sm'
-                : t.key === 'issue' && tabCount('issue') > 0
-                  ? 'text-amber-600 hover:text-amber-700 dark:text-amber-400'
-                  : 'text-muted-foreground hover:text-foreground'
-            }`}
+        {/* 状态筛选下拉 */}
+        <div className="relative h-6 flex-shrink-0">
+          <select
+            value={tab}
+            onChange={(e) => { setTab(e.target.value as TabKey); setPage(1); }}
+            className="h-full appearance-none truncate rounded-md border border-border bg-card py-0 pl-1.5 pr-5 text-[11px] leading-none text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            title="按状态筛选"
           >
-            {t.label}
-            <span className="ml-0.5 tabular-nums opacity-60">{tabCount(t.key)}</span>
-          </button>
-        ))}
+            {TABS.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.label} {tabCount(t.key)}
+              </option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">▾</span>
+        </div>
+
+        {/* 排序下拉 + 方向切换 */}
+        <div className="relative h-6 flex-shrink-0">
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="h-full appearance-none truncate rounded-md border border-border bg-card py-0 pl-1.5 pr-5 text-[11px] leading-none text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            title="排序字段"
+          >
+            {SORTS.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">▾</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          title={sortDir === 'desc' ? '降序，点击切升序' : '升序，点击切降序'}
+        >
+          {sortDir === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
+        </button>
 
         <div className="flex-1" />
         <button
