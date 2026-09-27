@@ -1,14 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { ListChecks } from 'lucide-react'
 import VocabListWrapper from './VocabListWrapper'
 import BilingualPage from './BilingualPage'
 import SidebarToggle from './SidebarToggle'
 import Loading from './Loading'
 import BookLibrary from './BookLibrary'
+import SentenceReviewPanel from './SentenceReviewPanel'
 import { type BookMeta, BOOKS, type VocabWord, WorkModes, type WorkModeType } from '../constants'
 import { recordProgress } from '../progress'
 import { RESOURCE_BASE_URL } from '../appConfig'
 import { loadBookData, loadLessonData } from '../data'
+import { migrateWrongSentencesOnce } from '../migrateWrongSentences'
+import { useSentenceCounts, useBookProgress, useSentenceReviewHydrate } from '../../review/sentence.ts'
+import { toast } from 'sonner'
 
 const STORAGE_KEY = 'nc-last-selection'
 
@@ -57,6 +62,15 @@ function LearningView() {
   const [subtitleMode, setSubtitleMode] = useState<'blind' | 'blind_hint' | 'chinese' | 'english' | 'full'>('blind')
   const [workMode, setWorkMode] = useState<WorkModeType>(WorkModes.LISTEN)
   const [currentIndex, setCurrentIndex] = useState(-1)
+  const [reviewOpen, setReviewOpen] = useState(false)
+
+  // 掌握态水体：本地 + 云端一次拉齐（TypePanel 与错句本共用同一个 store）
+  useSentenceReviewHydrate()
+  const counts = useSentenceCounts()
+  const bookProgress = useBookProgress(BOOKS[currentBookIdx]?.id ?? null)
+  const bookMastered = bookProgress.data
+    ? Math.round(bookProgress.data.masteredRate * 100)
+    : null
 
   const toggleSidebar = () => setSidebarVisible(v => !v)
 
@@ -209,6 +223,26 @@ function LearningView() {
           <div className="flex flex-1 items-center justify-center text-muted-foreground text-lg p-5">请从左侧列表选择一课</div>
         )}
       </div>
+
+      {/* 错句本入口：练习中随时能进去清一轮，不用退回书架 */}
+      <button
+        type="button"
+        onClick={() => setReviewOpen(true)}
+        title={bookMastered === null ? '听力错句本' : `听力错句本 · 本书已掌握 ${bookMastered}%`}
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs text-foreground shadow-md transition hover:border-primary hover:text-primary"
+      >
+        <ListChecks size={14} />
+        错句本
+        {counts.wrong > 0 && (
+          <span className="rounded-full bg-rose-500/15 px-1.5 text-[11px] tabular-nums text-rose-600 dark:text-rose-400">
+            {counts.wrong}
+          </span>
+        )}
+        {bookMastered === null ? null : (
+          <span className="text-[11px] tabular-nums text-muted-foreground">{bookMastered}%</span>
+        )}
+      </button>
+      <SentenceReviewPanel open={reviewOpen} onOpenChange={setReviewOpen} />
     </div>
   )
 }
@@ -218,6 +252,20 @@ export default function EnglishPage() {
   const params = useParams<'bookIdx' | 'lessonIdx'>()
   const hasBookIdx = params.bookIdx !== undefined
   const hasLessonIdx = params.lessonIdx !== undefined
+  // 书架页也要先把掌握态拉齐，否则每张卡片上的句子掌握度会一直是 0
+  useSentenceReviewHydrate()
+
+  // 存量数据：把 studyRecord 里历史错过的句子补录进错题池，只跑一次
+  useEffect(() => {
+    let alive = true;
+    void migrateWrongSentencesOnce().then((n) => {
+      if (!alive || n <= 0) return;
+      toast.success(`已把历史错过的 ${n} 个句子放进错题本`);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // 学习详情在新标签页打开，列表页保持不动
   const handleSelectBook = (idx: number) => {

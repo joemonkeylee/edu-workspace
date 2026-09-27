@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Search, X, Layers, BookOpen, Clock } from 'lucide-react'
+import { Search, X, Layers, BookOpen, Clock, ListChecks } from 'lucide-react'
 import { BOOKS } from '../constants'
 import { loadProgress, learnedLessons, type ProgressMap } from '../progress'
 import { cn } from '@/lib/utils'
 import { useEnglishLibraryStore } from '../libraryStore'
+import SentenceReviewPanel from './SentenceReviewPanel'
+import { useAllSentenceProgress, useSentenceCounts } from '../../review/sentence.ts'
 
 type BookEntry = (typeof BOOKS)[number]
 
@@ -64,6 +66,10 @@ const tileCols = (n: number) => (n <= 4 ? 2 : n <= 9 ? 3 : 4)
 
 export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => void }) {
   const [progress] = useState<ProgressMap>(() => loadProgress())
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const counts = useSentenceCounts()
+  /** 句子层面的掌握度：系列合计 + 每本书各自一份，只读一次索引 */
+  const sentenceProgress = useAllSentenceProgress()
 
   // 筛选状态从 zustand + localStorage 持久化读取
   const search = useEnglishLibraryStore((s) => s.search)
@@ -231,6 +237,20 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
             <option value="recent">最近学习</option>
             <option value="lessons">课数从多到少</option>
           </select>
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            title="听力错句本"
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-foreground transition hover:border-primary hover:text-primary"
+          >
+            <ListChecks size={13} />
+            错句本
+            {counts.wrong > 0 && (
+              <span className="rounded-full bg-rose-500/15 px-1.5 text-[11px] tabular-nums text-rose-600 dark:text-rose-400">
+                {counts.wrong}
+              </span>
+            )}
+          </button>
         </div>
 
         {visibleSeries.length === 0 ? (
@@ -246,6 +266,9 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
               const isExpanded = !!expanded[s.key]
               const shown = isExpanded ? s.members : s.members.slice(0, TILE_LIMIT)
               const hidden = s.members.length - shown.length
+              // 句子层面的掌握度；为 null 表示索引还没拉到，或这个系列没有句子
+              const mastery = sentenceProgress.data?.groups.get(s.key) ?? null
+              const masteredCount = mastery ? mastery.standby + mastery.mastered : 0
 
               return (
                 <div
@@ -272,7 +295,7 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                     </div>
                   )}
 
-                  {/* 系列整体进度 */}
+                  {/* 系列整体进度：学了多少课 */}
                   <div className="mt-2.5 flex items-center gap-2">
                     <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
@@ -281,6 +304,23 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                       {s.learned > 0 ? `已学 ${s.learned} 课` : '未开始'}
                     </span>
                   </div>
+
+                  {/* 句子掌握度：会了几个词还不算，这句是不是听得出来才算 */}
+                  {mastery && mastery.total > 0 && (
+                    <div className="mt-1.5 flex items-center gap-2" title={`${masteredCount} / ${mastery.total} 句已掌握（备用 + 毕业）`}>
+                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all"
+                          style={{ width: `${Math.min(100, mastery.masteredRate * 100)}%` }}
+                        />
+                      </div>
+                      <span className="flex-shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                        {masteredCount > 0
+                          ? `掌握 ${masteredCount} / ${mastery.total} 句`
+                          : `${mastery.total} 句待练`}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="my-3 h-px bg-border" />
 
@@ -306,12 +346,18 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                         const done = learnedLessons(progress[book.id])
                         const pct = book.count > 0 ? Math.min(100, (done / book.count) * 100) : 0
                         const bd = book.difficulty ?? 5
+                        const bp = sentenceProgress.data?.units.get(book.id) ?? null
+                        const bookMastered = bp ? bp.standby + bp.mastered : 0
                         return (
                           <button
                             key={book.id}
                             type="button"
                             onClick={() => onSelect(idx)}
-                            title={`${book.name} · ${book.count} 课 · 难度 ${bd}${done > 0 ? ` · 上次第 ${done} 课` : ''}`}
+                            title={`${book.name} · ${book.count} 课 · 难度 ${bd}${done > 0 ? ` · 上次第 ${done} 课` : ''}${
+                              bp && bp.total > 0
+                                ? ` · 掌握 ${bookMastered}/${bp.total} 句${bp.wrong > 0 ? ` · 错句 ${bp.wrong}` : ''}`
+                                : ''
+                            }`}
                             className={cn(
                               'flex flex-col rounded-md border px-2 py-1.5 text-left transition',
                               done > 0
@@ -334,6 +380,17 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
                             <span className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-border">
                               <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
                             </span>
+                            {bp && bp.total > 0 && (
+                              <span
+                                className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-border"
+                                title="句子掌握度"
+                              >
+                                <span
+                                  className="block h-full rounded-full bg-emerald-500"
+                                  style={{ width: `${Math.min(100, bp.masteredRate * 100)}%` }}
+                                />
+                              </span>
+                            )}
                           </button>
                         )
                       })}
@@ -363,6 +420,8 @@ export default function BookLibrary({ onSelect }: { onSelect: (idx: number) => v
           </div>
         )}
       </section>
+
+      <SentenceReviewPanel open={reviewOpen} onOpenChange={setReviewOpen} />
     </div>
   )
 }

@@ -69,6 +69,26 @@ function schedulePush(domain: ReviewDomain, states: ReviewItemState[]) {
 
 function makeStore(domain: ReviewDomain) {
   return create<ReviewStoreState>((set, get) => {
+    // 两个阶段的标记必须分开：
+    //   localLoaded = 本机 localStorage 已读进内存，此时「写」才是安全的
+    //   cloudPulled = hydrate 全流程（含云端拉取合并）跑完，重复调用直接返回
+    // 只用一个 ready 会导致「半小时前判了句」-> 写入 subdivide 了还没读进来的旧数据。
+    let localLoaded = false;
+    let cloudPulled = false;
+
+    /**
+     * 写盘前必须先把本机数据读进来。
+     * persistDomain 写的是内存里那一整份 buckets，如果此时本机数据还没读，
+     * 一次 applyResults 就会把用户的历史掌握态整体覆盖掉。
+     */
+    const ensureLocal = () => {
+      if (localLoaded) return get().buckets;
+      const local = readDomain(domain);
+      localLoaded = true;
+      set((s) => ({ buckets: local, ready: true, revision: s.revision + 1 }));
+      return local;
+    };
+
     /** 写内存 + 立即落本地 + 排一张云端推送票 */
     const commit = (next: ReviewBuckets, changed: ReviewItemState[]) => {
       persistDomain(domain, next);
@@ -82,12 +102,12 @@ function makeStore(domain: ReviewDomain) {
       revision: 0,
 
       async hydrate() {
-        if (get().ready) return;
-        const local = readDomain(domain);
-        set({ buckets: local, ready: true });
+        if (cloudPulled) return;
+        const local = ensureLocal();
 
         const remote = await pullFromCloud(domain);
         if (!remote || remote.length === 0) {
+          cloudPulled = true;
           // 本地有数据而云端没有（首次登录新设备），把本地推上去
           if (Object.keys(local.active).length > 0 || local.mastered.size > 0 || local.ungraded.size > 0) {
             void pushToCloud(domain, [...Object.values(local.active)]);
@@ -105,6 +125,7 @@ function makeStore(domain: ReviewDomain) {
           if (!cur || cur.updatedAt !== winner.updatedAt) changed.push(winner);
         }
         const next = putStates(buckets, merged);
+        cloudPulled = true;
         persistDomain(domain, next);
         set((s) => ({ buckets: next, revision: s.revision + 1 }));
         if (changed.length > 0) void pushToCloud(domain, changed);
@@ -112,7 +133,7 @@ function makeStore(domain: ReviewDomain) {
 
       applyResults(inputs, cfgPatch) {
         const cfg: ReviewConfig = { ...DEFAULT_REVIEW_CONFIG, ...(cfgPatch ?? {}) };
-        const buckets = get().buckets;
+        const buckets = ensureLocal();
         const changed: ReviewItemState[] = [];
         const result: ReviewBatchResult = {
           applied: [],
@@ -144,7 +165,7 @@ function makeStore(domain: ReviewDomain) {
 
       markKnownMany(keys, cfgPatch) {
         const cfg: ReviewConfig = { ...DEFAULT_REVIEW_CONFIG, ...(cfgPatch ?? {}) };
-        const buckets = get().buckets;
+        const buckets = ensureLocal();
         const changed: ReviewItemState[] = [];
         for (const raw of keys) {
           const key = normalizeItemKey(raw);
@@ -156,7 +177,7 @@ function makeStore(domain: ReviewDomain) {
       },
 
       reopenMany(keys) {
-        const buckets = get().buckets;
+        const buckets = ensureLocal();
         const changed: ReviewItemState[] = [];
         for (const raw of keys) {
           const key = normalizeItemKey(raw);

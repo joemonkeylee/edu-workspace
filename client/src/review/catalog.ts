@@ -46,7 +46,7 @@ export type Catalog = {
   clearCache: () => void;
 };
 
-/** 同一次 Eval 只 fetch 一次：并发请求共享同一个 promise */
+/** 同一份数据只 fetch 一次：并发请求共享同一个 promise */
 function inflight<T>(cache: Map<string, Promise<T>>, k: string, make: () => Promise<T>): Promise<T> {
   const hit = cache.get(k);
   if (hit) return hit;

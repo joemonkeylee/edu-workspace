@@ -9,12 +9,13 @@
  * 听力单句领域后续照葫芦画瓢：一级=series、二级=bookId、条目=bookId::lessonId::句序。
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { createCatalog, type CatalogMeta } from './catalog.ts';
 import { computeProgress } from './engine.ts';
-import { lookupState, type ReviewBuckets } from './repository.ts';
+import { lookupFor, useAsyncData, type Async } from './hooks.ts';
 import { getReviewStore } from './store.ts';
 import type { ReviewDomain, ReviewItemState, ReviewProgress } from './types.ts';
+import type { ReviewBuckets } from './repository.ts';
 
 export const WORD_DOMAIN: ReviewDomain = 'word';
 
@@ -35,33 +36,6 @@ export function useReviewHydrate() {
   return ready;
 }
 
-type Async<T> = { data: T | null; loading: boolean };
-
-/** 通用异步：带取消标记，避免快速切分类时旧请求覆盖新结果 */
-function useAsyncData<T>(task: () => Promise<T | null>, deps: unknown[]): Async<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    task()
-      .then((v) => {
-        if (cancelled) return;
-        setData(v);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setData(null);
-        setLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-
-  return { data, loading };
-}
-
 export function unitMeta() {
   return wordCatalog.meta();
 }
@@ -70,8 +44,6 @@ export function unitMeta() {
 export function useWordCatalogMeta(): Async<CatalogMeta> {
   return useAsyncData(() => wordCatalog.meta(), []);
 }
-
-const lookupFor = (buckets: ReviewBuckets) => (key: string) => lookupState(buckets, key);
 
 export async function unitProgress(unitId: string, buckets: ReviewBuckets): Promise<ReviewProgress | null> {
   const words = await wordCatalog.unitWords(unitId);

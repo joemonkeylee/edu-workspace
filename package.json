@@ -20,6 +20,7 @@
     "build:client:prod": "VITE_APP_ENV=PROD VITE_APP_COMMIT=${VITE_APP_COMMIT:-$(git rev-parse --short HEAD)} npm run build --workspace=client && printf '%s' \"${VITE_APP_COMMIT:-$(git rev-parse --short HEAD)}\" > client/dist/build-commit.txt",
     "start:server": "npm run start --workspace=server",
     "review:index": "node scripts/build-review-index.mjs",
+    "review:index:listening": "node scripts/build-listening-index.mjs",
     "review:verify": "node --experimental-strip-types scripts/verify-review-engine.ts",
     "prepare": "husky"
   },

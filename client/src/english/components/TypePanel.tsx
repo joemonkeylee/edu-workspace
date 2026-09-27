@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { recordAttempt } from '../studyRecord'
+import { judge, judgeMistakes, type JudgeResult, type WordDiff } from '../judge'
+import { useListeningReviewSettings } from '../reviewSettings'
+import { getReviewStore } from '../../review/store.ts'
+import { sentenceKey } from '../../review/sentenceKeys.ts'
+import { SENTENCE_DOMAIN } from '../../review/sentence.ts'
+import type { ReviewBatchResult } from '../../review/store.ts'
 
 const STORAGE_KEY = 'type-panel-settings'
 const DEFAULT_CHECKBOXES = { compare: true, live: false, inTime: false, focus: false, strict: false }
@@ -21,8 +27,18 @@ const loadSettings = () => {
   }
 }
 
-interface WordDiff { expected: string; typed?: string; status: 'correct' | 'wrong' | 'missing' | 'extra' }
-interface JudgeResult { passed: boolean; correctCount: number; totalWords: number; diff: WordDiff[] }
+/**
+ * 只有真的发生池间迁移才提示。每次判卷都弹 toast 会把
+ * 「这节课通过」之类的正常反馈淹掉。
+ */
+function notifyReviewSummary(summary: ReviewBatchResult) {
+  const parts: string[] = []
+  if (summary.promotedToStandby.length > 0) parts.push(`${summary.promotedToStandby.length} 句进入备用`)
+  if (summary.promotedToMastered.length > 0) parts.push(`${summary.promotedToMastered.length} 句毕业`)
+  if (summary.demotedToWrong.length > 0) parts.push(`${summary.demotedToWrong.length} 句回到错题`)
+  if (parts.length === 0) return
+  toast.success(`复习进度更新：${parts.join('、')}`)
+}
 
 interface Props {
   lessonName: string
@@ -50,51 +66,6 @@ interface Props {
   isDarkMode?: boolean
 }
 
-const normalizeToken = (token: string, strict: boolean): string => {
-  if (strict) return token
-  return token.toLowerCase().replace(/[.,!?;:'"""''(){}[\]…—–·-]/g, '')
-}
-
-const toTokens = (text: string, strict: boolean) =>
-  text.trim().split(/\s+/).filter(Boolean).map(raw => ({ raw, norm: normalizeToken(raw, strict) })).filter(t => t.norm.length > 0)
-
-const diffTokens = (typed: { norm: string; raw: string }[], expected: { norm: string; raw: string }[]): WordDiff[] => {
-  const n = typed.length, m = expected.length
-  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0))
-  for (let i = n - 1; i >= 0; i--)
-    for (let j = m - 1; j >= 0; j--)
-      dp[i][j] = typed[i].norm === expected[j].norm ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
-  const result: WordDiff[] = []
-  let i = 0, j = 0
-  while (i < n && j < m) {
-    if (typed[i].norm === expected[j].norm) { result.push({ expected: expected[j].raw, typed: typed[i].raw, status: 'correct' }); i++; j++ }
-    else if (dp[i + 1][j] >= dp[i][j + 1]) { result.push({ expected: '', typed: typed[i].raw, status: 'extra' }); i++ }
-    else { result.push({ expected: expected[j].raw, status: 'missing' }); j++ }
-  }
-  while (i < n) { result.push({ expected: '', typed: typed[i].raw, status: 'extra' }); i++ }
-  while (j < m) { result.push({ expected: expected[j].raw, status: 'missing' }); j++ }
-  return result
-}
-
-const mergeWrong = (diff: WordDiff[]): WordDiff[] => {
-  const result: WordDiff[] = []
-  let i = 0
-  while (i < diff.length) {
-    const cur = diff[i], next = diff[i + 1]
-    if (cur.status === 'extra' && next?.status === 'missing') { result.push({ expected: next.expected, typed: cur.typed, status: 'wrong' }); i += 2; continue }
-    if (cur.status === 'missing' && next?.status === 'extra') { result.push({ expected: cur.expected, typed: next.typed, status: 'wrong' }); i += 2; continue }
-    result.push(cur); i++
-  }
-  return result
-}
-
-const judge = (typedText: string, targetText: string, strict: boolean): JudgeResult => {
-  const typedTokens = toTokens(typedText, strict)
-  const expectedTokens = toTokens(targetText, strict)
-  const diff = mergeWrong(diffTokens(typedTokens, expectedTokens))
-  return { passed: diff.every(d => d.status === 'correct'), correctCount: diff.filter(d => d.status === 'correct').length, totalWords: expectedTokens.length, diff }
-}
-
 export default function TypePanel({
   lessonName, bookId, lessonId, lessonIdx = 0, currentIndex, totalCount, targetText, trans, loopEndCount = 0,
   onPlay, onPrev, onNext, onStopLoop, onRedo, onResetLesson, onInTimeChange, onFocusChange, onPassedIndexChange, isDarkMode: _isDarkMode = true,
@@ -110,6 +81,31 @@ export default function TypePanel({
   const [inTimeRounds, setInTimeRounds] = useState(loaded.config.inTimeRounds)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const loopEndCountRef = useRef(loopEndCount)
+  const reviewSettings = useListeningReviewSettings()
+  // 只订阅 action：整个 store 的变化没必要重渲染打字面板
+  const applyReviewResults = getReviewStore(SENTENCE_DOMAIN)((s) => s.applyResults)
+
+  /**
+   * 「一次造访」= 同一句从落到这一句开始，到重听 / 切句为止。
+   *
+   * 为什么要这一层：听写天然就是「听、打、对照、改、再听」的循环，如果每次回车都算一次
+   * 练习结果，一句改到全对就能把「连答对 N 次」刷满，掌握态就废了。
+   * 所以同一次造访里只认第一次判卷 —— 这也和 studyRecord 里 firstPassed 的口径一致：
+   * 「第一遍就通过」才反映真实水平。想再来一次机会，按 Redo 重听（会开一次新造访）。
+   */
+  const visitRef = useRef<{ key: string; id: string }>({ key: '', id: '' })
+  const visitSeq = useRef(0)
+  /** Redo / Reset 会重听，等于给用户一次新机会，开一次新造访 */
+  const startVisit = () => {
+    visitRef.current = { key: '', id: '' }
+  }
+  const sessionFor = (visitKey: string) => {
+    if (visitRef.current.key !== visitKey) {
+      visitSeq.current += 1
+      visitRef.current = { key: visitKey, id: `${visitKey}#${visitSeq.current}` }
+    }
+    return visitRef.current.id
+  }
 
   const { drafts, results } = state
   const currentDraft = drafts[currentIndex] ?? ''
@@ -166,16 +162,35 @@ export default function TypePanel({
    */
   const commitJudge = useCallback((source: 'manual' | 'inTime' | 'auto') => {
     if (!targetText) return
-    const result = judge(drafts[currentIndex] ?? '', targetText, checkboxes.strict)
-    setState(prev => ({ ...prev, results: { ...prev.results, [currentIndex]: result } }))
+    const idx = currentIndex
+    const result = judge(drafts[idx] ?? '', targetText, checkboxes.strict)
+    setState(prev => ({ ...prev, results: { ...prev.results, [idx]: result } }))
     // 占位课（lessonId 为空）或缺少教材 id 时不记
     if (!bookId || !lessonId) return
     const outcome = recordAttempt({
       bookId, lessonId, lessonIdx, title: lessonName,
-      idx: currentIndex, targetText, result, totalSentences: totalCount, source,
+      idx, targetText, result, totalSentences: totalCount, source,
     })
     if (outcome.justCompleted) toast.success(`「${lessonName}」${totalCount} 句全部通过`)
-  }, [drafts, currentIndex, targetText, checkboxes.strict, bookId, lessonId, lessonIdx, lessonName, totalCount])
+
+    // 同一句话的一次造访只采纳第一次判卷：auto（Live Check）完全跳过，
+    // manual / inTime 落到复习引擎的三池轮转里
+    if (source === 'auto') return
+    const summary = applyReviewResults(
+      [
+        {
+          key: sentenceKey(bookId, lessonId, idx),
+          ok: result.passed,
+          sessionId: sessionFor(`${bookId}::${lessonId}::${idx}`),
+          unitId: bookId,
+          mode: 'practice',
+          mistakes: result.passed ? undefined : judgeMistakes(result.diff),
+        },
+      ],
+      reviewSettings,
+    )
+    notifyReviewSummary(summary)
+  }, [drafts, currentIndex, targetText, checkboxes.strict, bookId, lessonId, lessonIdx, lessonName, totalCount, applyReviewResults, reviewSettings])
 
   // In Time 的 effect 只依赖 loopEndCount，用 ref 拿到最新的判卷函数
   const commitJudgeRef = useRef(commitJudge)
@@ -189,6 +204,8 @@ export default function TypePanel({
       delete nd[currentIndex]; delete nr[currentIndex]
       return { drafts: nd, results: nr }
     })
+    // 重听 = 新的一次机会：之前同一次造访里已判过的卷不再重复计入
+    startVisit()
     onRedo?.()
     textareaRef.current?.focus()
   }
@@ -196,6 +213,7 @@ export default function TypePanel({
   /** 重置整个 lesson：清空所有句子的输入和判卷结果，回到第 0 句 */
   const handleResetLesson = () => {
     setState({ drafts: {}, results: {} })
+    startVisit()
     onResetLesson?.()
     textareaRef.current?.focus()
   }

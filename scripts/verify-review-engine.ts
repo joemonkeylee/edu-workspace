@@ -9,6 +9,7 @@
  */
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {
   applyResult,
   computeProgress,
@@ -22,6 +23,8 @@ import {
 import { lookupState, putStates, emptyBuckets } from '../client/src/review/repository.ts';
 import { buildMixedQueue, pickSpotCheck } from '../client/src/review/queue.ts';
 import { DEFAULT_REVIEW_CONFIG, type ReviewConfig, type ReviewInput, type ReviewProgress, type ReviewTransition } from '../client/src/review/types.ts';
+import { sentenceKey, sentenceKeys, parseSentenceKey } from '../client/src/review/sentenceKeys.ts';
+import { judge, judgeMistakes } from '../client/src/english/judge.ts';
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -297,6 +300,124 @@ check('抽查优先挑最久没抽查过的', () => {
   ];
   const picked = pickSpotCheck(pool, { count: 2, lastCheckAtOf: (x) => x.lastCheckAt, random: () => 0.5 });
   assert.deepEqual(picked.map((p) => p.key), ['never', 'old']);
+});
+
+// ── 听力单句领域 ────────────────────────────────────────────────
+console.log('\n── 听力单句领域 ──');
+
+const BOOK = 'b'.repeat(32);
+const LESSON = 'c'.repeat(32);
+
+check('句子键：编解码往返一致', () => {
+  const key = sentenceKey(BOOK, LESSON, 7);
+  assert.equal(key, `${BOOK}::${LESSON}::7`);
+  const ref = parseSentenceKey(key);
+  assert.deepEqual(ref, { bookId: BOOK, lessonId: LESSON, idx: 7 });
+  // 键要能用 VarChar(191) 存下，并且归一化不会改坏
+  assert.ok(key.length <= 191);
+  assert.equal(normalizeItemKey(key), key.toLowerCase());
+});
+
+check('句子键：同一句话在不同书里是两条（英音/美音不互相买单）', () => {
+  const a = sentenceKey('book-british', LESSON, 3);
+  const b = sentenceKey('book-american', LESSON, 3);
+  assert.notEqual(a, b);
+});
+
+check('句子键：坏输入返回 null 而不是抛错', () => {
+  assert.equal(parseSentenceKey(''), null);
+  assert.equal(parseSentenceKey('a::b'), null);
+  assert.equal(parseSentenceKey('a::b::x'), null);
+  assert.equal(parseSentenceKey('a::b::-1'), null);
+  assert.equal(parseSentenceKey('::b::1'), null);
+});
+
+check('句子桶：按 课(x句) 生成，占位课(0 句)跳过', () => {
+  const lessons = [
+    { id: 'l1', count: 3 },
+    { id: '', count: 5 },
+    { id: 'l2', count: 2 },
+  ];
+  const keys = [...sentenceKeys(BOOK, lessons)];
+  assert.equal(keys.length, 5);
+  assert.deepEqual(keys, [
+    sentenceKey(BOOK, 'l1', 0),
+    sentenceKey(BOOK, 'l1', 1),
+    sentenceKey(BOOK, 'l1', 2),
+    sentenceKey(BOOK, 'l2', 0),
+    sentenceKey(BOOK, 'l2', 1),
+  ]);
+});
+
+check('书进度：分母是这本书的全部句子', () => {
+  const lessons = [{ id: 'l1', count: 4 }];
+  const buckets = putStates(emptyBuckets(), [
+    { ...emptyItemState(sentenceKey(BOOK, 'l1', 0)), status: 'standby' },
+    { ...emptyItemState(sentenceKey(BOOK, 'l1', 1)), status: 'mastered' },
+  ]);
+  const p = computeProgress(sentenceKeys(BOOK, lessons), (key) => lookupState(buckets, key));
+  assert.equal(p.total, 4);
+  assert.equal(p.masteredRate, 2 / 4);
+  // 没练过的两条不能算进覆盖率
+  assert.equal(p.untouched, 2);
+  assert.equal(p.coveredRate, 2 / 4);
+});
+
+check('真实索引：能按 课|句数|课名 解析并对得上总数', () => {
+  const indexDir = 'client/public/listening/_index';
+  if (!fs.existsSync(indexDir)) {
+    throw new Error(`索引还没生成，先跑 npm run review:index:listening（当前跳不过，它是此脚本的核心校验）`);
+  }
+  const meta = JSON.parse(fs.readFileSync(`${indexDir}/meta.json`, 'utf8'));
+  assert.ok(meta.unitCount > 0 && meta.sentenceCount > 0);
+
+  let books = 0;
+  let sentences = 0;
+  for (const g of meta.groups) {
+    const raw = JSON.parse(fs.readFileSync(`${indexDir}/${g.file}`, 'utf8'));
+    for (const [, joined] of Object.entries(raw)) {
+      books += 1;
+      // 与 review/sentence.ts 的解析保持一致
+      const lessons = String(joined ?? '')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => {
+          const [id, count] = line.split('|');
+          return { id: id ?? '', count: Number(count) || 0 };
+        });
+      sentences += lessons.reduce((s, l) => s + l.count, 0);
+      for (const k of sentenceKeys('placeholder', lessons)) {
+        // 生成的键必须能被解回去，否则线上拿到的数据会变成无法还原的孤儿
+        assert.ok(parseSentenceKey(k), `解不开的键：${k}`);
+      }
+    }
+  }
+  assert.equal(books, meta.unitCount);
+  assert.equal(sentences, meta.sentenceCount);
+  console.log(`    索引核对：${books} 本 / ${sentences} 句`);
+});
+
+check('听写判卷：宽松模式忽略大小写与标点，严格模式不忽略', () => {
+  const typed = 'Hello, world!';
+  const target = 'hello world';
+  assert.equal(judge(typed, target, false).passed, true);
+  assert.equal(judge(typed, target, true).passed, false);
+  // 漏词 / 多词都要判错，打分不能只看前几个字对不对
+  assert.equal(judge('hello', target, false).passed, false);
+  assert.equal(judge('hello dear world', target, false).passed, false);
+});
+
+check('听写判卷：错位散布的错误能定位到具体哪个词', () => {
+  const r = judge('hello wrld', 'hello world', false);
+  assert.equal(r.passed, false);
+  assert.equal(r.totalWords, 2);
+  assert.equal(r.correctCount, 1);
+  const mistakes = judgeMistakes(r.diff);
+  assert.ok(mistakes, '应当产出 mistakes');
+  const values = Object.values(mistakes ?? {}).flat();
+  assert.ok(values.includes('wrld'));
+  // 全对的句子不该产生 mistakes（出池即丢，也就没什么可记的）
+  assert.equal(judgeMistakes(judge('hello world', 'hello world', false).diff), undefined);
 });
 
 console.log(`\n全部通过：${passed} 项断言\n`);

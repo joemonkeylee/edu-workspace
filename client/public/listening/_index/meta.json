@@ -1,0 +1,670 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-27T11:24:38.754Z",
+  "unitCount": 66,
+  "groupCount": 28,
+  "lessonCount": 6911,
+  "sentenceCount": 142459,
+  "units": [
+    {
+      "id": "74575627913a4f26bb4c498694ef4c72",
+      "name": "新概念第一册",
+      "group": "新概念英语 · 英音",
+      "lessons": 72,
+      "sentences": 1117
+    },
+    {
+      "id": "40184428b9444d3893427991656b9185",
+      "name": "新概念第二册",
+      "group": "新概念英语 · 英音",
+      "lessons": 96,
+      "sentences": 1036
+    },
+    {
+      "id": "bf00250080914cb6810d5c08e4f2e5a6",
+      "name": "新概念第三册",
+      "group": "新概念英语 · 英音",
+      "lessons": 60,
+      "sentences": 1297
+    },
+    {
+      "id": "283b20da4c9445ff8c19057a4a75973c",
+      "name": "新概念第四册",
+      "group": "新概念英语 · 英音",
+      "lessons": 48,
+      "sentences": 744
+    },
+    {
+      "id": "f8bb0d6ae5eb47b5aa45a49eb9997f46",
+      "name": "新概念第一册",
+      "group": "新概念英语 · 美音",
+      "lessons": 72,
+      "sentences": 1123
+    },
+    {
+      "id": "8783fdcaf5d34f2fa1ca6bd40fac380b",
+      "name": "新概念第二册",
+      "group": "新概念英语 · 美音",
+      "lessons": 96,
+      "sentences": 1039
+    },
+    {
+      "id": "54fa25abe61e442c97cee6b6b587970f",
+      "name": "新概念第三册",
+      "group": "新概念英语 · 美音",
+      "lessons": 60,
+      "sentences": 1297
+    },
+    {
+      "id": "fb29378303214f1b9cc280a826f0185c",
+      "name": "新概念第四册",
+      "group": "新概念英语 · 美音",
+      "lessons": 48,
+      "sentences": 759
+    },
+    {
+      "id": "f2e3748165ed4aabb8ddc8f419878019",
+      "name": "ListenToThis 初级",
+      "group": "ListenToThis 英语听力",
+      "lessons": 247,
+      "sentences": 4639
+    },
+    {
+      "id": "1f715973e88a47998213931c06bc2da7",
+      "name": "ListenToThis 中级",
+      "group": "ListenToThis 英语听力",
+      "lessons": 154,
+      "sentences": 5290
+    },
+    {
+      "id": "a147c9539bcc41ba9599e521fbb664a0",
+      "name": "ListenToThis 高级",
+      "group": "ListenToThis 英语听力",
+      "lessons": 108,
+      "sentences": 3161
+    },
+    {
+      "id": "1b78c7a4ea6c48a5b72213092e2ec322",
+      "name": "Speech Repository Beginner",
+      "group": "Speech Repository 口译",
+      "lessons": 25,
+      "sentences": 798
+    },
+    {
+      "id": "332eab98968c406cab27a885e47c24e4",
+      "name": "Speech Repository Intermediate",
+      "group": "Speech Repository 口译",
+      "lessons": 7,
+      "sentences": 185
+    },
+    {
+      "id": "7fee3f213ae542dc9184a12618f6468d",
+      "name": "Speech Repository Advanced",
+      "group": "Speech Repository 口译",
+      "lessons": 19,
+      "sentences": 833
+    },
+    {
+      "id": "6f9bd3f5e5834ded8a301fce24815623",
+      "name": "Speech Repository Very advanced",
+      "group": "Speech Repository 口译",
+      "lessons": 7,
+      "sentences": 629
+    },
+    {
+      "id": "2293cecb54ab48289e194c1333e4a614",
+      "name": "听见英国实境训练",
+      "group": "听见英国实境训练",
+      "lessons": 48,
+      "sentences": 969
+    },
+    {
+      "id": "5130940360ae4cef9800281c50fc07e8",
+      "name": "英音慢速经济学人",
+      "group": "英音慢速经济学人",
+      "lessons": 108,
+      "sentences": 2026
+    },
+    {
+      "id": "6f59566a90174185a25e8b75b8a5f10f",
+      "name": "英音快速BBC新闻",
+      "group": "英音快速BBC新闻",
+      "lessons": 398,
+      "sentences": 5016
+    },
+    {
+      "id": "78c86e8402ff4816a414af7c0907c8be",
+      "name": "英语播客English pod",
+      "group": "英语播客English pod",
+      "lessons": 365,
+      "sentences": 5675
+    },
+    {
+      "id": "e6c53eded9e749b695095f9000d6f99f",
+      "name": "BBC English 6 Minute",
+      "group": "BBC English 6 Minute",
+      "lessons": 18,
+      "sentences": 953
+    },
+    {
+      "id": "bea5fce493554f7581e206623f307e0f",
+      "name": "美音慢速国家地理",
+      "group": "美音慢速国家地理",
+      "lessons": 106,
+      "sentences": 1565
+    },
+    {
+      "id": "9a27a47e28964cb8af028f741c2738c2",
+      "name": "美音中速CNN新闻",
+      "group": "美音中速CNN新闻",
+      "lessons": 339,
+      "sentences": 5377
+    },
+    {
+      "id": "a419eb2de2544c91b2c9d3e2c9b5a254",
+      "name": "美音快速科学60秒",
+      "group": "美音快速科学60秒",
+      "lessons": 380,
+      "sentences": 5413
+    },
+    {
+      "id": "183e4f58ef2440c7b7ebb3dfdf141536",
+      "name": "PTE备考 SST",
+      "group": "PTE 备考",
+      "lessons": 220,
+      "sentences": 2367
+    },
+    {
+      "id": "ec942fcc07994a958c9da1f79dc60efe",
+      "name": "PTE备考 WFD",
+      "group": "PTE 备考",
+      "lessons": 135,
+      "sentences": 1347
+    },
+    {
+      "id": "40447d58f5b840d29cc91fabcd47dba1",
+      "name": "达人真题1-6",
+      "group": "雅思真题 IELTS",
+      "lessons": 144,
+      "sentences": 6951
+    },
+    {
+      "id": "f98a3e1f71024220b12d88641eb6f366",
+      "name": "剑桥真题4-19",
+      "group": "雅思真题 IELTS",
+      "lessons": 256,
+      "sentences": 11283
+    },
+    {
+      "id": "bca6bf1f69604b79a3a6e818eb41250b",
+      "name": "老托听力93篇精选",
+      "group": "老托听力93篇精选",
+      "lessons": 93,
+      "sentences": 1316
+    },
+    {
+      "id": "234e7ef6ac064e1ca2959156dfcf0d68",
+      "name": "托福口语TPO1-75",
+      "group": "托福 TPO 真题",
+      "lessons": 300,
+      "sentences": 3971
+    },
+    {
+      "id": "ff1acca4854149389af9f3203151ba6c",
+      "name": "托福听力TPO1-75",
+      "group": "托福 TPO 真题",
+      "lessons": 439,
+      "sentences": 18161
+    },
+    {
+      "id": "539db55cd86142cf984650894fa8d36e",
+      "name": "托福听力学科分类",
+      "group": "托福 TPO 真题",
+      "lessons": 151,
+      "sentences": 4360
+    },
+    {
+      "id": "3ebc764be8654cabb331cbeb225a99e5",
+      "name": "BEC中级",
+      "group": "剑桥商务英语 BEC",
+      "lessons": 218,
+      "sentences": 2594
+    },
+    {
+      "id": "09ca363815884c4587614da5e84fc267",
+      "name": "BEC高级",
+      "group": "剑桥商务英语 BEC",
+      "lessons": 48,
+      "sentences": 1841
+    },
+    {
+      "id": "f3eb9c8f486b4178bbf6fecd2849aa81",
+      "name": "绝望主妇第一季",
+      "group": "绝望主妇第一季",
+      "lessons": 198,
+      "sentences": 3240
+    },
+    {
+      "id": "d57a552b176e4d5e96db3d54d82088c4",
+      "name": "老友记第一季",
+      "group": "老友记第一季",
+      "lessons": 49,
+      "sentences": 709
+    },
+    {
+      "id": "cae1ebf9e1784a57bf48cfc2b3a1b519",
+      "name": "01 Fantastic Mr Fox",
+      "group": "罗尔德达尔",
+      "lessons": 18,
+      "sentences": 790
+    },
+    {
+      "id": "7e36a2ae524b4c6683290b2dd7d2f42b",
+      "name": "02 The Witches",
+      "group": "罗尔德达尔",
+      "lessons": 26,
+      "sentences": 1023
+    },
+    {
+      "id": "ecf58a0d1a454688b28544a202a33da8",
+      "name": "2024年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 40,
+      "sentences": 321
+    },
+    {
+      "id": "5ae7ccf5ddfd4d5fbc5a0c2ad3f70175",
+      "name": "2023年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 50,
+      "sentences": 433
+    },
+    {
+      "id": "fb7930cf73da405b882b149d0cee3d99",
+      "name": "2022年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 30,
+      "sentences": 261
+    },
+    {
+      "id": "5bfe5bca810145dda4cabed405efb679",
+      "name": "2021年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 40,
+      "sentences": 338
+    },
+    {
+      "id": "eec4565711654cdbac4ca73300f3dade",
+      "name": "2020年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 40,
+      "sentences": 327
+    },
+    {
+      "id": "b07dd4f56d3741b38ce48bf6fec529ae",
+      "name": "2019年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 20,
+      "sentences": 153
+    },
+    {
+      "id": "1ac3aa0057994205b43b01b815be187c",
+      "name": "2018年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 20,
+      "sentences": 156
+    },
+    {
+      "id": "9233ad05dca240219a4fcbe5696daeca",
+      "name": "2017年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 20,
+      "sentences": 169
+    },
+    {
+      "id": "386b8721d049459c862302a121bf16cd",
+      "name": "2016年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 20,
+      "sentences": 157
+    },
+    {
+      "id": "110f6c9882f749b0bd14450c13997059",
+      "name": "2015年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 72
+    },
+    {
+      "id": "4594328c467748c5bb312453bf28133e",
+      "name": "2014年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 81
+    },
+    {
+      "id": "be300dcd32ea4dc693562f99aeced84b",
+      "name": "2013年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 70
+    },
+    {
+      "id": "c9c516a9ce664e028708f16a63bb4b00",
+      "name": "2012年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 81
+    },
+    {
+      "id": "19d3662c767b40c988e3269924466e9c",
+      "name": "2011年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 68
+    },
+    {
+      "id": "048ac4caac104581afb6e0bb30e7690c",
+      "name": "2010年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 70
+    },
+    {
+      "id": "20dbd4bad72947729d403f5c19812dcf",
+      "name": "2009年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 74
+    },
+    {
+      "id": "9ef5f4a745444857852bb6ca036da39e",
+      "name": "2008年高考卷",
+      "group": "高考英语听力真题",
+      "lessons": 10,
+      "sentences": 72
+    },
+    {
+      "id": "ff657eb9bcc1463ebd0df41278e41bd2",
+      "name": "四级历年真题",
+      "group": "大学听力真题",
+      "lessons": 304,
+      "sentences": 4419
+    },
+    {
+      "id": "da2eacbe90914271921956a0868eb5df",
+      "name": "六级历年真题",
+      "group": "大学听力真题",
+      "lessons": 294,
+      "sentences": 6108
+    },
+    {
+      "id": "6899eb8d396847d690ac691518f530dc",
+      "name": "专四历年真题",
+      "group": "大学听力真题",
+      "lessons": 60,
+      "sentences": 1636
+    },
+    {
+      "id": "c0a4639e491a4ffcaf4b12f5bf919dff",
+      "name": "专八历年真题",
+      "group": "大学听力真题",
+      "lessons": 45,
+      "sentences": 1801
+    },
+    {
+      "id": "5ab45e633e5f4775941f4b5c6602fb4a",
+      "name": "TED-ed科普精选",
+      "group": "TED-ed科普精选",
+      "lessons": 232,
+      "sentences": 4372
+    },
+    {
+      "id": "46d1ce68c74141229538f124f4bda48b",
+      "name": "Kaplan Practice Set",
+      "group": "Kaplan Practice Set",
+      "lessons": 30,
+      "sentences": 707
+    },
+    {
+      "id": "cc75116e64f84861958bc58da79f4fd4",
+      "name": "OET Sample Tests",
+      "group": "OET 护理英语",
+      "lessons": 40,
+      "sentences": 983
+    },
+    {
+      "id": "fc02416c85b8425992210f0e3eed8405",
+      "name": "Official OET Practice Tests",
+      "group": "OET 护理英语",
+      "lessons": 30,
+      "sentences": 703
+    },
+    {
+      "id": "b51119935d7d418f9e7542cc10f6e222",
+      "name": "Reading Explorer",
+      "group": "Reading Explorer",
+      "lessons": 120,
+      "sentences": 4218
+    },
+    {
+      "id": "b6bbb583478c4f79b7fe718f063bf685",
+      "name": "50篇文章搞定3500词",
+      "group": "50篇文章搞定3500词",
+      "lessons": 50,
+      "sentences": 632
+    },
+    {
+      "id": "e3c28d8610c64a5485a1be9e3b0d1fe2",
+      "name": "综合写作TPO1-75",
+      "group": "托福 TPO 真题",
+      "lessons": 75,
+      "sentences": 1390
+    },
+    {
+      "id": "7d717ffe78464164bd47ce2d406235c7",
+      "name": "基础起步想一分钟",
+      "group": "基础起步想一分钟",
+      "lessons": 95,
+      "sentences": 1693
+    }
+  ],
+  "groups": [
+    {
+      "group": "新概念英语 · 英音",
+      "file": "g0.json",
+      "units": 4,
+      "lessons": 276,
+      "sentences": 4194
+    },
+    {
+      "group": "新概念英语 · 美音",
+      "file": "g1.json",
+      "units": 4,
+      "lessons": 276,
+      "sentences": 4218
+    },
+    {
+      "group": "ListenToThis 英语听力",
+      "file": "g2.json",
+      "units": 3,
+      "lessons": 509,
+      "sentences": 13090
+    },
+    {
+      "group": "Speech Repository 口译",
+      "file": "g3.json",
+      "units": 4,
+      "lessons": 58,
+      "sentences": 2445
+    },
+    {
+      "group": "听见英国实境训练",
+      "file": "g4.json",
+      "units": 1,
+      "lessons": 48,
+      "sentences": 969
+    },
+    {
+      "group": "英音慢速经济学人",
+      "file": "g5.json",
+      "units": 1,
+      "lessons": 108,
+      "sentences": 2026
+    },
+    {
+      "group": "英音快速BBC新闻",
+      "file": "g6.json",
+      "units": 1,
+      "lessons": 398,
+      "sentences": 5016
+    },
+    {
+      "group": "英语播客English pod",
+      "file": "g7.json",
+      "units": 1,
+      "lessons": 365,
+      "sentences": 5675
+    },
+    {
+      "group": "BBC English 6 Minute",
+      "file": "g8.json",
+      "units": 1,
+      "lessons": 18,
+      "sentences": 953
+    },
+    {
+      "group": "美音慢速国家地理",
+      "file": "g9.json",
+      "units": 1,
+      "lessons": 106,
+      "sentences": 1565
+    },
+    {
+      "group": "美音中速CNN新闻",
+      "file": "g10.json",
+      "units": 1,
+      "lessons": 339,
+      "sentences": 5377
+    },
+    {
+      "group": "美音快速科学60秒",
+      "file": "g11.json",
+      "units": 1,
+      "lessons": 380,
+      "sentences": 5413
+    },
+    {
+      "group": "PTE 备考",
+      "file": "g12.json",
+      "units": 2,
+      "lessons": 355,
+      "sentences": 3714
+    },
+    {
+      "group": "雅思真题 IELTS",
+      "file": "g13.json",
+      "units": 2,
+      "lessons": 400,
+      "sentences": 18234
+    },
+    {
+      "group": "老托听力93篇精选",
+      "file": "g14.json",
+      "units": 1,
+      "lessons": 93,
+      "sentences": 1316
+    },
+    {
+      "group": "托福 TPO 真题",
+      "file": "g15.json",
+      "units": 4,
+      "lessons": 965,
+      "sentences": 27882
+    },
+    {
+      "group": "剑桥商务英语 BEC",
+      "file": "g16.json",
+      "units": 2,
+      "lessons": 266,
+      "sentences": 4435
+    },
+    {
+      "group": "绝望主妇第一季",
+      "file": "g17.json",
+      "units": 1,
+      "lessons": 198,
+      "sentences": 3240
+    },
+    {
+      "group": "老友记第一季",
+      "file": "g18.json",
+      "units": 1,
+      "lessons": 49,
+      "sentences": 709
+    },
+    {
+      "group": "罗尔德达尔",
+      "file": "g19.json",
+      "units": 2,
+      "lessons": 44,
+      "sentences": 1813
+    },
+    {
+      "group": "高考英语听力真题",
+      "file": "g20.json",
+      "units": 17,
+      "lessons": 360,
+      "sentences": 2903
+    },
+    {
+      "group": "大学听力真题",
+      "file": "g21.json",
+      "units": 4,
+      "lessons": 703,
+      "sentences": 13964
+    },
+    {
+      "group": "TED-ed科普精选",
+      "file": "g22.json",
+      "units": 1,
+      "lessons": 232,
+      "sentences": 4372
+    },
+    {
+      "group": "Kaplan Practice Set",
+      "file": "g23.json",
+      "units": 1,
+      "lessons": 30,
+      "sentences": 707
+    },
+    {
+      "group": "OET 护理英语",
+      "file": "g24.json",
+      "units": 2,
+      "lessons": 70,
+      "sentences": 1686
+    },
+    {
+      "group": "Reading Explorer",
+      "file": "g25.json",
+      "units": 1,
+      "lessons": 120,
+      "sentences": 4218
+    },
+    {
+      "group": "50篇文章搞定3500词",
+      "file": "g26.json",
+      "units": 1,
+      "lessons": 50,
+      "sentences": 632
+    },
+    {
+      "group": "基础起步想一分钟",
+      "file": "g27.json",
+      "units": 1,
+      "lessons": 95,
+      "sentences": 1693
+    }
+  ]
+}
