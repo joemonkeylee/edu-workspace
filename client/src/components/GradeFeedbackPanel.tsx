@@ -123,24 +123,26 @@ export default function GradeFeedbackPanel({
                     <span className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${badge.className}`}>
                       {badge.label}
                     </span>
-                    {tags.map((tag) => (
-                      <span key={tag} className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
-                    ))}
                     <span className="flex-shrink-0 rounded bg-muted px-1 py-px text-[10px] text-muted-foreground">
                       {row.kind === 'pdf' ? 'PDF' : '书籍'}
                     </span>
                   </div>
-                  {row.gradeComment && (
-                    <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                      老师备注：{row.gradeComment}
-                    </div>
-                  )}
                   <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
                     {row.bookTitle}
                     {row.bookSubject ? ` · ${row.bookSubject}` : ''}
                     {' · '}
                     {formatTime(row.gradedAt, row.updatedAt)}
                   </div>
+                  {(tags.length > 0 || row.gradeComment) && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {tags.map((tag) => (
+                        <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                      ))}
+                      {row.gradeComment && (
+                        <span className="text-[11px] text-foreground/80">备注：{row.gradeComment}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <ExternalLink size={13} className="flex-shrink-0 text-transparent transition group-hover:text-muted-foreground" />
               </div>

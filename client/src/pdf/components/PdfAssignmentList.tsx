@@ -155,13 +155,7 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                     {badge && <CheckCircle2 size={9} />}
                     {badge ? badge.label : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
                   </span>
-                  {issues.map((tag) => (
-                    <span key={tag} className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
-                  ))}
                 </div>
-                {hasIssue(a) && a.gradeComment && (
-                  <div className="mt-0.5 truncate text-[10px] text-muted-foreground">备注：{a.gradeComment}</div>
-                )}
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="flex items-center gap-0.5">
                     <Clock size={9} /> {formatTime(a.createdAt)}
@@ -172,6 +166,16 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                     </span>
                   )}
                 </div>
+                {(issues.length > 0 || a.gradeComment) && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    {issues.map((tag) => (
+                      <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                    ))}
+                    {a.gradeComment && (
+                      <span className="text-[11px] text-foreground/80">备注：{a.gradeComment}</span>
+                    )}
+                  </div>
+                )}
               </div>
             </button>
 

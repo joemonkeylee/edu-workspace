@@ -288,9 +288,6 @@ export default function PdfAssignmentsTable() {
                                   {formatAssignmentTitle(item.title) || `作业 #${item.id}`}
                                 </span>
                                 <StatusBadge status={item.status} gradeResult={item.gradeResult} />
-                                {hasIssue(item) && parseGradeIssues(item.gradeIssues).map((tag: string) => (
-                                  <span key={tag} className={`rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
-                                ))}
                                 {item.pages?.length > 0 && (
                                   <span className="text-xs text-muted-foreground">第 {item.pages.join('、')} 页</span>
                                 )}
@@ -298,6 +295,16 @@ export default function PdfAssignmentsTable() {
                               <p className="mt-0.5 text-xs text-muted-foreground">
                                 {formatDate(item.createdAt)} · {item._count?.strokes ?? 0} 笔
                               </p>
+                              {(parseGradeIssues(item.gradeIssues).length > 0 || item.gradeComment) && (
+                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                  {parseGradeIssues(item.gradeIssues).map((tag: string) => (
+                                    <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                                  ))}
+                                  {item.gradeComment && (
+                                    <span className="text-[11px] text-foreground/80">备注：{item.gradeComment}</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => openInNewTab(`/pdf/book/${item.bookId}?assignmentId=${item.id}&grading=1&role=teacher`)}
