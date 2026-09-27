@@ -1,0 +1,197 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Highlighter, FileText } from 'lucide-react';
+import { toast } from 'sonner';
+import { useConfirm } from '../../ConfirmDialog';
+import { adminListPdfAnnotations, adminDeletePdfAnnotation } from '../../../pdf/api/pdfClient';
+
+const TYPE_LABELS: Record<string, string> = {
+  highlight: '高亮',
+  note: '批注',
+  crop: '裁剪',
+};
+
+function renderContent(item: any) {
+  if (!item.contentJson) return '-';
+  try {
+    const c = typeof item.contentJson === 'string' ? JSON.parse(item.contentJson) : item.contentJson;
+    if (item.type === 'note' && c.text) {
+      return <span className="text-foreground text-sm line-clamp-2">{c.text}</span>;
+    }
+    if (item.type === 'highlight') {
+      return <span className="text-muted-foreground text-xs">高亮区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
+    }
+    if (item.type === 'crop') {
+      return <span className="text-muted-foreground text-xs">裁剪区域 ({Math.round(c.w * 100)}% × {Math.round(c.h * 100)}%)</span>;
+    }
+    return <span className="text-muted-foreground text-xs">{JSON.stringify(c).slice(0, 80)}</span>;
+  } catch {
+    return '-';
+  }
+}
+
+export default function PdfAnnotationsTable() {
+  const confirm = useConfirm();
+  const [items, setItems] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [filterBookId, setFilterBookId] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [loading, setLoading] = useState(false);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, any> = { page, pageSize };
+      if (filterBookId) params.bookId = filterBookId;
+      if (filterType !== 'all') params.type = filterType;
+      const res = await adminListPdfAnnotations(params);
+      setItems(res.data);
+      setTotal(res.total);
+    } finally { setLoading(false); }
+  }, [page, pageSize, filterBookId, filterType]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  const handleFilter = () => { setPage(1); fetch(); };
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  const handleDelete = async (id: number) => {
+    const ok = await confirm({
+      title: '确认删除',
+      message: '确认删除此批注？关联的错题裁图也会被清理，且无法恢复。',
+      confirmText: '确认删除',
+      confirmClass: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+    });
+    if (!ok) return;
+    try {
+      await adminDeletePdfAnnotation(id);
+      toast.success('批注已删除');
+      fetch();
+    } catch (e: any) {
+      toast.error('删除失败: ' + (e?.message || '未知错误'));
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="relative w-40">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+          <input
+            type="number"
+            value={filterBookId}
+            onChange={(e) => setFilterBookId(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
+            placeholder="书籍ID..."
+            className="w-full pl-9 pr-3 py-2 border border-input bg-background text-foreground placeholder:text-muted-foreground rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <select
+          value={filterType}
+          onChange={(e) => { setFilterType(e.target.value); setPage(1); }}
+          className="px-3 py-2 border border-input bg-background rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="all">全部类型</option>
+          <option value="highlight">高亮</option>
+          <option value="note">批注</option>
+          <option value="crop">裁剪</option>
+        </select>
+        <button onClick={handleFilter} className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:bg-primary/90">
+          筛选
+        </button>
+      </div>
+
+      <div className="bg-background rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-foreground/70">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium">ID</th>
+                <th className="text-left px-4 py-3 font-medium">书名</th>
+                <th className="text-left px-4 py-3 font-medium">页码</th>
+                <th className="text-left px-4 py-3 font-medium">类型</th>
+                <th className="text-left px-4 py-3 font-medium">内容摘要</th>
+                <th className="text-left px-4 py-3 font-medium">标签</th>
+                <th className="text-left px-4 py-3 font-medium">创建时间</th>
+                <th className="text-right px-4 py-3 font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {loading ? (
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">加载中...</td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">暂无数据</td></tr>
+              ) : items.map((item) => (
+                <tr key={item.id} className="hover:bg-muted/50 transition">
+                  <td className="px-4 py-3 text-muted-foreground">{item.id}</td>
+                  <td className="px-4 py-3 max-w-[160px]">
+                    <span className="truncate block text-foreground" title={item.book?.title}>
+                      {item.book?.title || `Book#${item.bookId}`}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-foreground/70">P{item.pageNumber}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+                      ${item.type === 'highlight' ? 'bg-yellow-100 dark:bg-yellow-950/60 dark:border dark:border-yellow-800 text-yellow-700 dark:text-yellow-400'
+                        : item.type === 'note' ? 'bg-primary/10 text-primary'
+                        : 'bg-muted text-foreground/70'}`}>
+                      {item.type === 'highlight' ? <Highlighter size={12} /> : <FileText size={12} />}
+                      {TYPE_LABELS[item.type] || item.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 max-w-[200px]">{renderContent(item)}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{item.tags || '-'}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                    {new Date(item.createdAt).toLocaleString('zh-CN')}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-1.5 text-destructive/70 hover:bg-destructive/10 rounded"
+                      title="删除"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border/50">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>共 <span className="text-foreground font-medium">{total}</span> 条</span>
+            <span className="text-border">|</span>
+            <span>每页</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="h-7 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span>条</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(1)} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="首页">
+              <ChevronsLeft size={18} />
+            </button>
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="上一页">
+              <ChevronLeft size={18} />
+            </button>
+            <span className="px-2 text-sm text-foreground/80">第 <span className="text-foreground font-medium">{page}</span> / {totalPages} 页</span>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="下一页">
+              <ChevronRight size={18} />
+            </button>
+            <button onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-muted disabled:opacity-30" title="末页">
+              <ChevronsRight size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

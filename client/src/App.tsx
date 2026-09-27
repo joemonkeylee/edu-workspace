@@ -23,6 +23,12 @@ import AuthSettings from './components/admin/AuthSettings';
 import AssignmentsTable from './components/admin/AssignmentsTable';
 import BookPairs from './components/admin/BookPairs';
 import DbBackup from './components/admin/DbBackup';
+import PdfBooksTable from './components/admin/pdf/PdfBooksTable';
+import PdfImportPanel from './components/admin/pdf/PdfImportPanel';
+import PdfAnnotationsTable from './components/admin/pdf/PdfAnnotationsTable';
+import PdfMistakesTable from './components/admin/pdf/PdfMistakesTable';
+import PdfAssignmentsTable from './components/admin/pdf/PdfAssignmentsTable';
+import PdfAdminDashboard from './components/admin/pdf/PdfAdminDashboard';
 import LandingLayout from './english/components/LandingLayout';
 import EnglishPage from './english/components/EnglishPage';
 import { useAuthStore } from './store/authStore';
@@ -84,6 +90,13 @@ export default function App() {
             <Route path="auth-settings" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><AuthSettings /></AuthGuard>} />
             <Route path="storage" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><StorageSettings /></AuthGuard>} />
             <Route path="db-backup" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/books"><DbBackup /></AuthGuard>} />
+            {/* PDF 原生管理：与图片版完全并行的一套后台 */}
+            <Route path="pdf" element={<PdfAdminDashboard />} />
+            <Route path="pdf/import" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/pdf/books"><PdfImportPanel /></AuthGuard>} />
+            <Route path="pdf/books" element={<PdfBooksTable />} />
+            <Route path="pdf/annotations" element={<PdfAnnotationsTable />} />
+            <Route path="pdf/mistakes" element={<PdfMistakesTable />} />
+            <Route path="pdf/assignments" element={<PdfAssignmentsTable />} />
           </Route>
         </Route>
 

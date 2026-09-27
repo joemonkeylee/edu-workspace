@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
-import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard, LogOut as LogOutOuter } from 'lucide-react';
+import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard, LogOut as LogOutOuter, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '@/lib/utils';
@@ -37,6 +37,19 @@ const MENU_GROUPS: MenuGroup[] = [
       { path: '/admin/annotations', label: '批注数据', icon: Highlighter },
       { path: '/admin/mistakes', label: '错题本', icon: AlertCircle },
       { path: '/admin/assignments', label: '作业管理', icon: ClipboardList },
+    ],
+  },
+  {
+    key: 'pdf',
+    label: 'PDF 原生',
+    icon: FileText,
+    items: [
+      { path: '/admin/pdf', label: 'PDF 概览', icon: LayoutDashboard },
+      { path: '/admin/pdf/import', label: 'PDF 导入', icon: Scan, roles: ['admin'] },
+      { path: '/admin/pdf/books', label: 'PDF 书籍', icon: BookOpen },
+      { path: '/admin/pdf/annotations', label: 'PDF 批注', icon: Highlighter },
+      { path: '/admin/pdf/mistakes', label: 'PDF 错题', icon: AlertCircle },
+      { path: '/admin/pdf/assignments', label: 'PDF 作业', icon: ClipboardList },
     ],
   },
   {

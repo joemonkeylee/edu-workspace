@@ -5,6 +5,10 @@ import pdfUserStateRouter from './routes/pdfUserState.js';
 import pdfAnnotationsRouter from './routes/pdfAnnotations.js';
 import pdfMistakesRouter from './routes/pdfMistakes.js';
 import pdfAssignmentsRouter from './routes/pdfAssignments.js';
+import pdfAdminBooksRouter from './routes/pdfAdminBooks.js';
+import pdfAdminAnnotationsRouter from './routes/pdfAdminAnnotations.js';
+import pdfAdminMistakesRouter from './routes/pdfAdminMistakes.js';
+import pdfAdminAssignmentsRouter from './routes/pdfAdminAssignments.js';
 
 /**
  * PDF 原生模块的入口路由，整体挂载在 /api/pdf 之下。
@@ -19,6 +23,12 @@ router.get('/health', (_req, res) => {
 });
 
 router.use('/books', pdfBooksRouter);
+// 管理端：书籍 / 批注 / 错题 / 作业（跨书全量视图）
+router.use('/admin/books', pdfAdminBooksRouter);
+router.use('/admin/annotations', pdfAdminAnnotationsRouter);
+router.use('/admin/mistakes', pdfAdminMistakesRouter);
+router.use('/admin/assignments', pdfAdminAssignmentsRouter);
+// 管理端：扫描入库 / 资源根目录 / 播种
 router.use('/admin', pdfScanRouter);
 router.use('/annotations', pdfAnnotationsRouter);
 router.use('/mistakes', pdfMistakesRouter);

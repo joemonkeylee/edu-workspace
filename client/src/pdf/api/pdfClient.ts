@@ -396,6 +396,181 @@ export async function recheckSearchable(limit = 50) {
   return data.data;
 }
 
+// ── 管理端：书籍 / 批注 / 错题 / 作业 ─────────────────────────
+
+export interface PdfAdminBook {
+  id: number;
+  title: string;
+  category: string;
+  grade: string;
+  subject: string;
+  totalPages: number;
+  coverPage: number;
+  searchable: string;
+  missing: boolean;
+  pdfKind: string;
+  fileSize: number;
+  batchId: string;
+  createdAt: string;
+  updatedAt: string;
+  coverUrl: string;
+  tocJson?: any[];
+  attributes?: Record<string, unknown>;
+}
+
+export async function adminListPdfBooks(params: Record<string, any> = {}) {
+  const { data } = await apiClient.get('/pdf/admin/books', { params });
+  return data as { data: PdfAdminBook[]; total: number; page: number; pageSize: number };
+}
+
+export async function adminGetPdfBookBatches() {
+  const { data } = await apiClient.get('/pdf/admin/books/batches');
+  return data.data as string[];
+}
+
+export async function adminGetPdfBookFacets() {
+  const { data } = await apiClient.get('/pdf/admin/books/facets');
+  return data.data as {
+    grades: { value: string; count: number }[];
+    subjects: { value: string; count: number }[];
+    categories: { value: string; count: number }[];
+    searchables: { value: string; count: number }[];
+    missing: number;
+  };
+}
+
+export async function adminUpdatePdfBook(
+  id: number,
+  body: { title?: string; category?: string; grade?: string; subject?: string; coverPage?: number; tocJson?: any[]; attributes?: Record<string, any> },
+) {
+  const { data } = await apiClient.patch(`/pdf/admin/books/${id}`, body);
+  return data.data as PdfAdminBook;
+}
+
+export async function adminSoftDeletePdfBook(id: number) {
+  const { data } = await apiClient.delete(`/pdf/admin/books/${id}`);
+  return data as { success: boolean };
+}
+
+export async function adminRestorePdfBook(id: number) {
+  const { data } = await apiClient.post(`/pdf/admin/books/${id}/restore`);
+  return data as { success: boolean };
+}
+
+export async function adminSoftDeletePdfBooksBatch(ids: number[]) {
+  const { data } = await apiClient.post('/pdf/admin/books/batch-delete', { ids });
+  return data as { success: boolean; deleted: number; skipped: number };
+}
+
+export async function adminRestorePdfBooksBatch(ids: number[]) {
+  const { data } = await apiClient.post('/pdf/admin/books/batch-restore', { ids });
+  return data as { success: boolean; restored: number; skipped: number };
+}
+
+export async function adminListPdfDeletedBooks(params: Record<string, any> = {}) {
+  const { data } = await apiClient.get('/pdf/admin/books/deleted/list', { params });
+  return data as { data: PdfAdminBook[]; total: number; page: number; pageSize: number };
+}
+
+// ── 管理端：批注 ─────────────────────────────────────────────
+
+export interface PdfAdminAnnotation {
+  id: number;
+  bookId: number;
+  pageNumber: number;
+  type: string;
+  contentJson: any;
+  tags: string | null;
+  createdAt: string;
+  book: { id: number; title: string } | null;
+}
+
+export async function adminListPdfAnnotations(params: Record<string, any> = {}) {
+  const { data } = await apiClient.get('/pdf/admin/annotations', { params });
+  return data as { data: PdfAdminAnnotation[]; total: number; page: number; pageSize: number };
+}
+
+export async function adminDeletePdfAnnotation(id: number) {
+  const { data } = await apiClient.delete(`/pdf/admin/annotations/${id}`);
+  return data as { success: boolean };
+}
+
+// ── 管理端：错题 ─────────────────────────────────────────────
+
+export interface PdfAdminMistake {
+  id: number;
+  annotationId: number;
+  bookId: number;
+  pageNumber: number;
+  imagePath: string;
+  imageUrl: string;
+  subject: string;
+  tags: string | null;
+  reviewStatus: number;
+  createdAt: string;
+  book: { id: number; title: string; grade: string; subject: string } | null;
+}
+
+export async function adminListPdfMistakes(params: Record<string, any> = {}) {
+  const { data } = await apiClient.get('/pdf/admin/mistakes', { params });
+  return data as { data: PdfAdminMistake[]; total: number; page: number; pageSize: number };
+}
+
+export async function adminUpdatePdfMistake(
+  id: number,
+  body: { reviewStatus?: number; subject?: string; tags?: string },
+) {
+  const { data } = await apiClient.patch(`/pdf/admin/mistakes/${id}`, body);
+  return data.data as PdfAdminMistake;
+}
+
+export async function adminDeletePdfMistake(id: number) {
+  const { data } = await apiClient.delete(`/pdf/admin/mistakes/${id}`);
+  return data as { success: boolean };
+}
+
+// ── 管理端：作业 ─────────────────────────────────────────────
+
+export interface PdfAdminAssignment {
+  id: number;
+  bookId: number;
+  userId: number | null;
+  title: string;
+  subject: string;
+  status: string;
+  gradedBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+  gradedAt: string | null;
+  gradeResult: string | null;
+  gradeIssues: unknown;
+  gradeComment: string | null;
+  _count: { strokes: number };
+  pages: number[];
+  book: { id: number; title: string } | null;
+}
+
+export async function adminListPdfAssignments(params: Record<string, any> = {}) {
+  const { data } = await apiClient.get('/pdf/admin/assignments', { params });
+  return data as {
+    data: PdfAdminAssignment[];
+    total: number;
+    page: number;
+    pageSize: number;
+    books: { id: number; title: string }[];
+  };
+}
+
+export async function adminDeletePdfAssignment(id: number) {
+  const { data } = await apiClient.delete(`/pdf/admin/assignments/${id}`);
+  return data as { success: boolean };
+}
+
+export async function adminDeletePdfAssignmentsBatch(ids: number[]) {
+  const { data } = await apiClient.post('/pdf/admin/assignments/batch-delete', { ids });
+  return data as { success: boolean; count: number };
+}
+
 /** PDF 文件的直链（供 pdf.js 自己发 Range 请求） */
 export function pdfFileUrl(id: number) {
   return `/api/pdf/books/${id}/file`;
