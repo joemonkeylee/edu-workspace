@@ -69,7 +69,8 @@ export default function PdfAssignmentMode({
   const isSubmitted = assignment?.status === 'submitted';
   const isReturned = assignment?.status === 'returned';
   const canEdit = assignment?.status === 'draft' || isReturned;
-  const readOnly = isGraded || (isSubmitted && !canGrade);
+  // 只读只针对学生；教师（canGrade）对已提交/已批改的作业都能继续在批改层修改
+  const readOnly = !canGrade && (isGraded || isSubmitted);
   const layer: 'student' | 'teacher' = canGrade ? 'teacher' : 'student';
 
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -335,7 +336,7 @@ export default function PdfAssignmentMode({
 
   /** 唯一的写入通道，串行化避免并发覆盖 */
   const persist = useCallback((page: number, data: Stroke[], silent = true): Promise<boolean> => {
-    if (!assignment || isGraded) return Promise.resolve(true);
+    if (!assignment || readOnly) return Promise.resolve(true);
     lastSaveAttemptRef.current = Date.now();
     const run = saveChainRef.current.then(async () => {
       try {
@@ -352,23 +353,23 @@ export default function PdfAssignmentMode({
     });
     saveChainRef.current = run.catch(() => undefined);
     return run;
-  }, [assignment, isGraded, layer]);
+  }, [assignment, readOnly, layer]);
 
   // 自动保存
   useEffect(() => {
-    if (!assignment || isGraded || !dirty || !strokesLoaded) return;
+    if (!assignment || readOnly || !dirty || !strokesLoaded) return;
     const sinceLast = Date.now() - lastSaveAttemptRef.current;
     const delay = sinceLast >= AUTOSAVE_MAX_INTERVAL_MS ? 0 : AUTOSAVE_DEBOUNCE_MS;
     const timer = window.setTimeout(() => {
       void persist(lastSavedPageRef.current, strokesRef.current);
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [assignment, isGraded, dirty, strokesLoaded, strokes, persist]);
+  }, [assignment, readOnly, dirty, strokesLoaded, strokes, persist]);
 
   // 离场兜底：切后台 / 关闭页面
   useEffect(() => {
     const flush = () => {
-      if (dirty && !isGraded && assignment) {
+      if (dirty && !readOnly && assignment) {
         void persist(lastSavedPageRef.current, strokesRef.current);
       }
     };
@@ -379,29 +380,29 @@ export default function PdfAssignmentMode({
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', flush);
     };
-  }, [dirty, isGraded, assignment, persist]);
+  }, [dirty, readOnly, assignment, persist]);
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!dirty || isGraded) return;
+      if (!dirty || readOnly) return;
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [dirty, isGraded]);
+  }, [dirty, readOnly]);
 
   const saveCurrentPage = useCallback(async (showToast = false): Promise<boolean> => {
-    if (!assignment || isGraded || !dirty) return true;
+    if (!assignment || readOnly || !dirty) return true;
     setSaving(true);
     const ok = await persist(lastSavedPageRef.current, strokes, !showToast);
     setSaving(false);
     if (ok && showToast) toast.success('保存成功');
     return ok;
-  }, [assignment, isGraded, dirty, strokes, persist]);
+  }, [assignment, readOnly, dirty, strokes, persist]);
 
   const handlePageChange = useCallback(async (newPage: number) => {
-    if (assignment && dirty && !isGraded) {
+    if (assignment && dirty && !readOnly) {
       setSaving(true);
       const ok = await persist(currentPage, strokes, false);
       setSaving(false);
@@ -412,7 +413,7 @@ export default function PdfAssignmentMode({
     }
     setCurrentPage(newPage);
     onAssignmentUpdate();
-  }, [assignment, dirty, isGraded, currentPage, strokes, persist, setCurrentPage, onAssignmentUpdate]);
+  }, [assignment, dirty, readOnly, currentPage, strokes, persist, setCurrentPage, onAssignmentUpdate]);
 
   // 与图片版一致：翻到某页后若已有作业，自动切到该页作业（手动切换时由 guard 跳过）
   const switchGuardRef = useRef(false);
@@ -489,10 +490,12 @@ export default function PdfAssignmentMode({
   };
 
   const handleReturn = async () => {
-    if (!assignment || !isSubmitted) return;
+    if (!assignment || (!isSubmitted && !isGraded)) return;
     const ok = await confirm({
       title: '打回作业',
-      message: '打回后学生可以修改。本次批改笔迹不会保存。',
+      message: isGraded
+        ? '打回后学生可以修改。当前批改结论会被清空。'
+        : '打回后学生可以修改。本次批改笔迹不会保存。',
       confirmText: '打回',
       confirmClass: 'bg-amber-600 text-white hover:bg-amber-700',
     });
@@ -508,7 +511,7 @@ export default function PdfAssignmentMode({
 
   const handleExit = useCallback(async () => {
     // 与图片版一致：退出前保存失败要阻断退出，否则笔迹会丢失
-    if (assignment && dirty && !isGraded) {
+    if (assignment && dirty && !readOnly) {
       const ok = await saveCurrentPage();
       if (!ok) {
         toast.error('保存失败，无法退出');
@@ -518,7 +521,7 @@ export default function PdfAssignmentMode({
     onExit();
     // 退出后清理全书空作业（draft 且无任何笔迹），避免垃圾数据累积（与图片版一致）
     cleanupEmptyAssignments();
-  }, [assignment, dirty, isGraded, saveCurrentPage, onExit]);
+  }, [assignment, dirty, readOnly, saveCurrentPage, onExit]);
 
   // 退出时清理当前书下「无笔迹的草稿作业」，与原图版行为对齐
   const cleanupEmptyAssignments = useCallback(() => {
@@ -780,9 +783,9 @@ export default function PdfAssignmentMode({
                 </button>
               </>
             )}
-            {canGrade && isSubmitted && (
+            {canGrade && (isSubmitted || isGraded) && (
               <>
-                <button onClick={() => setGradeOpen(true)} title="标记已批改（选择批改结论）" className="rounded p-1 text-green-400 hover:bg-white/10">
+                <button onClick={() => setGradeOpen(true)} title={isGraded ? '修改批改结论' : '标记已批改（选择批改结论）'} className="rounded p-1 text-green-400 hover:bg-white/10">
                   <CheckCircle2 size={16} />
                 </button>
                 <button onClick={() => void handleReturn()} title="打回" className="rounded p-1 text-amber-400 hover:bg-white/10">

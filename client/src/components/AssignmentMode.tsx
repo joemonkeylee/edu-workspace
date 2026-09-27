@@ -428,7 +428,7 @@ export default function AssignmentMode({
    * failure there is retried on the next tick and should not nag the user.
    */
   const persist = useCallback((page: number, data: Stroke[], silent = true): Promise<boolean> => {
-    if (!assignment || isGraded) return Promise.resolve(true);
+    if (!assignment || readOnly) return Promise.resolve(true);
     lastSaveAttemptRef.current = Date.now();
     const run = saveChainRef.current.then(async () => {
       try {
@@ -446,26 +446,26 @@ export default function AssignmentMode({
     });
     saveChainRef.current = run.catch(() => undefined);
     return run;
-  }, [assignment, isGraded, layer]);
+  }, [assignment, readOnly, layer]);
 
   // Autosave: debounce after the last stroke, but never go longer than
   // AUTOSAVE_MAX_INTERVAL_MS without a save even while drawing continuously.
   useEffect(() => {
-    if (!assignment || isGraded || !dirty || !strokesLoaded) return;
+    if (!assignment || readOnly || !dirty || !strokesLoaded) return;
     const sinceLast = Date.now() - lastSaveAttemptRef.current;
     const delay = sinceLast >= AUTOSAVE_MAX_INTERVAL_MS ? 0 : AUTOSAVE_DEBOUNCE_MS;
     const timer = window.setTimeout(() => {
       void persist(lastSavedPageRef.current, strokesRef.current);
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [assignment, isGraded, dirty, strokesLoaded, strokes, persist]);
+  }, [assignment, readOnly, dirty, strokesLoaded, strokes, persist]);
 
   // Flush as soon as the page may be going away. `beforeunload` alone is not
   // enough: it never fires when a tab is discarded or the renderer dies, which
   // is exactly the case where strokes used to be lost.
   useEffect(() => {
     const flush = () => {
-      if (!assignment || isGraded || !dirty) return;
+      if (!assignment || readOnly || !dirty) return;
       void persist(lastSavedPageRef.current, strokesRef.current);
     };
     const onVisibilityChange = () => { if (document.hidden) flush(); };
@@ -475,22 +475,22 @@ export default function AssignmentMode({
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pagehide', flush);
     };
-  }, [assignment, isGraded, dirty, persist]);
+  }, [assignment, readOnly, dirty, persist]);
 
   // Save current page, returns success
   const saveCurrentPage = useCallback(async (showToast = false): Promise<boolean> => {
-    if (!assignment || isGraded) return true;
+    if (!assignment || readOnly) return true;
     if (!dirty) return true;
     setSaving(true);
     const ok = await persist(lastSavedPageRef.current, strokes, !showToast);
     setSaving(false);
     if (ok && showToast) toast.success('保存成功');
     return ok;
-  }, [assignment, isGraded, dirty, strokes, persist]);
+  }, [assignment, readOnly, dirty, strokes, persist]);
 
   // Save before page change; if saved strokes are empty, delete the assignment
   const handlePageChange = useCallback(async (newPage: number) => {
-    if (assignment && dirty && !isGraded) {
+    if (assignment && dirty && !readOnly) {
       setSaving(true);
       const ok = await persist(currentPage, strokes, false);
       setSaving(false);
@@ -514,11 +514,11 @@ export default function AssignmentMode({
     lastSavedPageRef.current = newPage;
     setCurrentPage(newPage);
     onAssignmentUpdate();
-  }, [assignment, dirty, isGraded, strokes, strokesLoaded, currentPage, persist, setCurrentPage, onExit, onAssignmentUpdate]);
+  }, [assignment, dirty, readOnly, strokes, strokesLoaded, currentPage, persist, setCurrentPage, onExit, onAssignmentUpdate]);
 
   // On exit: save current page first, block exit on save failure
   const handleExit = useCallback(async () => {
-    if (assignment && dirty && !isGraded) {
+    if (assignment && dirty && !readOnly) {
       setSaving(true);
       const ok = await persist(lastSavedPageRef.current, strokes, false);
       setSaving(false);
@@ -543,7 +543,7 @@ export default function AssignmentMode({
     } catch (err) {
       console.error('Cleanup empty assignments failed:', err);
     }
-  }, [assignment, dirty, isGraded, strokes, persist, bookId, onExit, onAssignmentUpdate]);
+  }, [assignment, dirty, readOnly, strokes, persist, bookId, onExit, onAssignmentUpdate]);
 
   const handleStrokesChange = useCallback((newStrokes: Stroke[]) => {
     setStrokes(newStrokes);
@@ -580,11 +580,13 @@ export default function AssignmentMode({
   };
 
   const handleReturn = async () => {
-    if (!assignment || !isSubmitted) return;
+    if (!assignment || (!isSubmitted && !isGraded)) return;
     const title = formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`;
     const confirmed = await confirm({
       title: '确认打回',
-      message: `确认打回作业「${title}」吗？\n打回后学生可继续修改，不会保存任何批改笔迹。`,
+      message: isGraded
+        ? `确认打回已批改的作业「${title}」吗？\n打回后学生可继续修改，当前批改结论会被清空。`
+        : `确认打回作业「${title}」吗？\n打回后学生可继续修改，不会保存任何批改笔迹。`,
       confirmText: '确认打回',
       confirmClass: 'bg-amber-600 text-white hover:bg-amber-700',
     });
@@ -855,12 +857,12 @@ export default function AssignmentMode({
             </button>
           </>
         )}
-        {canGrade && isSubmitted && assignment && (
+        {canGrade && (isSubmitted || isGraded) && assignment && (
           <>
             <button
               onClick={() => setGradeOpen(true)}
               className="p-1.5 rounded text-gray-400 hover:text-green-400 hover:bg-white/10 transition"
-              title="标记为已批改（选择批改结论）"
+              title={isGraded ? '修改批改结论' : '标记为已批改（选择批改结论）'}
             >
               <CheckCircle2 size={16} />
             </button>
