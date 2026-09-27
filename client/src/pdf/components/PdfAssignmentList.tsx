@@ -172,7 +172,7 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                       <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
                     ))}
                     {a.gradeComment && (
-                      <span className="text-[11px] text-foreground/80">备注：{a.gradeComment}</span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{a.gradeComment}</span>
                     )}
                   </div>
                 )}

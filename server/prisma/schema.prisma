@@ -14,39 +14,40 @@ model AppSetting {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  phone         String   @unique @db.VarChar(20)
-  email         String?  @unique @db.VarChar(128)
-  password      String   @db.VarChar(255)
-  isAdmin       Boolean  @default(false)
-  role          String   @default("student") @db.VarChar(20) // DEPRECATED: use roles instead
-  roles         Json     @default("[]") // ["admin", "teacher", "student"]
-  nickName      String   @default("") @db.VarChar(64)
-  avatar        String   @default("") @db.VarChar(512)
-  status        String   @default("normal") @db.VarChar(20) // normal | disabled
-  maxDevices    Int      @default(3)
-  tokenVersion  Int      @default(0) // increment to invalidate all existing tokens
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  phone        String   @unique @db.VarChar(20)
+  email        String?  @unique @db.VarChar(128)
+  password     String   @db.VarChar(255)
+  isAdmin      Boolean  @default(false)
+  role         String   @default("student") @db.VarChar(20) // DEPRECATED: use roles instead
+  roles        Json     @default("[]") // ["admin", "teacher", "student"]
+  nickName     String   @default("") @db.VarChar(64)
+  avatar       String   @default("") @db.VarChar(512)
+  status       String   @default("normal") @db.VarChar(20) // normal | disabled
+  maxDevices   Int      @default(3)
+  tokenVersion Int      @default(0) // increment to invalidate all existing tokens
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  refreshTokens    RefreshToken[]
-  annotations      Annotation[]
-  mistakes         Mistake[]
-  assignments      Assignment[]
-  readingProgress  ReadingProgress[]
-  videoProgress    VideoProgress[]
-  bookFavorites    BookFavorite[]
-  typingChapters   TypingChapterRecord[]
-  typingWords      TypingWordRecord[]
+  refreshTokens   RefreshToken[]
+  annotations     Annotation[]
+  mistakes        Mistake[]
+  assignments     Assignment[]
+  readingProgress ReadingProgress[]
+  videoProgress   VideoProgress[]
+  bookFavorites   BookFavorite[]
+  typingChapters  TypingChapterRecord[]
+  typingWords     TypingWordRecord[]
 
   // ── PDF 原生模块（feature/pdf-native）────────────────────────────
   // 以下均为反向关系字段，是纯虚拟字段，不会在 user 表产生任何列，
   // 也不会影响既有查询。仅用于 pdf_* 表的级联删除。
-  pdfAnnotations      PdfAnnotation[]
-  pdfMistakes         PdfMistake[]
-  pdfAssignments      PdfAssignment[]
-  pdfReadingProgress  PdfReadingProgress[]
-  pdfBookFavorites    PdfBookFavorite[]
+  pdfAnnotations     PdfAnnotation[]
+  pdfMistakes        PdfMistake[]
+  pdfAssignments     PdfAssignment[]
+  pdfReadingProgress PdfReadingProgress[]
+  pdfBookFavorites   PdfBookFavorite[]
+  reviewItemStates   ReviewItemState[]
 }
 
 model RefreshToken {
@@ -62,38 +63,38 @@ model RefreshToken {
 }
 
 model Book {
-  id          Int      @id @default(autoincrement())
-  title       String
-  category    String
-  grade       String   @default("")
-  subject     String   @default("")
-  batchId     String   @default("")
+  id              Int               @id @default(autoincrement())
+  title           String
+  category        String
+  grade           String            @default("")
+  subject         String            @default("")
+  batchId         String            @default("")
   /// 资源类型：book = 普通书籍/教辅；course = 带讲解视频的课程资源（PDF + MP4）
-  kind        String   @default("book") @db.VarChar(16)
-  coverPage   Int      @default(1)
-  totalPages  Int
-  storagePath String
-  fileHash    String?  @db.VarChar(64)
-  sourcePaths Json?    @default("[]")
-  tocJson     Json
-  attributes  Json     @default("{}")
-  isDeleted   Boolean  @default(false)
-  deletedAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  kind            String            @default("book") @db.VarChar(16)
+  coverPage       Int               @default(1)
+  totalPages      Int
+  storagePath     String
+  fileHash        String?           @db.VarChar(64)
+  sourcePaths     Json?             @default("[]")
+  tocJson         Json
+  attributes      Json              @default("{}")
+  isDeleted       Boolean           @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @default(now()) @updatedAt
+  annotations     Annotation[]
+  mistakes        Mistake[]
+  assignments     Assignment[]
+  readingProgress ReadingProgress[]
+  bookFavorites   BookFavorite[]
+  videos          BookVideo[]
 
+  @@unique([title, category])
   @@index([fileHash])
   @@index([category])
   @@index([grade])
   @@index([subject])
   @@index([kind])
-  @@unique([title, category])
-  annotations Annotation[]
-  mistakes    Mistake[]
-  assignments Assignment[]
-  readingProgress ReadingProgress[]
-  bookFavorites BookFavorite[]
-  videos      BookVideo[]
 }
 
 /// MP4 讲解视频，关联到某本书。文件不复制，只记录原绝对路径。
@@ -126,24 +127,24 @@ model BookVideo {
 }
 
 model Assignment {
-  id        Int      @id @default(autoincrement())
-  bookId    Int
-  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  userId    Int?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String   @default("") @db.VarChar(255)
-  subject   String   @default("") @db.VarChar(64)
-  status    String   @default("draft") @db.VarChar(20) // draft | submitted | graded | returned
-  gradedBy  Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  gradedAt  DateTime?
+  id           Int       @id @default(autoincrement())
+  bookId       Int
+  book         Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId       Int?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String    @default("") @db.VarChar(255)
+  subject      String    @default("") @db.VarChar(64)
+  status       String    @default("draft") @db.VarChar(20) // draft | submitted | graded | returned
+  gradedBy     Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  gradedAt     DateTime?
   /// 批改结论：''（未评）| perfect（全对）| issue（有问题）
-  gradeResult String @default("") @db.VarChar(16)
+  gradeResult  String    @default("") @db.VarChar(16)
   /// 问题标签数组，如 ["有错题","有题目没写"]，仅在 gradeResult=issue 时有意义
-  gradeIssues Json?
+  gradeIssues  Json?
   /// 教师备注（可选）
-  gradeComment String @default("") @db.VarChar(500)
+  gradeComment String    @default("") @db.VarChar(500)
 
   strokes AssignmentStroke[]
 
@@ -152,16 +153,16 @@ model Assignment {
 }
 
 model AssignmentStroke {
-  id           Int      @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   assignmentId Int
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   pageNumber   Int
-  layer        String   @default("student") @db.VarChar(10) // student | teacher
-  tool         String   @default("pen") @db.VarChar(20) // pen | highlighter
-  color        String   @default("#000000") @db.VarChar(20)
-  width        Float    @default(2)
-  points       Json     // [{x, y, p}] normalized 0-1
-  createdAt    DateTime @default(now())
+  layer        String     @default("student") @db.VarChar(10) // student | teacher
+  tool         String     @default("pen") @db.VarChar(20) // pen | highlighter
+  color        String     @default("#000000") @db.VarChar(20)
+  width        Float      @default(2)
+  points       Json // [{x, y, p}] normalized 0-1
+  createdAt    DateTime   @default(now())
 
   @@index([assignmentId])
   @@index([assignmentId, pageNumber])
@@ -193,7 +194,7 @@ model ReadingProgress {
   book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   pageNumber Int      @default(1)
   pageLayout String   @default("single") @db.VarChar(20) // single | double
-  fitMode    String   @default("page") @db.VarChar(20)   // page | width
+  fitMode    String   @default("page") @db.VarChar(20) // page | width
   rotation   Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -204,19 +205,19 @@ model ReadingProgress {
 }
 
 model Mistake {
-  id           Int         @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   annotationId Int
-  annotation   Annotation  @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  annotation   Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
   bookId       Int
-  book         Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  book         Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
   userId       Int?
-  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
   pageNumber   Int
   imagePath    String
   subject      String
   tags         String?
-  reviewStatus Int         @default(0)
-  createdAt    DateTime    @default(now())
+  reviewStatus Int        @default(0)
+  createdAt    DateTime   @default(now())
 
   @@index([bookId])
   @@index([annotationId])
@@ -285,17 +286,17 @@ model PdfBook {
   batchId  String @default("") @db.VarChar(64)
 
   /// pdf = 正常 PDF；scan = 纯扫描件（无文本层）
-  pdfKind   String @default("pdf") @db.VarChar(16)
-  coverPage Int    @default(1)
-  totalPages Int   @default(0)
+  pdfKind    String @default("pdf") @db.VarChar(16)
+  coverPage  Int    @default(1)
+  totalPages Int    @default(0)
 
   /// —— 引用式存储 ——
   /// 当前完整绝对路径（跨平台原生分隔符）
-  filePath String @db.Text
+  filePath String  @db.Text
   /// 导入时的资源根目录，换盘时按 rootId 整体替换
-  rootPath String @db.Text
+  rootPath String  @db.Text
   /// 相对根目录的路径，统一用 / 分隔，与平台无关
-  relPath  String @db.Text
+  relPath  String  @db.Text
   rootId   Int?
   /// 文件不存在（目录被移动 / 硬盘未挂载）时置为 true
   missing  Boolean @default(false)
@@ -307,16 +308,16 @@ model PdfBook {
   pageSizes Json?
 
   /// 可搜索性判定结果：ok | no_text | garbled | watermark_only
-  searchable String @default("ok") @db.VarChar(16)
+  searchable    String  @default("ok") @db.VarChar(16)
   /// 判定过程数据：{ sampledPages, avgCharsPerPage, ctrlRatio }
-  textStats  Json?
+  textStats     Json?
   /// 文本层是否已抽取进 pdf_page_text
   textExtracted Boolean @default(false)
 
   /// 目录来源：outline（PDF 自带）| parsed（文本解析）| manual
-  tocSource String @default("manual") @db.VarChar(16)
-  tocJson   Json   @default("[]")
-  attributes Json  @default("{}")
+  tocSource  String @default("manual") @db.VarChar(16)
+  tocJson    Json   @default("[]")
+  attributes Json   @default("{}")
 
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
@@ -356,15 +357,15 @@ model PdfSourceRoot {
 
 /// 每页文本层缓存，供全文搜索与定位高亮使用
 model PdfPageText {
-  id         Int     @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   bookId     Int
-  book       PdfBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  book       PdfBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
   pageNumber Int
   /// 归一化文本片段：[{ t, x, y, w, h }]，坐标 0-1
   items      Json
   /// 纯文本，用于 LIKE 搜索
-  plainText  String  @db.Text
-  charCount  Int     @default(0)
+  plainText  String   @db.Text
+  charCount  Int      @default(0)
   createdAt  DateTime @default(now())
 
   @@unique([bookId, pageNumber])
@@ -374,15 +375,15 @@ model PdfPageText {
 
 /// 缩略图缓存记录。pageNumber = 0 表示封面。按需生成后落盘。
 model PdfThumb {
-  id         Int     @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   bookId     Int
-  book       PdfBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  book       PdfBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
   /// 0 = 封面
   pageNumber Int
-  relPath    String  @db.VarChar(512)
-  width      Int     @default(0)
-  height     Int     @default(0)
-  bytes      Int     @default(0)
+  relPath    String   @db.VarChar(512)
+  width      Int      @default(0)
+  height     Int      @default(0)
+  bytes      Int      @default(0)
   createdAt  DateTime @default(now())
 
   @@unique([bookId, pageNumber])
@@ -433,25 +434,25 @@ model PdfMistake {
 }
 
 model PdfAssignment {
-  id        Int      @id @default(autoincrement())
-  bookId    Int
-  book      PdfBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  userId    Int?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String   @default("") @db.VarChar(255)
-  subject   String   @default("") @db.VarChar(64)
+  id           Int       @id @default(autoincrement())
+  bookId       Int
+  book         PdfBook   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId       Int?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String    @default("") @db.VarChar(255)
+  subject      String    @default("") @db.VarChar(64)
   /// draft | submitted | graded | returned
-  status    String   @default("draft") @db.VarChar(20)
-  gradedBy  Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  gradedAt  DateTime?
+  status       String    @default("draft") @db.VarChar(20)
+  gradedBy     Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  gradedAt     DateTime?
   /// 批改结论：''（未评）| perfect（全对）| issue（有问题）
-  gradeResult String @default("") @db.VarChar(16)
+  gradeResult  String    @default("") @db.VarChar(16)
   /// 问题标签数组，如 ["有错题","有题目没写"]
-  gradeIssues Json?
+  gradeIssues  Json?
   /// 教师备注（可选）
-  gradeComment String @default("") @db.VarChar(500)
+  gradeComment String    @default("") @db.VarChar(500)
 
   strokes PdfAssignmentStroke[]
 
@@ -524,22 +525,22 @@ model PdfBookFavorite {
 
 /// 一次章节练习的整体记录（相当于 VideoProgress 的「一次学习会话」）
 model TypingChapterRecord {
-  id       Int    @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   /// 词库 id，如 cet4 / kaoyan / ielts
-  dictId   String @db.VarChar(64)
+  dictId       String   @db.VarChar(64)
   /// 章节序号，0 起
-  chapter  Int
-  userId   Int?
-  user     User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter      Int
+  userId       Int?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// 用时（秒）
-  timeSec  Int    @default(0)
+  timeSec      Int      @default(0)
   /// 正确输入的「字母」数
-  correctCount Int @default(0)
+  correctCount Int      @default(0)
   /// 输错的「字母」数
-  wrongCount   Int @default(0)
+  wrongCount   Int      @default(0)
   /// 实际完成的单词数
-  wordCount    Int @default(0)
-  createdAt DateTime @default(now())
+  wordCount    Int      @default(0)
+  createdAt    DateTime @default(now())
 
   @@index([userId, dictId])
   @@index([userId, createdAt])
@@ -549,24 +550,69 @@ model TypingChapterRecord {
 /// 单词粒度的练习记录：错词本与熟练度统计的数据源。
 /// 同一 (userId, dictId, word) 只保留一条，重复练习时累加 wrongCount。
 model TypingWordRecord {
-  id     Int     @id @default(autoincrement())
-  userId Int?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dictId String  @db.VarChar(64)
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dictId     String   @db.VarChar(64)
   /// 所属章节；-1 表示来自错词复习等无章节场景
-  chapter Int    @default(-1)
-  word    String @db.VarChar(128)
+  chapter    Int      @default(-1)
+  word       String   @db.VarChar(128)
   /// 累计打错次数
-  wrongCount Int @default(0)
+  wrongCount Int      @default(0)
   /// 相邻字母输入时间差（ms），用于衡量熟练度
   timing     Json?
   /// { [字母下标]: ['错输的字符', ...] }
   mistakes   Json?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@unique([userId, dictId, word])
   @@index([userId, dictId, wrongCount])
   @@index([userId, updatedAt])
   @@map("typing_word_record")
+}
+
+/// 泛型复习引擎的条目掌握态：错题 / 备用 / 毕业三池轮转的当前状态。
+///
+/// 与 typing_word_record 的分工：
+///   typing_word_record = 「事实流水」：每个章节每次打了什么词、错了几次、逐字母耗时
+///   review_item_state  = 「当前状态」：这个词现在在哪个池、连对几次、毕业了没
+///
+/// 主键刻意不带 dictId/bookId —— 同一个单词只存一条状态。
+/// 全书去重后只有 42,353 个不同的拼写（原始 367,065 条，重复率 8.7 倍），
+/// 按 (书, 词) 存会让同一个词在不同书里各练一遍，也把上限抬到一个用户 36 万行。
+model ReviewItemState {
+  id              Int      @id @default(autoincrement())
+  userId          Int?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 复习领域：word（单词拼写）/ sentence（听力单句）
+  domain          String   @db.VarChar(16)
+  /// 归一化后的条目键：word 领域为小写单词，sentence 领域为 bookId::lessonId::句序
+  key             String   @db.VarChar(191)
+  /// none | wrong | standby | mastered
+  status          String   @db.VarChar(16)
+  /// 错题池内连续答对次数
+  reviewStreak    Int      @default(0)
+  /// 备用池内连续通过抽查次数
+  checkStreak     Int      @default(0)
+  /// 备用池内累计抽查答错次数
+  checkFailStreak Int      @default(0)
+  wrongTotal      Int      @default(0)
+  rightTotal      Int      @default(0)
+  /// 毫秒时间戳
+  firstWrongAt    BigInt   @default(0)
+  lastResultAt    BigInt   @default(0)
+  lastCheckAt     BigInt   @default(0)
+  /// 曾在哪些二级容器里遇到过：[unitId, ...]
+  units           Json?
+  /// 仅 word 领域：{ [字母下标]: ['错输的字符', ...] }
+  mistakes        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, domain, key])
+  @@index([userId, domain, status])
+  @@index([userId, domain, lastCheckAt])
+  @@index([userId, updatedAt])
+  @@map("review_item_state")
 }

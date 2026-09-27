@@ -1021,3 +1021,58 @@ export async function listTypingHistory(limit = 200) {
   const { data } = await api.get('/typing/history', { params: { limit } });
   return data.data as TypingChapterHistoryRow[];
 }
+
+// ── 泛型复习引擎（review）────────────────────────────────────────
+
+/** 一个条目的掌握态，服务端以此为交换格式 */
+export type ReviewItemPayload = {
+  key: string;
+  status: 'none' | 'wrong' | 'standby' | 'mastered';
+  reviewStreak: number;
+  checkStreak: number;
+  checkFailStreak: number;
+  wrongTotal: number;
+  rightTotal: number;
+  firstWrongAt: number;
+  lastResultAt: number;
+  lastCheckAt: number;
+  units: string[];
+  mistakes?: Record<number, string[]>;
+  updatedAt: number;
+};
+
+export type ReviewSummary = {
+  domain: string;
+  none: number;
+  wrong: number;
+  standby: number;
+  mastered: number;
+  total: number;
+};
+
+export async function listReviewItems(domain: string, limit = 20000) {
+  const { data } = await api.get('/review/items', { params: { domain, limit } });
+  return data.data as ReviewItemPayload[];
+}
+
+export async function saveReviewItems(domain: string, items: ReviewItemPayload[]) {
+  if (items.length === 0) return { count: 0 };
+  const { data } = await api.post('/review/items', { domain, items });
+  return data.data as { count: number };
+}
+
+export async function clearReviewItems(domain: string) {
+  const { data } = await api.delete('/review/items', { params: { domain } });
+  return data as { success: boolean };
+}
+
+export async function getReviewSummary(domain: string) {
+  const { data } = await api.get('/review/summary', { params: { domain } });
+  return data.data as ReviewSummary | null;
+}
+
+/** 一次性迁移：把历史上错过的单词灌成错题池初值 */
+export async function migrateWordWrongs() {
+  const { data } = await api.post('/review/migrate-word-wrongs');
+  return data.data as { inserted: number };
+}
