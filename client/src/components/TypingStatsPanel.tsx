@@ -7,7 +7,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Clock3, Flame, Keyboard, Library } from 'lucide-react';
 import { fetchChapterHistory, fetchSummary } from '../typing/records';
 import { calcStreak, wordsToday, type ChapterLike } from '../typing/stats';
 import { useTypingSettings } from '../typing/settingsStore';
@@ -21,25 +20,25 @@ function formatDuration(sec: number): string {
   return h > 0 ? `${h}h${m}m` : `${m}m`;
 }
 
-function Tile({
-  icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: React.ReactNode;
+interface TileProps {
   label: string;
   value: string;
   hint?: string;
-}) {
+  accent?: 'default' | 'green' | 'amber' | 'sky';
+}
+
+function Tile({ label, value, hint, accent = 'default' }: TileProps) {
+  const colorMap: Record<NonNullable<TileProps['accent']>, string> = {
+    default: 'border-border',
+    green: 'border-emerald-300 dark:border-emerald-800',
+    amber: 'border-amber-300 dark:border-amber-800',
+    sky: 'border-sky-300 dark:border-sky-800',
+  };
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2">
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-1 text-lg font-semibold tabular-nums text-foreground">{value}</div>
-      {hint && <div className="text-[10px] text-muted-foreground">{hint}</div>}
+    <div className={`rounded-lg border bg-card p-3 ${colorMap[accent]}`}>
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      <div className="mt-1.5 text-2xl font-semibold tabular-nums text-foreground">{value}</div>
+      {hint && <div className="mt-1 text-[11px] text-muted-foreground">{hint}</div>}
     </div>
   );
 }
@@ -100,27 +99,27 @@ export default function TypingStatsPanel() {
         </button>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 p-3 md:grid-cols-4">
+      {/* 顶部 4 个指标 */}
+      <div className="grid grid-cols-2 gap-3 p-4">
         <Tile
-          icon={<Library size={12} />}
           label="累计练习"
-          value={loading ? '—' : `${summary?.totalWords ?? 0} 词`}
+          value={loading ? '—' : `${(summary?.totalWords ?? 0).toLocaleString()} 词`}
+          accent={summary && summary.totalWords > 0 ? 'sky' : 'default'}
         />
         <Tile
-          icon={<Clock3 size={12} />}
           label="累计用时"
           value={loading ? '—' : formatDuration(summary?.totalTimeSec ?? 0)}
         />
         <Tile
-          icon={<Keyboard size={12} />}
           label="平均正确率"
           value={loading ? '—' : `${avgAcc}%`}
+          accent={avgAcc >= 80 ? 'green' : avgAcc >= 50 ? 'amber' : 'default'}
         />
         <Tile
-          icon={<Flame size={12} />}
           label="连续打卡"
           value={loading ? '—' : `${streak.current} 天`}
           hint={streak.longest > streak.current ? `最长 ${streak.longest} 天` : undefined}
+          accent={streak.current > 0 ? 'amber' : 'default'}
         />
       </div>
 
