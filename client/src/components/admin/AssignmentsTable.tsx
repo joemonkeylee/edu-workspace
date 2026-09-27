@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Trash2, CheckSquare, Square, ExternalLink, ChevronLeft, ChevronRight, ChevronDown, BookOpen, Layers, List } from 'lucide-react';
+import { Search, Trash2, CheckSquare, Square, ExternalLink, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, BookOpen, Layers, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button"
 import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments } from '../../api/client';
@@ -9,8 +9,6 @@ import {
   gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
 } from '../../utils/gradeResult';
 import { useAuthStore } from '../../store/authStore';
-
-const PAGE_SIZE = 20;
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false });
@@ -55,6 +53,7 @@ export default function AssignmentsTable() {
   const [books, setBooks] = useState<{ id: number; title: string }[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('submitted');
   const [filterBook, setFilterBook] = useState('all');
@@ -68,7 +67,7 @@ export default function AssignmentsTable() {
     try {
       // The grouped view needs every match at once to group by book, so it
       // asks for the maximum page size instead of paging through books.
-      const params: Record<string, any> = { page, pageSize: viewMode === 'book' ? 200 : PAGE_SIZE };
+      const params: Record<string, any> = { page, pageSize: viewMode === 'book' ? 200 : pageSize };
       if (search.trim()) params.search = search.trim();
       if (filterStatus !== 'all') params.status = filterStatus;
       if (filterBook !== 'all') params.bookId = filterBook;
@@ -80,7 +79,7 @@ export default function AssignmentsTable() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, filterStatus, filterBook, viewMode]);
+  }, [page, pageSize, search, filterStatus, filterBook, viewMode]);
 
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 
@@ -115,7 +114,7 @@ export default function AssignmentsTable() {
   };
 
   const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id));
-  const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   const toggleAll = () => {
     setSelectedIds(allSelected ? [] : items.map((item) => item.id));
@@ -408,16 +407,37 @@ export default function AssignmentsTable() {
           </table>
         </div>
 
-        {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
-            <span className="text-sm text-muted-foreground">共 {total} 条</span>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground"><ChevronLeft size={18} /></button>
-              <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
-              <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground"><ChevronRight size={18} /></button>
+          {/* Pagination (list view) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border/50">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span>共 <span className="text-foreground font-medium">{total}</span> 条</span>
+              <span className="text-border">|</span>
+              <span>每页</span>
+              <select
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                className="h-7 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <span>条</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(1)} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground disabled:opacity-30 disabled:cursor-not-allowed" title="首页">
+                <ChevronsLeft size={18} />
+              </button>
+              <button onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground disabled:opacity-30 disabled:cursor-not-allowed" title="上一页">
+                <ChevronLeft size={18} />
+              </button>
+              <span className="px-2 text-sm text-foreground/80">第 <span className="text-foreground font-medium">{page}</span> / {totalPages} 页</span>
+              <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground disabled:opacity-30 disabled:cursor-not-allowed" title="下一页">
+                <ChevronRight size={18} />
+              </button>
+              <button onClick={() => setPage(totalPages)} disabled={page >= totalPages} className="h-8 w-8 rounded-md hover:bg-accent hover:text-accent-foreground disabled:opacity-30 disabled:cursor-not-allowed" title="末页">
+                <ChevronsRight size={18} />
+              </button>
             </div>
           </div>
-        )}
       </div>
       )}
     </div>

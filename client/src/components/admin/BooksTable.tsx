@@ -3,12 +3,10 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import type { TocNode } from '../../types';
 import { adminGetBooks, adminGetBatches, adminUpdateBook, adminSoftDeleteBook, adminSoftDeleteBooksBatch, adminClearBooks } from '../../api/client';
-import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { Search, Edit3, Trash2, Check, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, BookOpen, GripVertical, Save, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import BookCover from '../BookCover';
 import { useAuthStore } from '../../store/authStore';
-
-const PAGE_SIZE = 10;
 
 const GRADE_PRESETS = ['7上', '7下', '8上', '8下', '9上', '9下', '高一', '高二', '高三', '小学', '初一', '初二', '初三'];
 const SUBJECT_PRESETS = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理', '科学'];
@@ -105,6 +103,7 @@ export default function BooksTable() {
   const [books, setBooks] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [batchFilter, setBatchFilter] = useState('');
   const [batches, setBatches] = useState<string[]>([]);
@@ -130,19 +129,19 @@ export default function BooksTable() {
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, any> = { page, pageSize: PAGE_SIZE, search };
+      const params: Record<string, any> = { page, pageSize, search };
       if (batchFilter) params.batchId = batchFilter;
       const res = await adminGetBooks(params);
       setBooks(res.data);
       setTotal(res.total);
     } finally { setLoading(false); }
-  }, [page, search, batchFilter]);
+  }, [page, pageSize, search, batchFilter]);
 
   useEffect(() => { fetch(); }, [fetch]);
   useEffect(() => { adminGetBatches().then(setBatches).catch(() => {}); }, []);
 
   const handleSearch = () => { setPage(1); fetch(); };
-  const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   const startEdit = (book: any) => {
     setEditingId(book.id);
@@ -656,20 +655,36 @@ export default function BooksTable() {
         </div>
 
         {/* Pagination */}
-        {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
-            <span className="text-sm text-muted-foreground">共 {total} 条</span>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
-                <ChevronLeft size={18} />
-              </Button>
-              <span className="text-sm text-foreground/70">{page} / {totalPages}</span>
-              <Button variant="ghost" size="icon" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
-                <ChevronRight size={18} />
-              </Button>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border/50">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>共 <span className="text-foreground font-medium">{total}</span> 条</span>
+            <span className="text-border">|</span>
+            <span>每页</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="h-7 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span>条</span>
           </div>
-        )}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setPage(1)} disabled={page <= 1} title="首页">
+              <ChevronsLeft size={18} />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} title="上一页">
+              <ChevronLeft size={18} />
+            </Button>
+            <span className="px-2 text-sm text-foreground/80">第 <span className="text-foreground font-medium">{page}</span> / {totalPages} 页</span>
+            <Button variant="ghost" size="icon" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} title="下一页">
+              <ChevronRight size={18} />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setPage(totalPages)} disabled={page >= totalPages} title="末页">
+              <ChevronsRight size={18} />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {deleteProgress && (
