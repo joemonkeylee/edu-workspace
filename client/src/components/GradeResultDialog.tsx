@@ -81,7 +81,7 @@ export default function GradeResultDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-4">
+      <DialogContent className="max-h-[85vh] w-full max-w-md gap-4 overflow-y-auto">
         <DialogHeader className="text-left">
           <DialogTitle>批改结果</DialogTitle>
           <DialogDescription className="truncate">
@@ -190,7 +190,7 @@ export default function GradeResultDialog({
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value.slice(0, 500))}
-            rows={2}
+            rows={3}
             placeholder="写给学生的一句话，例如：第 3 题再算一遍"
             className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
