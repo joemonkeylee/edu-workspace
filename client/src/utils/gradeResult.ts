@@ -12,6 +12,8 @@ export interface GradeResultPayload {
   result: 'perfect' | 'wrong' | 'issue';
   issues: string[];
   comment: string;
+  /** 预估用时（分钟），教师批改时可调整 */
+  estimatedMinutes?: number;
 }
 
 /** 「有问题」时教师最常选的几类，做成一键勾选，避免每次手打。

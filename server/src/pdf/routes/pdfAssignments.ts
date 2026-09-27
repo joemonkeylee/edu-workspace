@@ -15,6 +15,13 @@ import { buildGradeFields } from '../../utils/gradeResult.js';
 const router = Router();
 router.use(authRequired);
 
+// 预估用时（分钟）：非负整数，上限 12 小时，缺省 30
+function normalizeEstimatedMinutes(value: unknown): number {
+  const n = typeof value === 'number' ? value : parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(n) || n < 0) return 30;
+  return Math.min(Math.round(n), 720);
+}
+
 // 新建后多久内的空白作业会被复用，防止双击产生重复空作业
 const DUPLICATE_CREATE_WINDOW_MS = 30_000;
 
@@ -58,8 +65,8 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
       where,
       select: {
         id: true, bookId: true, userId: true, title: true, subject: true,
-        status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
-        gradeResult: true, gradeIssues: true, gradeComment: true,
+        status: true, gradedBy: true, createdAt: true, updatedAt: true, submittedAt: true, gradedAt: true,
+        estimatedMinutes: true, gradeResult: true, gradeIssues: true, gradeComment: true,
         _count: { select: { strokes: true } },
         strokes: { select: { pageNumber: true }, distinct: ['pageNumber'], orderBy: { pageNumber: 'asc' } },
       },
@@ -112,8 +119,8 @@ router.get('/mine', asyncHandler(async (req: AuthedRequest, res: Response) => {
       where,
       select: {
         id: true, bookId: true, userId: true, title: true, subject: true,
-        status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
-        gradeResult: true, gradeIssues: true, gradeComment: true,
+        status: true, gradedBy: true, createdAt: true, updatedAt: true, submittedAt: true, gradedAt: true,
+        estimatedMinutes: true, gradeResult: true, gradeIssues: true, gradeComment: true,
         _count: { select: { strokes: true } },
         strokes: { select: { pageNumber: true }, distinct: ['pageNumber'], orderBy: { pageNumber: 'asc' } },
         book: { select: { id: true, title: true, subject: true, category: true, coverPage: true, totalPages: true } },
@@ -187,6 +194,7 @@ router.post('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const userId = getUserId(req);
   const title = typeof req.body?.title === 'string' ? req.body.title : '';
   const subject = typeof req.body?.subject === 'string' ? req.body.subject : '';
+  const estimatedMinutes = normalizeEstimatedMinutes(req.body?.estimatedMinutes);
 
   // 双击/多标签页会连发两次请求，而空白作业不在任何页上出现，
   // 客户端无从判断重 —— 这里直接复用窗口内的空白草稿。
@@ -203,7 +211,7 @@ router.post('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   if (pending) return res.json({ data: { ...pending, pages: [] } });
 
   const assignment = await prisma.pdfAssignment.create({
-    data: { bookId, userId, title: title || book.title, subject: subject || book.subject },
+    data: { bookId, userId, title: title || book.title, subject: subject || book.subject, estimatedMinutes },
   });
   res.json({ data: { ...assignment, pages: [] } });
 }));
@@ -226,6 +234,9 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const data: any = {};
   if (typeof req.body?.title === 'string') data.title = req.body.title;
   if (typeof req.body?.subject === 'string') data.subject = req.body.subject;
+  if (req.body?.estimatedMinutes !== undefined) {
+    data.estimatedMinutes = normalizeEstimatedMinutes(req.body.estimatedMinutes);
+  }
 
   if (typeof req.body?.status === 'string' && ['draft', 'submitted', 'graded', 'returned'].includes(req.body.status)) {
     const newStatus = req.body.status;
@@ -257,6 +268,14 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
 
     data.gradedAt = newStatus === 'graded' ? new Date() : null;
     data.gradedBy = newStatus === 'graded' ? (userId || null) : null;
+    // submittedAt 标记提交时刻，用于计算实际用时（createdAt → submittedAt）。
+    // 批改只改 gradedAt，不碰 submittedAt，避免 updatedAt 污染用时统计。
+    // 退回/重做时清空，下一次提交重新计时。
+    if (newStatus === 'submitted') {
+      if (currentStatus !== 'submitted') data.submittedAt = new Date();
+    } else if (newStatus === 'draft' || newStatus === 'returned') {
+      data.submittedAt = null;
+    }
     // 批改结论只有教师能写；退回/重新提交会清空，避免学生看到上一轮的过期问题
     if (isTeacher) {
       Object.assign(data, buildGradeFields({

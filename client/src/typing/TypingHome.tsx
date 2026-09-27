@@ -124,11 +124,13 @@ export default function TypingHome() {
     chapter,
     isReview,
     reviewWords,
-    standbyPool,
     settings.isShuffle,
     settings.spotCheckMixRatio,
     settings.spotCheckMixMode,
     dictId,
+    // standbyPool 刻意不进依赖：每答完一章它都会变，跟着重算会把刚打完的这一章
+    // 重置掉，还会把结算弹窗就地关掉。备用池只在「生成队列这一刻」取样。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   ]);
 
   const chapterWords = queueInfo.queue;

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Send, Trash2, CheckCircle2, CornerUpLeft,
   Pen, Highlighter, Eraser, Undo2, Redo2, Save, Download, FileText,
-  RotateCw, RotateCcw, Maximize2, Minimize2, ChevronLeft, ChevronRight,
+  RotateCw, RotateCcw, Maximize2, Minimize2, ChevronLeft, ChevronRight, Clock,
 } from 'lucide-react';
 import DrawingCanvas, { type Stroke, type DrawingCanvasHandle } from '../../components/DrawingCanvas';
 import { useConfirm } from '../../components/ConfirmDialog';
@@ -12,7 +12,7 @@ import {
   listAssignments, exportAssignmentPage, type PdfAssignment,
 } from '../api/pdfClient';
 import GradeResultDialog from '../../components/GradeResultDialog';
-import { formatAssignmentTitle } from '../../utils/assignment';
+import { formatAssignmentTitle, formatDuration, actualMinutes, ESTIMATED_MINUTE_PRESETS } from '../../utils/assignment';
 import { parseGradeIssues, type GradeResultPayload } from '../../utils/gradeResult';
 import { isDesktopBrowser } from '../../utils/device';
 import { toast } from 'sonner';
@@ -103,6 +103,24 @@ export default function PdfAssignmentMode({
         : assignment?.gradeResult === 'perfect'
           ? '·全正确'
           : '';
+
+  // 预估用时（分钟）：默认 30，学生提交前/教师批改时可改
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number>(assignment?.estimatedMinutes ?? 30);
+  useEffect(() => {
+    setEstimatedMinutes(assignment?.estimatedMinutes ?? 30);
+  }, [assignment?.id, assignment?.estimatedMinutes]);
+
+  const saveEstimatedMinutes = useCallback(async (minutes: number) => {
+    if (!assignment) return;
+    try {
+      await updateAssignment(assignment.id, { estimatedMinutes: minutes });
+      onAssignmentUpdate();
+    } catch (e: any) {
+      toast.error('保存预估时间失败: ' + (e?.message || ''));
+    }
+  }, [assignment, onAssignmentUpdate]);
+
+  const actualMins = actualMinutes(assignment ?? {});
 
   // ── 移动端手势（双指捏合缩放 / 拖拽平移） ──────────────────
   const [gestureScale, setGestureScale] = useState(1);
@@ -454,6 +472,7 @@ export default function PdfAssignmentMode({
         gradeResult: payload.result,
         gradeIssues: payload.issues,
         gradeComment: payload.comment,
+        ...(payload.estimatedMinutes !== undefined ? { estimatedMinutes: payload.estimatedMinutes } : {}),
       });
       toast.success(
         payload.result === 'issue' ? '已标记：有问题'
@@ -658,6 +677,37 @@ export default function PdfAssignmentMode({
               {isReturned && <span className="text-amber-400"> {renderTextByCharacter('(已打回)', chineseRotation)}</span>}
             </span>
           </span>
+
+          {/* 预估用时 / 实际用时 —— 旋转模式下空间不够，只在横屏显示 */}
+          {!isRotated && assignment && (
+            <div className="flex items-center gap-1.5 text-xs text-white/80">
+              <Clock size={13} className="text-white/50" />
+              <span className="text-white/50">预估</span>
+              <input
+                type="number"
+                min={0}
+                max={720}
+                list="est-min-presets-pdf"
+                value={estimatedMinutes}
+                disabled={readOnly}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  const next = Number.isFinite(v) && v >= 0 ? Math.min(v, 720) : 0;
+                  setEstimatedMinutes(next);
+                }}
+                onBlur={() => saveEstimatedMinutes(estimatedMinutes)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className={`w-14 rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-xs text-white text-center focus:outline-none focus:ring-1 focus:ring-blue-500 ${readOnly ? 'opacity-70' : ''}`}
+              />
+              <span className="text-white/50">分钟</span>
+              {actualMins != null && (
+                <span className="text-blue-300">· 用时 {formatDuration(actualMins)}</span>
+              )}
+            </div>
+          )}
+          <datalist id="est-min-presets-pdf">
+            {ESTIMATED_MINUTE_PRESETS.map((m) => <option key={m} value={m} />)}
+          </datalist>
 
           {/* 本页作业切换器 */}
           {pageAssignments.length > 1 && (
@@ -896,6 +946,7 @@ export default function PdfAssignmentMode({
         open={gradeOpen}
         assignmentTitle={formatAssignmentTitle(assignment?.title || '') || `作业 #${assignment?.id}`}
         initial={{ result: assignment?.gradeResult, issues: assignment?.gradeIssues, comment: assignment?.gradeComment }}
+        estimatedMinutes={assignment?.estimatedMinutes ?? 30}
         submitting={gradeSubmitting}
         onOpenChange={setGradeOpen}
         onSubmit={handleGradeSubmit}

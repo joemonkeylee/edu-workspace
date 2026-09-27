@@ -138,7 +138,10 @@ model Assignment {
   gradedBy     Int?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  submittedAt  DateTime?
   gradedAt     DateTime?
+  /// 预估用时（分钟），0 表示未设；学生提交前或教师批改时填写，默认 30
+  estimatedMinutes Int @default(30)
   /// 批改结论：''（未评）| perfect（全对）| issue（有问题）
   gradeResult  String    @default("") @db.VarChar(16)
   /// 问题标签数组，如 ["有错题","有题目没写"]，仅在 gradeResult=issue 时有意义
@@ -446,7 +449,10 @@ model PdfAssignment {
   gradedBy     Int?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  submittedAt  DateTime?
   gradedAt     DateTime?
+  /// 预估用时（分钟），0 表示未设；学生提交前或教师批改时填写，默认 30
+  estimatedMinutes Int @default(30)
   /// 批改结论：''（未评）| perfect（全对）| issue（有问题）
   gradeResult  String    @default("") @db.VarChar(16)
   /// 问题标签数组，如 ["有错题","有题目没写"]

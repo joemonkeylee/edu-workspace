@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useConfirm } from '../../ConfirmDialog';
 import { useAuthStore } from '../../../store/authStore';
 import { adminListPdfAssignments, adminDeletePdfAssignment, adminDeletePdfAssignmentsBatch } from '../../../pdf/api/pdfClient';
-import { formatAssignmentTitle } from '../../../utils/assignment';
+import { formatAssignmentTitle, formatDuration, actualMinutes } from '../../../utils/assignment';
 import { gradeBadge, hasIssue, parseGradeIssues, issueChipClass } from '../../../utils/gradeResult';
 
 function formatDate(value: string) {
@@ -297,6 +297,15 @@ export default function PdfAssignmentsTable() {
                               </div>
                               <p className="mt-0.5 text-xs text-muted-foreground">
                                 {formatDate(item.createdAt)} · {item._count?.strokes ?? 0} 笔
+                                {(() => {
+                                  const am = actualMinutes(item);
+                                  return (
+                                    <>
+                                      {' · '}预估 {formatDuration(item.estimatedMinutes ?? 30)}
+                                      {am != null && <span className="text-blue-600 dark:text-blue-400"> · 用时 {formatDuration(am)}</span>}
+                                    </>
+                                  );
+                                })()}
                               </p>
                               {item.gradeResult === 'issue' && item.gradeComment && (
                                 <div className="mt-1 flex flex-wrap items-center gap-1">

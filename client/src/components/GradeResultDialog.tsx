@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, Plus, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Plus, X, Clock } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -13,6 +13,8 @@ interface Props {
   assignmentTitle?: string;
   /** 已批改过的作业重新批改时回填上次结论 */
   initial?: { result?: string | null; issues?: unknown; comment?: string | null };
+  /** 当前预估用时（分钟），教师批改时可调整 */
+  estimatedMinutes?: number;
   submitting?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: GradeResultPayload) => void | Promise<void>;
@@ -29,12 +31,13 @@ type Result = 'perfect' | 'wrong' | 'issue' | null;
  *   有问题 —— 其他问题，需勾选具体类型并可写备注
  */
 export default function GradeResultDialog({
-  open, assignmentTitle, initial, submitting = false, onOpenChange, onSubmit,
+  open, assignmentTitle, initial, estimatedMinutes = 30, submitting = false, onOpenChange, onSubmit,
 }: Props) {
   const [result, setResult] = useState<Result>(null);
   const [issues, setIssues] = useState<string[]>([]);
   const [custom, setCustom] = useState('');
   const [comment, setComment] = useState('');
+  const [estMinutes, setEstMinutes] = useState<number>(estimatedMinutes);
 
   const initialRef = useRef(initial);
   initialRef.current = initial;
@@ -52,7 +55,8 @@ export default function GradeResultDialog({
     setIssues(prevResult === 'issue' ? prevIssues : []);
     setCustom('');
     setComment(prevResult === 'issue' && typeof prev?.comment === 'string' ? prev.comment : '');
-  }, [open]);
+    setEstMinutes(estimatedMinutes);
+  }, [open, estimatedMinutes]);
 
   const toggleIssue = (label: string) => {
     setIssues((current) => (
@@ -79,6 +83,7 @@ export default function GradeResultDialog({
       result,
       issues: result === 'issue' ? issues : [],
       comment: result === 'issue' ? comment.trim() : '',
+      estimatedMinutes: estMinutes,
     });
   };
 
@@ -102,6 +107,28 @@ export default function GradeResultDialog({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-6 py-2">
+          {/* 预估用时：教师批改时可调整 */}
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+            <Clock size={15} className="text-muted-foreground" />
+            <span className="text-xs font-medium text-foreground">预估用时</span>
+            <input
+              type="number"
+              min={0}
+              max={720}
+              list="grade-est-presets"
+              value={estMinutes}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                setEstMinutes(Number.isFinite(v) && v >= 0 ? Math.min(v, 720) : 0);
+              }}
+              className="h-7 w-16 rounded-md border border-input bg-background px-2 text-xs text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <span className="text-xs text-muted-foreground">分钟</span>
+            <datalist id="grade-est-presets">
+              {[0, 30, 40, 45, 60, 90, 120].map((m) => <option key={m} value={m} />)}
+            </datalist>
+          </div>
+
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"

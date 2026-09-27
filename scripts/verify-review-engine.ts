@@ -104,6 +104,15 @@ check('偷看答案（peeked）不计对也不计错', () => {
   assert.equal(state.rightTotal, 0);
 });
 
+check('偷看答案不会占掉这次会话的晋级名额', () => {
+  let cur = applyResult(undefined, { key: 'eagle', ok: false, sessionId: 's1' }, cfg).state;
+  // 同一会话里先偷看一次，再真正打对 —— 后面那次必须生效
+  cur = applyResult(cur, { key: 'eagle', ok: true, sessionId: 's2', peeked: true }, cfg).state;
+  const after = applyResult(cur, { key: 'eagle', ok: true, sessionId: 's2' }, cfg);
+  assert.equal(after.transition, 'none');
+  assert.equal(after.state.reviewStreak, 1);
+});
+
 check('第一次就答对 → 不进错题池，记为 none（已接触）', () => {
   const { state } = run(undefined, [{ key: 'eager', ok: true, sessionId: 's1' }]);
   assert.equal(state.status, 'none');

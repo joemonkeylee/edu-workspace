@@ -722,8 +722,11 @@ export interface Assignment {
   gradedBy: number | null;
   createdAt: string;
   updatedAt: string;
+  submittedAt?: string | null;
   gradedAt: string | null;
-  /** 批改结论：'' 未下结论 | perfect 全对 | issue 有问题 */
+  /** 预估用时（分钟），0 表示未设，默认 30 */
+  estimatedMinutes?: number;
+  /** 批改结论：'' 未下结论 | perfect 全正确 | wrong 有错误 | issue 有问题 */
   gradeResult?: string | null;
   gradeIssues?: unknown;
   gradeComment?: string | null;
@@ -773,8 +776,8 @@ export async function getAssignment(id: number) {
   return data.data as Assignment & { book: any };
 }
 
-export async function createAssignment(bookId: number, title?: string, subject?: string) {
-  const { data } = await api.post('/assignments', { bookId, title, subject });
+export async function createAssignment(bookId: number, title?: string, subject?: string, estimatedMinutes?: number) {
+  const { data } = await api.post('/assignments', { bookId, title, subject, estimatedMinutes });
   return data.data as Assignment;
 }
 
@@ -784,7 +787,8 @@ export async function updateAssignment(
     title?: string;
     subject?: string;
     status?: string;
-    /** 仅教师标记 graded 时生效：perfect | issue */
+    estimatedMinutes?: number;
+    /** 仅教师标记 graded 时生效：perfect | wrong | issue */
     gradeResult?: string;
     gradeIssues?: string[];
     gradeComment?: string;

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FileText, Trash2, Clock, Layers, CheckCircle, Send } from 'lucide-react';
 import { getAssignments, deleteAssignment, updateAssignment, type Assignment } from '../api/client';
 import { toast } from 'sonner';
-import { formatAssignmentTitle } from '../utils/assignment';
+import { formatAssignmentTitle, formatDuration, actualMinutes } from '../utils/assignment';
 import { useConfirm } from './ConfirmDialog';
 import {
   gradeBadge, hasIssue, parseGradeIssues, issueChipClass,
@@ -160,6 +160,15 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                       第 {a.pages.join('、')} 页
                     </span>
                   )}
+                  {(() => {
+                    const am = actualMinutes(a);
+                    return (
+                      <span className="flex items-center gap-0.5 truncate text-[11px]">
+                        预估 {formatDuration(a.estimatedMinutes ?? 30)}
+                        {am != null && <span className="text-blue-600 dark:text-blue-400"> · 用时 {formatDuration(am)}</span>}
+                      </span>
+                    );
+                  })()}
                 </div>
                 {canEdit ? (
                   <div className="flex-shrink-0 flex items-center gap-0.5">

@@ -5,7 +5,7 @@ import {
   listAssignments, deleteAssignment, updateAssignment,
   type PdfAssignment,
 } from '../api/pdfClient';
-import { formatAssignmentTitle } from '../../utils/assignment';
+import { formatAssignmentTitle, formatDuration, actualMinutes } from '../../utils/assignment';
 import {
   gradeBadge, hasIssue, parseGradeIssues, issueChipClass,
 } from '../../utils/gradeResult';
@@ -168,6 +168,15 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                       <Layers size={9} /> 第 {a.pages.join('、')} 页
                     </span>
                   )}
+                  {(() => {
+                    const am = actualMinutes(a);
+                    return (
+                      <span className="flex items-center gap-0.5">
+                        预估 {formatDuration(a.estimatedMinutes ?? 30)}
+                        {am != null && <span className="text-blue-600 dark:text-blue-400"> · 用时 {formatDuration(am)}</span>}
+                      </span>
+                    );
+                  })()}
                 </div>
                 {a.gradeResult === 'issue' && a.gradeComment && (
                   <div className="mt-1 flex flex-wrap items-center gap-1">
