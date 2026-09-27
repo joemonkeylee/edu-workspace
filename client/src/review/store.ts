@@ -72,7 +72,7 @@ function makeStore(domain: ReviewDomain) {
     // 两个阶段的标记必须分开：
     //   localLoaded = 本机 localStorage 已读进内存，此时「写」才是安全的
     //   cloudPulled = hydrate 全流程（含云端拉取合并）跑完，重复调用直接返回
-    // 只用一个 ready 会导致「半小时前判了句」-> 写入 subdivide 了还没读进来的旧数据。
+    // 只用一个 ready 会导致「还没读完本地就判了句」-> 写入覆盖掉还没读进来的旧数据。
     let localLoaded = false;
     let cloudPulled = false;
 
@@ -191,9 +191,12 @@ function makeStore(domain: ReviewDomain) {
       async clearAll() {
         clearDomain(domain);
         void clearCloud(domain);
+        localLoaded = true;
+        cloudPulled = true;
         set((s) => ({ buckets: emptyBuckets(), revision: s.revision + 1 }));
       },
 
+      // 读操作不改状态（避免染上「渲染期 set」），调用方需先 await hydrate()
       lookup: (key) => lookupState(get().buckets, normalizeItemKey(key)),
 
       listByStatus(status) {
