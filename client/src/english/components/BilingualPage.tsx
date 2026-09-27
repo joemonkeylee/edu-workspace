@@ -116,7 +116,9 @@ export default function BilingualPage({
       if (currentLoopIndex !== null && data[currentLoopIndex]) {
         const startTime = parseFloat(data[currentLoopIndex].Start.toString())
         const endTime = parseFloat(data[currentLoopIndex].End.toString())
-        if (currentTime >= endTime) {
+        // audio.ended：末句的 End 可能 >= 音频实际时长，currentTime 永远到不了 endTime，
+        // 不加这个条件末句播完不会循环，反而会走到下面的 ended 分支把 index 清成 -1（打字面板回跳第一句）
+        if (currentTime >= endTime || audio.ended) {
           if (!isSeekingLoop) {
             isSeekingLoop = true
             if (workModeRef.current === WorkModes.Type) {
@@ -138,7 +140,8 @@ export default function BilingualPage({
       }
       const index = data.findIndex(item => currentTime >= parseFloat(item.Start.toString()) && currentTime < parseFloat(item.End.toString()))
       if (index !== -1 && index !== lastIndex) { lastIndex = index; setCurrentIndex(index) }
-      if (audio.ended) { setCurrentIndex(-1); if (sentenceSectionRef.current) sentenceSectionRef.current.scrollTop = 0 }
+      // Type 模式下不清 index（保持当前句高亮，typeIndex 不会回落到 0）
+      if (audio.ended && workModeRef.current !== WorkModes.Type) { setCurrentIndex(-1); if (sentenceSectionRef.current) sentenceSectionRef.current.scrollTop = 0 }
     }
 
     audio.addEventListener('timeupdate', onTimeUpdate)
@@ -165,15 +168,26 @@ export default function BilingualPage({
     if (!audio) return
     const onEnded = () => {
       // Type 模式：保留当前句的高亮，不要清到 -1
-      if (workModeRef.current !== WorkModes.Type) {
-        setCurrentIndex(-1)
-        if (sentenceSectionRef.current) sentenceSectionRef.current.scrollTop = 0
+      if (workModeRef.current === WorkModes.Type) {
+        const li = loopIndexRef.current
+        const item = li !== null ? data[li] : undefined
+        if (item) {
+          // 兜底：个别浏览器 ended 前不再派发 timeupdate，循环 seek 来不及执行，这里手动重播当前句
+          audio.currentTime = parseFloat(item.Start.toString())
+          audio.play()
+          setIsPlaying(true)
+          return
+        }
+        setIsPlaying(false)
+        return
       }
+      setCurrentIndex(-1)
+      if (sentenceSectionRef.current) sentenceSectionRef.current.scrollTop = 0
       setIsPlaying(false)
     }
     audio.addEventListener('ended', onEnded)
     return () => audio.removeEventListener('ended', onEnded)
-  }, [setCurrentIndex])
+  }, [setCurrentIndex, data])
 
   const handleSpeakerClick = (index: number) => {
     setCurrentIndex(index)
