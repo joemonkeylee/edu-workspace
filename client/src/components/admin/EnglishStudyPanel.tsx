@@ -74,7 +74,7 @@ export default function EnglishStudyPanel({ compact = false }: { compact?: boole
     <section className="rounded-lg border border-border bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">英语打字学习</h2>
+          <h2 className="text-sm font-semibold text-foreground">英语精听学习</h2>
           <p className="text-xs text-muted-foreground">
             数据保存在浏览器本地（localStorage），换设备不会同步。共 {totalLessons} 课有记录。
           </p>

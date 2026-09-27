@@ -21,6 +21,8 @@ export type DictMeta = {
   url: string;
   /** 词条总数 */
   length: number;
+  /** 难度评级 1-10（用于展示与排序），缺省回落 5 */
+  difficulty?: number;
 };
 
 /** 单个字母的显示状态 */

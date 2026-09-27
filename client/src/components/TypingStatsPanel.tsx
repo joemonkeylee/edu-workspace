@@ -45,6 +45,7 @@ function Tile({ label, value, hint, accent = 'default' }: TileProps) {
 
 export default function TypingStatsPanel() {
   const dailyGoal = useTypingSettings((s) => s.dailyGoalWords);
+  const updateTypingSettings = useTypingSettings((s) => s.update);
 
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<TypingSummary | null>(null);
@@ -123,20 +124,42 @@ export default function TypingStatsPanel() {
         />
       </div>
 
-      {goal > 0 && (
-        <div className="border-t border-border px-4 py-2.5">
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>今日目标</span>
-            <span className="tabular-nums">{today} / {goal} 词</span>
+      {/* 今日目标 + 快捷设置（始终展示，未设置目标时可在此直接选择） */}
+      <div className="border-t border-border px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] text-muted-foreground">今日目标</span>
+          <div className="flex items-center gap-2">
+            <select
+              value={String(dailyGoal)}
+              onChange={(e) => updateTypingSettings({ dailyGoalWords: Number(e.target.value) })}
+              className="h-6 rounded-md border border-input bg-background px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              title="设置每日目标词数"
+            >
+              {[
+                { value: '0', label: '不设置' },
+                { value: '10', label: '10 词' },
+                { value: '20', label: '20 词' },
+                { value: '30', label: '30 词' },
+                { value: '50', label: '50 词' },
+                { value: '100', label: '100 词' },
+              ].map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            {goal > 0 && (
+              <span className="tabular-nums text-[11px] text-muted-foreground">{today} / {goal} 词</span>
+            )}
           </div>
+        </div>
+        {goal > 0 && (
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
             <div
               className={`h-full rounded-full transition-all ${goalPct >= 100 ? 'bg-emerald-500' : 'bg-primary'}`}
               style={{ width: `${goalPct}%` }}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
