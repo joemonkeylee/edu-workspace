@@ -697,7 +697,7 @@ export default function PdfAssignmentMode({
                 }}
                 onBlur={() => saveEstimatedMinutes(estimatedMinutes)}
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                className={`w-14 rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-xs text-white text-center focus:outline-none focus:ring-1 focus:ring-blue-500 ${readOnly ? 'opacity-70' : ''}`}
+                className={`w-16 appearance-none rounded border border-white/20 bg-white/10 px-1.5 py-0.5 text-xs text-white text-center focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${readOnly ? 'opacity-70' : ''}`}
               />
               <span className="text-white/50">分钟</span>
               {actualMins != null && (
