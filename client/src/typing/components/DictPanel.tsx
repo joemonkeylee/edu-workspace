@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { DICT_CATEGORIES, DICT_GROUPS, DICT_MAP, DICTIONARIES, searchDicts } from '../dictionaries';
+import { DICT_CATEGORIES, DICT_GROUPS, DICT_MAP, DICTIONARIES, CATEGORY_DIFFICULTY, searchDicts } from '../dictionaries';
 import { ALL_DICT_TAB, useTypingSettings } from '../settingsStore';
 
 type SortMode = 'name-asc' | 'name-desc' | 'length-asc' | 'length-desc' | 'difficulty-asc' | 'difficulty-desc';
@@ -17,7 +17,16 @@ const difficultyColor = (d: number) => {
   return 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
 };
 
+/** 分类 Tab 上的彩色圆点背景色（只取色，不带文字/边框） */
+const difficultyDot = (d: number) => {
+  if (d <= 3) return 'bg-emerald-500';
+  if (d <= 5) return 'bg-sky-500';
+  if (d <= 7) return 'bg-amber-500';
+  return 'bg-rose-500';
+};
+
 const diffOf = (d: { difficulty?: number }) => d.difficulty ?? 5;
+const fmtDiff = (d: { difficulty?: number }) => diffOf(d).toFixed(1);
 
 type Props = {
   value: string;
@@ -184,6 +193,10 @@ export default function DictPanel({ value, onChange }: Props) {
                 disabled={isSearching}
                 className="h-7 rounded-md bg-transparent px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none disabled:opacity-40"
               >
+                <span
+                  className={cn('mr-1 inline-block h-2 w-2 rounded-full align-middle', difficultyDot(CATEGORY_DIFFICULTY[c] ?? 5))}
+                  title={`难度 ${CATEGORY_DIFFICULTY[c] ?? 5} / 10`}
+                />
                 {c}
               </TabsTrigger>
             ))}
@@ -246,7 +259,7 @@ export default function DictPanel({ value, onChange }: Props) {
                             )}
                             title={`难度 ${diffOf(d)} / 10`}
                           >
-                            难度 {diffOf(d)}
+                            {fmtDiff(d)}
                           </span>
                         </span>
                       </button>
@@ -315,7 +328,7 @@ export default function DictPanel({ value, onChange }: Props) {
                             )}
                             title={`难度 ${diffOf(d)} / 10`}
                           >
-                            难度 {diffOf(d)}
+                            {fmtDiff(d)}
                           </span>
                         </span>
                       </button>
