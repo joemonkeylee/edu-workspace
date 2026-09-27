@@ -6,6 +6,9 @@ import {
   type PdfAssignment,
 } from '../api/pdfClient';
 import { formatAssignmentTitle } from '../../utils/assignment';
+import {
+  gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
+} from '../../utils/gradeResult';
 import { toast } from 'sonner';
 
 interface Props {
@@ -23,6 +26,8 @@ interface Props {
 export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefresh, onCountChange }: Props) {
   const [assignments, setAssignments] = useState<PdfAssignment[]>([]);
   const [loading, setLoading] = useState(true);
+  // 已批改的作业里，学生只想看要处理的那几份
+  const [onlyIssues, setOnlyIssues] = useState(false);
   const confirm = useConfirm();
 
   const load = () => {
@@ -81,12 +86,36 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
     return <div className="p-4 text-center text-sm text-muted-foreground">暂无作业</div>;
   }
 
+  const issueCount = assignments.filter((a) => hasIssue(a)).length;
+  const hasGraded = assignments.some((a) => a.status === 'graded');
+  const visible = onlyIssues ? assignments.filter((a) => hasIssue(a)) : assignments;
+
   return (
     <div className="space-y-2 p-2">
-      {assignments.map((a) => {
-        const isGraded = a.status === 'graded';
+      {hasGraded && (
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={onlyIssues}
+              onChange={(e) => setOnlyIssues(e.target.checked)}
+              className="h-3 w-3 accent-amber-500"
+            />
+            只看有问题的
+          </label>
+          {issueCount > 0 && (
+            <span className="text-[11px] text-amber-600 dark:text-amber-400">{issueCount} 份待处理</span>
+          )}
+        </div>
+      )}
+      {visible.length === 0 && (
+        <div className="py-4 text-center text-[11px] text-muted-foreground">没有需要处理的作业</div>
+      )}
+      {visible.map((a) => {
         const isSubmitted = a.status === 'submitted';
         const isReturned = a.status === 'returned';
+        const badge = gradeBadge(a);
+        const issues = parseGradeIssues(a.gradeIssues);
         return (
           <div
             key={a.id}
@@ -104,7 +133,7 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
               <FileText
                 size={16}
                 className={`mt-0.5 flex-shrink-0 ${
-                  isGraded ? 'text-green-500'
+                  badge ? (hasIssue(a) ? 'text-amber-500' : 'text-green-500')
                     : isSubmitted ? 'text-blue-500'
                       : isReturned ? 'text-amber-500'
                         : 'text-muted-foreground'
@@ -117,16 +146,27 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                   </span>
                   <span
                     className={`flex-shrink-0 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                      isGraded ? 'bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400'
+                      badge ? badge.className
                         : isSubmitted ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400'
                           : isReturned ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
                             : 'bg-muted text-muted-foreground'
                     }`}
                   >
-                    {isGraded && <CheckCircle2 size={9} />}
-                    {isGraded ? '已批改' : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
+                    {badge && <CheckCircle2 size={9} />}
+                    {badge ? badge.label : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
                   </span>
                 </div>
+                {/* 有问题的作业把问题直接铺在列表里，学生不用逐个点开 */}
+                {hasIssue(a) && (issues.length > 0 || a.gradeComment) && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    {issues.map((tag) => (
+                      <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
+                    ))}
+                    {a.gradeComment && (
+                      <span className="truncate text-[10px] text-muted-foreground">备注：{a.gradeComment}</span>
+                    )}
+                  </div>
+                )}
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="flex items-center gap-0.5">
                     <Clock size={9} /> {formatTime(a.createdAt)}

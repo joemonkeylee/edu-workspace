@@ -2,7 +2,13 @@ import { Link } from 'react-router-dom';
 import { GraduationCap } from 'lucide-react';
 import AppHeaderRight from "@/components/AppHeaderRight";
 import EnvBadge from "@/components/EnvBadge";
+import StudentOverview from "@/components/StudentOverview";
 
+/**
+ * 站点默认页（/）—— 学生进来直接看到自己的统计：作业批改反馈 + 打字/英语练习进展。
+ * 教师与管理员这里由 StudentOverview 自行判空（他们的同款面板在 /admin 概览），
+ * 看书仍然去 /books。
+ */
 export default function Landing() {
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
@@ -16,7 +22,11 @@ export default function Landing() {
         </div>
         <AppHeaderRight />
       </header>
-      <main className="flex-1" />
+      <main className="flex-1 overflow-auto px-6 py-4">
+        <div className="mx-auto w-full max-w-[1400px]">
+          <StudentOverview />
+        </div>
+      </main>
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { formatAssignmentTitle } from '../utils/assignment';
 import { isDesktopBrowser } from '../utils/device';
 import { toast } from 'sonner';
 import { useConfirm } from './ConfirmDialog';
+import GradeResultDialog from './GradeResultDialog';
+import { parseGradeIssues, type GradeResultPayload } from '../utils/gradeResult';
 
 export interface AssignmentModeProps {
   bookId: number;
@@ -76,6 +78,9 @@ export default function AssignmentMode({
   const [localZoom, setLocalZoom] = useState(0);
   const [fitMode, setFitMode] = useState<'page' | 'width'>('page');
   const [gestureScale, setGestureScale] = useState(1);
+  // 批改结论弹框：教师点「标记为已批改」时先选全对 / 有问题
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const [gradeSubmitting, setGradeSubmitting] = useState(false);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,6 +116,14 @@ export default function AssignmentMode({
   const canEdit = assignment?.status === 'draft' || isReturned;
   const readOnly = isGraded || (isSubmitted && !canGrade);
   const layer = canGrade ? 'teacher' : 'student';
+  const gradedIssues = parseGradeIssues(assignment?.gradeIssues);
+  const gradeSuffix = !isGraded
+    ? ''
+    : assignment?.gradeResult === 'issue'
+      ? '·有问题'
+      : assignment?.gradeResult === 'perfect'
+        ? '·全对'
+        : '';
 
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
   const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
@@ -518,23 +531,25 @@ export default function AssignmentMode({
     setCanRedo(canvasRef.current?.canRedo() ?? false);
   }, [savedStrokes]);
 
-  const handleMarkGraded = async () => {
+  /** 结论由弹框给出后再落库；先保存当前页笔迹，失败则留在弹框里 */
+  const handleGradeSubmit = async (payload: GradeResultPayload) => {
     if (!assignment) return;
-    const confirmed = await confirm({
-      title: '确认批改',
-      message: '确认将此作业标记为已批改吗？标记后将不能继续编辑笔迹。',
-      confirmText: '确认批改',
-      confirmClass: 'bg-green-600 text-white hover:bg-green-700',
-    });
-    if (!confirmed) return;
-    const ok = await saveCurrentPage();
-    if (!ok) return;
+    setGradeSubmitting(true);
     try {
-      await updateAssignment(assignment.id, { status: 'graded' });
-      toast.success('作业已批改');
+      if (!(await saveCurrentPage())) return;
+      await updateAssignment(assignment.id, {
+        status: 'graded',
+        gradeResult: payload.result,
+        gradeIssues: payload.issues,
+        gradeComment: payload.comment,
+      });
+      toast.success(payload.result === 'issue' ? '已标记：有问题' : '已标记：全对');
+      setGradeOpen(false);
       onAssignmentUpdate();
     } catch (e: any) {
       toast.error('批改失败: ' + (e?.message || ''));
+    } finally {
+      setGradeSubmitting(false);
     }
   };
 
@@ -655,7 +670,16 @@ export default function AssignmentMode({
           <span className="text-xs text-gray-400 truncate">{renderTextByCharacter(bookTitle, chineseRotation)}</span>
           <span className="text-xs text-gray-400 truncate">
             {renderTextByCharacter(formatAssignmentTitle(assignment?.title) || '作业', chineseRotation)}
-            {isGraded && <> {renderTextByCharacter('(已批改)', chineseRotation, 'text-green-400 ml-1')}</>}
+            {isGraded && (
+              <>
+                {' '}
+                {renderTextByCharacter(
+                  `(已批改${gradeSuffix})`,
+                  chineseRotation,
+                  assignment?.gradeResult === 'issue' ? 'text-amber-400 ml-1' : 'text-green-400 ml-1',
+                )}
+              </>
+            )}
             {isSubmitted && !canGrade && <> {renderTextByCharacter('(已提交)', chineseRotation, 'text-blue-400 ml-1')}</>}
             {isReturned && <> {renderTextByCharacter('(已打回)', chineseRotation, 'text-amber-400 ml-1')}</>}
           </span>
@@ -667,6 +691,15 @@ export default function AssignmentMode({
               const num = pageAssignments.length - i;
               const active = a.id === assignment?.id;
               const graded = a.status === 'graded';
+              // 同一页有多份作业时，按钮颜色直接区分「有问题」需要回头处理
+              const gradeTone = a.gradeResult === 'issue'
+                ? 'border-amber-500 text-amber-400 hover:bg-white/10'
+                : a.gradeResult === 'perfect'
+                  ? 'border-green-500 text-green-400 hover:bg-white/10'
+                  : 'border-gray-500 text-gray-400 hover:text-white hover:border-white/50';
+              const gradeLabel = a.gradeResult === 'issue'
+                ? ' (有问题)'
+                : a.gradeResult === 'perfect' ? ' (全对)' : ' (已批改)';
               return (
                 <button
                   key={a.id}
@@ -675,10 +708,10 @@ export default function AssignmentMode({
                     active
                       ? 'bg-blue-600 border-blue-600 text-white'
                       : graded
-                        ? 'border-green-500 text-green-400 hover:bg-white/10'
+                        ? gradeTone
                         : 'border-gray-500 text-gray-400 hover:text-white hover:border-white/50'
                   }`}
-                  title={`作业${num} - ${formatAssignmentTitle(a.title) || `#${a.id}`}${graded ? ' (已批改)' : ''}`}
+                  title={`作业${num} - ${formatAssignmentTitle(a.title) || `#${a.id}`}${graded ? gradeLabel : ''}`}
                 >
                   {num}
                 </button>
@@ -763,9 +796,9 @@ export default function AssignmentMode({
         {canGrade && isSubmitted && assignment && (
           <>
             <button
-              onClick={handleMarkGraded}
+              onClick={() => setGradeOpen(true)}
               className="p-1.5 rounded text-gray-400 hover:text-green-400 hover:bg-white/10 transition"
-              title="标记为已批改"
+              title="标记为已批改（选择批改结论）"
             >
               <CheckCircle2 size={16} />
             </button>
@@ -960,8 +993,15 @@ export default function AssignmentMode({
         <div className={`flex-shrink-0 bg-[#323639] flex items-center justify-center gap-2 text-gray-400 text-sm ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3 [writing-mode:vertical-rl] ${textFlipClass}` : 'h-12 px-3 py-2'}`}>
           <FileText size={16} />
           {isGraded
-            ? renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation)
+            ? renderTextByCharacter(
+                `已批改${gradeSuffix}，笔迹只读`,
+                chineseRotation,
+                assignment?.gradeResult === 'issue' ? 'text-amber-400' : 'text-green-400',
+              )
             : renderTextByCharacter('此作业已提交，笔迹只读', chineseRotation)}
+          {isGraded && !isRotated && gradedIssues.length > 0 && (
+            <span className="truncate text-xs text-amber-400/90">（{gradedIssues.join('、')}）</span>
+          )}
           <div className={isRotated ? 'h-px w-6 bg-white/10 my-1' : 'w-px h-6 bg-white/10 mx-2'} />
           <button
             onClick={handleExport}
@@ -972,6 +1012,15 @@ export default function AssignmentMode({
           </button>
         </div>
       )}
+
+      <GradeResultDialog
+        open={gradeOpen}
+        assignmentTitle={formatAssignmentTitle(assignment?.title) || (assignment ? `作业 #${assignment.id}` : '')}
+        initial={{ result: assignment?.gradeResult, issues: assignment?.gradeIssues, comment: assignment?.gradeComment }}
+        submitting={gradeSubmitting}
+        onOpenChange={setGradeOpen}
+        onSubmit={handleGradeSubmit}
+      />
     </div>
   );
 }

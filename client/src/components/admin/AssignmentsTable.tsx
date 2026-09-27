@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button"
 import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments } from '../../api/client';
 import { formatAssignmentTitle } from '../../utils/assignment';
 import { useConfirm } from '../ConfirmDialog';
+import {
+  gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
+} from '../../utils/gradeResult';
 import { useAuthStore } from '../../store/authStore';
 
 const PAGE_SIZE = 20;
@@ -27,7 +30,16 @@ const STATUS_CLASS: Record<string, string> = {
   draft: 'bg-muted text-foreground/70',
 };
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, gradeResult }: { status: string; gradeResult?: string | null }) {
+  // 已批改的作业直接显示结论，教师回看时能一眼挑出「有问题」的那几份
+  const badge = gradeBadge({ status, gradeResult });
+  if (badge) {
+    return (
+      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${badge.className}`}>
+        {badge.label}
+      </span>
+    );
+  }
   return (
     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_CLASS[status] || STATUS_CLASS.draft}`}>
       {STATUS_TEXT[status] || '待提交'}
@@ -189,6 +201,7 @@ export default function AssignmentsTable() {
             { value: 'submitted', label: '已提交' },
             { value: 'returned', label: '已打回' },
             { value: 'graded', label: '已批改' },
+            { value: 'issue', label: '有问题' },
           ].map((tab) => (
             <button
               key={tab.value}
@@ -249,6 +262,7 @@ export default function AssignmentsTable() {
               {groupedBooks.map((group) => {
                 const open = expandedBooks.includes(group.bookId);
                 const returned = countByStatus(group.items, 'returned');
+                const issueCount = group.items.filter((i) => hasIssue(i)).length;
                 return (
                   <div key={group.bookId} className="overflow-hidden bg-background rounded-lg shadow">
                     <div className="flex items-center gap-3 px-4 py-3">
@@ -262,6 +276,9 @@ export default function AssignmentsTable() {
                           {' · '}待提交 {countByStatus(group.items, 'draft')}
                           {' · '}已提交 {countByStatus(group.items, 'submitted')}
                           {' · '}已批改 {countByStatus(group.items, 'graded')}
+                          {issueCount > 0 && (
+                            <span className="text-amber-600 dark:text-amber-400">{' · '}有问题 {issueCount}</span>
+                          )}
                           {returned > 0 && ` · 已打回 ${returned}`}
                           {' · '}最近 {formatDate(group.items[0].createdAt)}
                         </p>
@@ -283,7 +300,10 @@ export default function AssignmentsTable() {
                                 <span className="text-sm font-medium text-foreground">
                                   {formatAssignmentTitle(item.title) || `作业 #${item.id}`}
                                 </span>
-                                <StatusBadge status={item.status} />
+                                <StatusBadge status={item.status} gradeResult={item.gradeResult} />
+                                {hasIssue(item) && parseGradeIssues(item.gradeIssues).map((tag) => (
+                                  <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
+                                ))}
                                 {item.pages?.length > 0 && (
                                   <span className="text-xs text-muted-foreground">第 {item.pages.join('、')} 页</span>
                                 )}
@@ -361,7 +381,7 @@ export default function AssignmentsTable() {
                   <td className="px-4 py-3 text-foreground/70">{item.subject || '-'}</td>
                   <td className="px-4 py-3 text-foreground/70">{item._count?.strokes ?? 0}</td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={item.status} />
+                    <StatusBadge status={item.status} gradeResult={item.gradeResult} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">{formatDate(item.createdAt)}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">

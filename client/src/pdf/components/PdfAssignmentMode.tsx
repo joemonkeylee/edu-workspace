@@ -11,7 +11,9 @@ import {
   getAssignmentStrokes, saveAssignmentStrokes, updateAssignment, deleteAssignment,
   listAssignments, exportAssignmentPage, type PdfAssignment,
 } from '../api/pdfClient';
+import GradeResultDialog from '../../components/GradeResultDialog';
 import { formatAssignmentTitle } from '../../utils/assignment';
+import { parseGradeIssues, type GradeResultPayload } from '../../utils/gradeResult';
 import { isDesktopBrowser } from '../../utils/device';
 import { toast } from 'sonner';
 
@@ -87,6 +89,18 @@ export default function PdfAssignmentMode({
   const [ratio, setRatio] = useState<number | null>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const [exporting, setExporting] = useState(false);
+
+  // ── 批改结论弹框 ────────────────────────────────────────────
+  const [gradeOpen, setGradeOpen] = useState(false);
+  const [gradeSubmitting, setGradeSubmitting] = useState(false);
+  const gradedIssues = parseGradeIssues(assignment?.gradeIssues);
+  const gradeSuffix = !isGraded
+    ? ''
+    : assignment?.gradeResult === 'issue'
+      ? '·有问题'
+      : assignment?.gradeResult === 'perfect'
+        ? '·全对'
+        : '';
 
   // ── 移动端手势（双指捏合缩放 / 拖拽平移） ──────────────────
   const [gestureScale, setGestureScale] = useState(1);
@@ -427,22 +441,25 @@ export default function PdfAssignmentMode({
     }
   };
 
-  const handleMarkGraded = async () => {
+  /** 弹框确认结论后才落库：先保存当前页笔迹，失败则停留在弹框里 */
+  const handleGradeSubmit = async (payload: GradeResultPayload) => {
     if (!assignment) return;
-    const ok = await confirm({
-      title: '确认批改',
-      message: '确认将此作业标记为已批改吗？标记后将不能继续编辑笔迹。',
-      confirmText: '确认批改',
-      confirmClass: 'bg-green-600 text-white hover:bg-green-700',
-    });
-    if (!ok) return;
-    if (!(await saveCurrentPage())) return;
+    setGradeSubmitting(true);
     try {
-      await updateAssignment(assignment.id, { status: 'graded' });
-      toast.success('作业已批改');
+      if (!(await saveCurrentPage())) return;
+      await updateAssignment(assignment.id, {
+        status: 'graded',
+        gradeResult: payload.result,
+        gradeIssues: payload.issues,
+        gradeComment: payload.comment,
+      });
+      toast.success(payload.result === 'issue' ? '已标记：有问题' : '已标记：全对');
+      setGradeOpen(false);
       onAssignmentUpdate();
     } catch (e: any) {
       toast.error('批改失败: ' + (e?.message || ''));
+    } finally {
+      setGradeSubmitting(false);
     }
   };
 
@@ -626,7 +643,11 @@ export default function PdfAssignmentMode({
             <span className="truncate text-xs text-white/80">{renderTextByCharacter(bookTitle, chineseRotation)}</span>
             <span className="truncate text-xs text-white/50">
               {renderTextByCharacter(formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`, chineseRotation)}
-              {isGraded && <span className="text-green-400"> {renderTextByCharacter('(已批改)', chineseRotation)}</span>}
+              {isGraded && (
+                <span className={assignment?.gradeResult === 'issue' ? 'text-amber-400' : 'text-green-400'}>
+                  {' '}{renderTextByCharacter(`(已批改${gradeSuffix})`, chineseRotation)}
+                </span>
+              )}
               {isSubmitted && !canGrade && <span className="text-blue-400"> {renderTextByCharacter('(已提交)', chineseRotation)}</span>}
               {isReturned && <span className="text-amber-400"> {renderTextByCharacter('(已打回)', chineseRotation)}</span>}
             </span>
@@ -705,7 +726,7 @@ export default function PdfAssignmentMode({
             )}
             {canGrade && isSubmitted && (
               <>
-                <button onClick={() => void handleMarkGraded()} title="标记已批改" className="rounded p-1 text-green-400 hover:bg-white/10">
+                <button onClick={() => setGradeOpen(true)} title="标记已批改（选择批改结论）" className="rounded p-1 text-green-400 hover:bg-white/10">
                   <CheckCircle2 size={16} />
                 </button>
                 <button onClick={() => void handleReturn()} title="打回" className="rounded p-1 text-amber-400 hover:bg-white/10">
@@ -851,10 +872,28 @@ export default function PdfAssignmentMode({
         ) : (
           <div className={`flex h-12 items-center gap-2 bg-[#323639] px-3 text-xs text-white/70 ${toolbarRotationClass} ${iconRotationAll} ${isRotated ? `h-full w-12 ${rotatedDir} px-2 py-3` : ''}`}>
             <FileText size={16} />
-            {isGraded ? renderTextByCharacter('此作业已批改，笔迹只读', chineseRotation) : renderTextByCharacter('此作业已提交，笔迹只读', chineseRotation)}
+            {isGraded ? (
+              <>
+                <span className={assignment?.gradeResult === 'issue' ? 'text-amber-400' : 'text-green-400'}>
+                  {renderTextByCharacter(`已批改${gradeSuffix}，笔迹只读`, chineseRotation)}
+                </span>
+                {!isRotated && gradedIssues.length > 0 && (
+                  <span className="truncate text-[11px] text-amber-400/90">（{gradedIssues.join('、')}）</span>
+                )}
+              </>
+            ) : renderTextByCharacter('此作业已提交，笔迹只读', chineseRotation)}
           </div>
         )}
       </div>
+
+      <GradeResultDialog
+        open={gradeOpen}
+        assignmentTitle={formatAssignmentTitle(assignment?.title || '') || `作业 #${assignment?.id}`}
+        initial={{ result: assignment?.gradeResult, issues: assignment?.gradeIssues, comment: assignment?.gradeComment }}
+        submitting={gradeSubmitting}
+        onOpenChange={setGradeOpen}
+        onSubmit={handleGradeSubmit}
+      />
     </div>
   );
 }

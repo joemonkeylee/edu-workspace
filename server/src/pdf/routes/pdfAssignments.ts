@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import prisma from '../../prisma.js';
 import { authRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { buildGradeFields } from '../../utils/gradeResult.js';
 
 /**
  * PDF 域的作业 / 笔迹 / 批改（/api/pdf/assignments）。
@@ -58,6 +59,7 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
       select: {
         id: true, bookId: true, userId: true, title: true, subject: true,
         status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
+        gradeResult: true, gradeIssues: true, gradeComment: true,
         _count: { select: { strokes: true } },
         strokes: { select: { pageNumber: true }, distinct: ['pageNumber'], orderBy: { pageNumber: 'asc' } },
       },
@@ -111,6 +113,7 @@ router.get('/mine', asyncHandler(async (req: AuthedRequest, res: Response) => {
       select: {
         id: true, bookId: true, userId: true, title: true, subject: true,
         status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
+        gradeResult: true, gradeIssues: true, gradeComment: true,
         _count: { select: { strokes: true } },
         strokes: { select: { pageNumber: true }, distinct: ['pageNumber'], orderBy: { pageNumber: 'asc' } },
         book: { select: { id: true, title: true, subject: true, category: true, coverPage: true, totalPages: true } },
@@ -254,6 +257,14 @@ router.put('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
 
     data.gradedAt = newStatus === 'graded' ? new Date() : null;
     data.gradedBy = newStatus === 'graded' ? (userId || null) : null;
+    // 批改结论只有教师能写；退回/重新提交会清空，避免学生看到上一轮的过期问题
+    if (isTeacher) {
+      Object.assign(data, buildGradeFields({
+        result: req.body?.gradeResult,
+        issues: req.body?.gradeIssues,
+        comment: req.body?.gradeComment,
+      }, newStatus));
+    }
     data.status = newStatus;
   }
 

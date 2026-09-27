@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getMyAssignments, updateAssignment, deleteAssignment } from '../../api/client';
 import * as pdfApi from '../../pdf/api/pdfClient';
 import { toast } from 'sonner';
 import { useConfirm } from '../ConfirmDialog';
 import { formatAssignmentTitle } from '../../utils/assignment';
+import { hasIssue } from '../../utils/gradeResult';
 import { useAuthStore } from '../../store/authStore';
+import GradeFeedbackPanel from '../GradeFeedbackPanel';
 import SubmissionPane, {
   type SubRow,
   type SubCounts,
@@ -66,6 +68,10 @@ export default function MyWorkspace() {
     title: r.title,
     status: r.status,
     updatedAt: r.updatedAt,
+    gradeResult: (r as any).gradeResult ?? null,
+    gradeIssues: (r as any).gradeIssues ?? null,
+    gradeComment: (r as any).gradeComment ?? '',
+    gradedAt: (r as any).gradedAt ?? null,
     pages: (r as any).pages ?? null,
     bookTitle: r.book?.title || `书籍 #${r.bookId}`,
     bookSubject: r.book?.subject || '',
@@ -112,6 +118,14 @@ export default function MyWorkspace() {
     graded: bookCounts.graded + pdfCounts.graded,
     returned: bookCounts.returned + pdfCounts.returned,
   };
+
+  const allRows = useMemo(() => [...bookRows, ...pdfRows], [bookRows, pdfRows]);
+  const issueTotal = useMemo(() => allRows.filter((r) => hasIssue(r)).length, [allRows]);
+  // 「已批改」这个数字本身不够用，学生真正关心的是里面有多少份要重做
+  const perfectTotal = useMemo(
+    () => allRows.filter((r) => r.status === 'graded').length - issueTotal,
+    [allRows, issueTotal],
+  );
 
   /** 按类型跳到对应的阅读器。教师开批改层（grading=1），其余一律只读查看 */
   const open = (row: SubRow) => {
@@ -180,22 +194,34 @@ export default function MyWorkspace() {
     return hit ? hit.id : null;
   };
 
+  // 书籍作业 + PDF 作业合计。指标块只放数字，结论明细交给下面的反馈面板
+  const tiles: { label: string; value: number; tone: string; hint?: string }[] = [
+    { label: '草稿待提交', value: totals.draft, tone: 'text-foreground' },
+    { label: '待批改', value: totals.submitted, tone: 'text-blue-600 dark:text-blue-300' },
+    { label: '已批改', value: totals.graded, tone: 'text-green-600 dark:text-green-300', hint: `全对 ${perfectTotal} · 有问题 ${issueTotal}` },
+    { label: '已打回', value: totals.returned, tone: 'text-amber-600 dark:text-amber-300' },
+    { label: '有问题待处理', value: issueTotal, tone: issueTotal > 0 ? 'text-amber-600 dark:text-amber-300' : 'text-muted-foreground' },
+  ];
+
   return (
     <div className="flex flex-col gap-3">
-      {/* ── 学习概览：4 个指标平铺一行（书籍 + PDF 合计）；english 打卡墙等后续模块往中间插 ── */}
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
-        {[
-          { label: '草稿待提交', value: totals.draft, tone: 'text-foreground' },
-          { label: '待批改', value: totals.submitted, tone: 'text-blue-600 dark:text-blue-300' },
-          { label: '已批改', value: totals.graded, tone: 'text-green-600 dark:text-green-300' },
-          { label: '已打回', value: totals.returned, tone: 'text-amber-600 dark:text-amber-300' },
-        ].map((s) => (
+      {/* ── 学习概览：指标平铺一行（书籍 + PDF 合计） ── */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-5">
+        {tiles.map((s) => (
           <div key={s.label} className="bg-card px-4 py-3">
             <div className={`text-xl font-semibold tabular-nums ${s.tone}`}>{s.value}</div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">{s.label}</div>
+            {s.hint && <div className="text-[10px] text-muted-foreground/80">{s.hint}</div>}
           </div>
         ))}
       </div>
+
+      {/* ── 最近批改反馈：教师结论直接铺开，默认只看「有问题」的 ── */}
+      <GradeFeedbackPanel
+        rows={allRows}
+        loading={bookLoading || pdfLoading}
+        onOpen={open}
+      />
 
       {/* ── 我的提交：左书籍 / 右 PDF 各占一半，窄屏自动上下堆叠 ── */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

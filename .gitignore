@@ -34,3 +34,4 @@ server/prisma/migrations/
 .trae
 .vscode
 .workbuddy
+.aider*

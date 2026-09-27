@@ -8,6 +8,7 @@ import { getBookRoot } from '../services/storage.js';
 import { getAvailableDpisAsync } from '../services/pdfProcessor.js';
 import { authRequired, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { buildGradeFields } from '../utils/gradeResult.js';
 
 const execFileAsync = promisify(execFile);
 const router = Router();
@@ -46,6 +47,7 @@ router.get('/', authRequired, asyncHandler(async (req: AuthedRequest, res: Respo
       select: {
         id: true, bookId: true, userId: true, title: true, subject: true,
         status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
+        gradeResult: true, gradeIssues: true, gradeComment: true,
         _count: { select: { strokes: true } },
         strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
       },
@@ -102,6 +104,7 @@ router.get('/mine', authRequired, asyncHandler(async (req: AuthedRequest, res: R
       select: {
         id: true, bookId: true, userId: true, title: true, subject: true,
         status: true, gradedBy: true, createdAt: true, updatedAt: true, gradedAt: true,
+        gradeResult: true, gradeIssues: true, gradeComment: true,
         _count: { select: { strokes: true } },
         strokes: { select: { pageNumber: true }, distinct: 'pageNumber', orderBy: { pageNumber: 'asc' } },
         book: { select: { id: true, title: true, subject: true, category: true, coverPage: true, totalPages: true, storagePath: true } },
@@ -280,12 +283,17 @@ router.put('/:id', authRequired, asyncHandler(async (req: AuthedRequest, res: Re
     if (newStatus === 'graded') {
       data.gradedAt = new Date();
       data.gradedBy = userId || null;
-    } else if (newStatus === 'returned') {
-      data.gradedAt = null;
-      data.gradedBy = null;
     } else {
       data.gradedAt = null;
       data.gradedBy = null;
+    }
+    // 批改结论只有教师能写；退回/重新提交会清空，避免学生看到上一轮的过期问题
+    if (isTeacher) {
+      Object.assign(data, buildGradeFields({
+        result: req.body?.gradeResult,
+        issues: req.body?.gradeIssues,
+        comment: req.body?.gradeComment,
+      }, newStatus));
     }
     data.status = newStatus;
   }

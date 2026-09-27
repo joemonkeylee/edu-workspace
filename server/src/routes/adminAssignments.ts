@@ -23,7 +23,13 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
       { book: { title: { contains: search } } },
     ];
   }
-  if (status !== 'all') where.status = status;
+  // 「有问题」不是状态而是已批改作业上的结论，单独映射成 status + gradeResult
+  if (status === 'issue') {
+    where.status = 'graded';
+    where.gradeResult = 'issue';
+  } else if (status !== 'all') {
+    where.status = status;
+  }
   if (!Number.isNaN(bookId)) where.bookId = bookId;
 
   const [data, total, books] = await Promise.all([

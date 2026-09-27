@@ -723,6 +723,10 @@ export interface Assignment {
   createdAt: string;
   updatedAt: string;
   gradedAt: string | null;
+  /** 批改结论：'' 未下结论 | perfect 全对 | issue 有问题 */
+  gradeResult?: string | null;
+  gradeIssues?: unknown;
+  gradeComment?: string | null;
   _count?: { strokes: number };
   pages?: number[];
   user?: { id: number; nickName: string; phone: string } | null;
@@ -774,7 +778,18 @@ export async function createAssignment(bookId: number, title?: string, subject?:
   return data.data as Assignment;
 }
 
-export async function updateAssignment(id: number, body: { title?: string; subject?: string; status?: string }) {
+export async function updateAssignment(
+  id: number,
+  body: {
+    title?: string;
+    subject?: string;
+    status?: string;
+    /** 仅教师标记 graded 时生效：perfect | issue */
+    gradeResult?: string;
+    gradeIssues?: string[];
+    gradeComment?: string;
+  },
+) {
   const { data } = await api.put(`/assignments/${id}`, body);
   return data.data as Assignment;
 }

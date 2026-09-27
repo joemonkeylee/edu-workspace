@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
   FileText, BookOpen, RefreshCw, Send, Trash2, ExternalLink, Clock, Layers, PenLine, X,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import BookCover from '../BookCover';
 import PdfBookCover from '../../pdf/components/PdfBookCover';
 import { formatAssignmentTitle } from '../../utils/assignment';
+import {
+  gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
+} from '../../utils/gradeResult';
 
 /**
  * 概览页「我的提交」的半栏。
@@ -23,6 +27,12 @@ export type SubRow = {
   title: string;
   status: string;
   updatedAt: string;
+  /** 教师批改结论：'' 未下结论 | perfect 全对 | issue 有问题 */
+  gradeResult?: string | null;
+  gradeIssues?: unknown;
+  gradeComment?: string | null;
+  /** 批改时间，未批改时为 null */
+  gradedAt?: string | null;
   pages?: number[] | null;
   bookTitle: string;
   bookSubject: string;
@@ -33,7 +43,13 @@ export type SubRow = {
 export type SubCounts = { all: number; draft: number; submitted: number; graded: number; returned: number };
 export type SubBookOption = { id: number; title: string; subject: string; count: number };
 
-type TabKey = 'all' | 'draft' | 'returned' | 'submitted' | 'graded';
+type TabKey = 'all' | 'draft' | 'returned' | 'submitted' | 'graded' | 'issue';
+
+/**
+ * 每页行数。概览页（admin 与首页共用）不希望出现纵向滚动条，
+ * 所以列表一律分页展示，翻页在卡片内部完成，卡片高度保持恒定。
+ */
+const PAGE_SIZE = 5;
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'all', label: '全部' },
@@ -41,6 +57,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'returned', label: '已打回' },
   { key: 'submitted', label: '已提交' },
   { key: 'graded', label: '已批改' },
+  { key: 'issue', label: '有问题' },
 ];
 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
@@ -93,12 +110,29 @@ export default function SubmissionPane({
   onRefresh, onOpen, onSubmit, onDelete, busyId,
 }: Props) {
   const [tab, setTab] = useState<TabKey>('all');
+  const [page, setPage] = useState(1);
 
-  const tabCount = (key: TabKey) => (key === 'all' ? counts.all : counts[key as keyof SubCounts] || 0);
+  const issueCount = useMemo(() => rows.filter((r) => hasIssue(r)).length, [rows]);
 
-  const filtered = useMemo(
-    () => (tab === 'all' ? rows : rows.filter((r) => r.status === tab)),
-    [rows, tab]
+  const tabCount = (key: TabKey) => {
+    if (key === 'all') return counts.all;
+    if (key === 'issue') return issueCount;
+    return counts[key as keyof SubCounts] || 0;
+  };
+
+  // 「有问题」不是一种状态而是已批改作业里的结论，所以单独过滤
+  const filtered = useMemo(() => {
+    if (tab === 'all') return rows;
+    if (tab === 'issue') return rows.filter((r) => hasIssue(r));
+    return rows.filter((r) => r.status === tab);
+  }, [rows, tab]);
+
+  // 行数会随刷新/筛选变化，页码一律在此收敛，避免停在一个空白页上
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = useMemo(
+    () => filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filtered, safePage],
   );
 
   const isPdf = kind === 'pdf';
@@ -144,11 +178,13 @@ export default function SubmissionPane({
           <button
             key={t.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setPage(1); }}
             className={`rounded px-1.5 py-0.5 text-[11px] transition ${
               tab === t.key
                 ? 'bg-card font-medium text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                : t.key === 'issue' && tabCount('issue') > 0
+                  ? 'text-amber-600 hover:text-amber-700 dark:text-amber-400'
+                  : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {t.label}
@@ -183,9 +219,12 @@ export default function SubmissionPane({
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {filtered.map((row) => {
+          <>
+            <div className="divide-y divide-border">
+              {pageRows.map((row) => {
               const meta = STATUS_META[row.status] || STATUS_META.draft;
+              const badge = gradeBadge(row);
+              const issues = parseGradeIssues(row.gradeIssues);
               const canEdit = row.status === 'draft' || row.status === 'returned';
               const title = formatAssignmentTitle(row.title) || `作业 #${row.id}`;
               return (
@@ -219,8 +258,20 @@ export default function SubmissionPane({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-xs font-medium text-foreground">{title}</span>
-                      <span className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${meta.badge}`}>{meta.label}</span>
+                      <span className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${badge ? badge.className : meta.badge}`}>
+                        {badge ? badge.label : meta.label}
+                      </span>
                     </div>
+                    {hasIssue(row) && (issues.length > 0 || row.gradeComment) && (
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                        {issues.map((tag) => (
+                          <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
+                        ))}
+                        {row.gradeComment && (
+                          <span className="truncate text-[10px] text-muted-foreground">备注：{row.gradeComment}</span>
+                        )}
+                      </div>
+                    )}
                     <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="flex min-w-0 items-center gap-1">
                         <span className="truncate">{row.bookTitle}</span>
@@ -274,6 +325,37 @@ export default function SubmissionPane({
               );
             })}
           </div>
+          {filtered.length > PAGE_SIZE && (
+            <div className="flex flex-shrink-0 items-center justify-between gap-2 border-t border-border px-3 py-1.5">
+              <span className="text-[11px] text-muted-foreground">
+                共 {filtered.length} 条 · 每页 {PAGE_SIZE} 条
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, Math.min(p, totalPages) - 1))}
+                  disabled={safePage <= 1}
+                  className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                  title="上一页"
+                >
+                  <ChevronLeft size={13} />
+                </button>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  {safePage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, Math.min(p, totalPages) + 1))}
+                  disabled={safePage >= totalPages}
+                  className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                  title="下一页"
+                >
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>

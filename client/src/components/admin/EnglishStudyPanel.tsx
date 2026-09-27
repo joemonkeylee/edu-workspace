@@ -39,8 +39,13 @@ function StatCard({ label, value, hint, accent = 'default' }: StatCardProps) {
   )
 }
 
-/** English 模块学习统计 —— 展示在 admin 概览页 */
-export default function EnglishStudyPanel() {
+/**
+ * English 模块学习统计 —— 展示在 admin 概览页与站点首页。
+ *
+ * compact=true 时只留顶部 4 个指标（首页要控制高度，避免整页出现滚动条），
+ * 「按教材」明细仍然在 admin 概览里看。
+ */
+export default function EnglishStudyPanel({ compact = false }: { compact?: boolean }) {
   const [dash, setDash] = useState<Dashboard | null>(null)
   const [bookStats, setBookStats] = useState<Record<string, Dashboard>>({})
   const [wrongCount, setWrongCount] = useState(0)
@@ -84,7 +89,7 @@ export default function EnglishStudyPanel() {
       </header>
 
       {/* 顶部 4 个指标 */}
-      <div className="grid grid-cols-2 gap-3 p-4 md:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 p-4 ${compact ? '' : 'md:grid-cols-4'}`}>
         <StatCard
           label="已完成课程"
           value={`${dash.completedLessons} / ${dash.startedLessons}`}
@@ -111,7 +116,7 @@ export default function EnglishStudyPanel() {
       </div>
 
       {/* 按教材聚合 */}
-      {Object.keys(bookStats).length > 0 && (
+      {!compact && Object.keys(bookStats).length > 0 && (
         <div className="border-t border-border">
           <div className="px-4 py-2 text-xs font-medium text-muted-foreground">按教材</div>
           <div className="max-h-64 overflow-auto">
@@ -157,7 +162,7 @@ export default function EnglishStudyPanel() {
         </div>
       )}
 
-      {Object.keys(bookStats).length === 0 && (
+      {!compact && Object.keys(bookStats).length === 0 && (
         <div className="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground">
           还没有学习记录。打开 <a className="text-primary hover:underline" href="/english">/english</a> 开始打字练习吧。
         </div>
