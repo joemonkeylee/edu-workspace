@@ -6,7 +6,7 @@ import { adminDeleteAssignment, adminDeleteAssignmentsBatch, adminGetAssignments
 import { formatAssignmentTitle } from '../../utils/assignment';
 import { useConfirm } from '../ConfirmDialog';
 import {
-  gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
+  gradeBadge, hasIssue, parseGradeIssues, issueChipClass,
 } from '../../utils/gradeResult';
 import { useAuthStore } from '../../store/authStore';
 
@@ -301,7 +301,7 @@ export default function AssignmentsTable() {
                                 </span>
                                 <StatusBadge status={item.status} gradeResult={item.gradeResult} />
                                 {hasIssue(item) && parseGradeIssues(item.gradeIssues).map((tag) => (
-                                  <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
+                                  <span key={tag} className={`rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
                                 ))}
                                 {item.pages?.length > 0 && (
                                   <span className="text-xs text-muted-foreground">第 {item.pages.join('、')} 页</span>

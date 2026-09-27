@@ -7,7 +7,7 @@ import {
 } from '../api/pdfClient';
 import { formatAssignmentTitle } from '../../utils/assignment';
 import {
-  gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
+  gradeBadge, hasIssue, parseGradeIssues, issueChipClass,
 } from '../../utils/gradeResult';
 import { toast } from 'sonner';
 
@@ -140,8 +140,8 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                 }`}
               />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate text-xs font-medium text-foreground">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
                     {formatAssignmentTitle(a.title) || `作业 #${a.id}`}
                   </span>
                   <span
@@ -155,17 +155,12 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                     {badge && <CheckCircle2 size={9} />}
                     {badge ? badge.label : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
                   </span>
+                  {issues.map((tag) => (
+                    <span key={tag} className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
+                  ))}
                 </div>
-                {/* 有问题的作业把问题直接铺在列表里，学生不用逐个点开 */}
-                {hasIssue(a) && (issues.length > 0 || a.gradeComment) && (
-                  <div className="mt-1 flex flex-wrap items-center gap-1">
-                    {issues.map((tag) => (
-                      <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
-                    ))}
-                    {a.gradeComment && (
-                      <span className="truncate text-[10px] text-muted-foreground">备注：{a.gradeComment}</span>
-                    )}
-                  </div>
+                {hasIssue(a) && a.gradeComment && (
+                  <div className="mt-0.5 truncate text-[10px] text-muted-foreground">备注：{a.gradeComment}</div>
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="flex items-center gap-0.5">

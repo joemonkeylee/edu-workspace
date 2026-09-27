@@ -81,8 +81,8 @@ export default function GradeResultDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] w-full max-w-md gap-4 overflow-y-auto">
-        <DialogHeader className="text-left">
+      <DialogContent className="flex max-h-[85vh] w-full max-w-md flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="px-6 pb-2 pt-6 text-left">
           <DialogTitle>批改结果</DialogTitle>
           <DialogDescription className="truncate">
             {assignmentTitle ? `「${assignmentTitle}」` : '本次作业'}
@@ -90,113 +90,115 @@ export default function GradeResultDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setResult('perfect')}
-            className={cn(
-              'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition',
-              result === 'perfect'
-                ? 'border-green-500 bg-green-50 dark:bg-green-500/10'
-                : 'border-border hover:border-green-400/60 hover:bg-muted/50',
-            )}
-          >
-            <span className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
-              <CheckCircle2 size={15} /> 全对
-            </span>
-            <span className="text-[11px] text-muted-foreground">全部正确，学生无需处理</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setResult('issue')}
-            className={cn(
-              'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition',
-              result === 'issue'
-                ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10'
-                : 'border-border hover:border-amber-400/60 hover:bg-muted/50',
-            )}
-          >
-            <span className="flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-500">
-              <AlertTriangle size={15} /> 有问题
-            </span>
-            <span className="text-[11px] text-muted-foreground">需要学生订正或补做</span>
-          </button>
-        </div>
-
-        {result === 'issue' && (
-          <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-foreground">常见问题（可多选）</span>
-              <span className="text-[11px] text-muted-foreground">已选 {issues.length} 项</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {GRADE_ISSUE_PRESETS.map((label) => {
-                const active = issues.includes(label);
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => toggleIssue(label)}
-                    className={cn(
-                      'rounded-full border px-2.5 py-1 text-[11px] transition',
-                      active
-                        ? 'border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                        : 'border-border text-muted-foreground hover:border-amber-400/60 hover:text-foreground',
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-              {issues
-                .filter((i) => !GRADE_ISSUE_PRESETS.includes(i))
-                .map((label) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center gap-1 rounded-full border border-amber-500 bg-amber-500/15 px-2.5 py-1 text-[11px] text-amber-700 dark:text-amber-300"
-                  >
-                    {label}
-                    <button type="button" onClick={() => toggleIssue(label)} title="移除">
-                      <X size={10} />
-                    </button>
-                  </span>
-                ))}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <input
-                value={custom}
-                onChange={(e) => setCustom(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomIssue(); } }}
-                placeholder="其他问题，回车添加"
-                className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={addCustomIssue}
-                disabled={!custom.trim()}
-                title="添加"
-              >
-                <Plus size={13} />
-              </Button>
-            </div>
+        <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-6 py-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setResult('perfect')}
+              className={cn(
+                'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition',
+                result === 'perfect'
+                  ? 'border-green-500 bg-green-50 dark:bg-green-500/10'
+                  : 'border-border hover:border-green-400/60 hover:bg-muted/50',
+              )}
+            >
+              <span className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
+                <CheckCircle2 size={15} /> 全对
+              </span>
+              <span className="text-[11px] text-muted-foreground">全部正确，学生无需处理</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setResult('issue')}
+              className={cn(
+                'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition',
+                result === 'issue'
+                  ? 'border-amber-500 bg-amber-50 dark:bg-amber-500/10'
+                  : 'border-border hover:border-amber-400/60 hover:bg-muted/50',
+              )}
+            >
+              <span className="flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-500">
+                <AlertTriangle size={15} /> 有问题
+              </span>
+              <span className="text-[11px] text-muted-foreground">需要学生订正或补做</span>
+            </button>
           </div>
-        )}
 
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium text-foreground">备注（可选）</span>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value.slice(0, 500))}
-            rows={3}
-            placeholder="写给学生的一句话，例如：第 3 题再算一遍"
-            className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+          {result === 'issue' && (
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-foreground">常见问题（可多选）</span>
+                <span className="text-[11px] text-muted-foreground">已选 {issues.length} 项</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {GRADE_ISSUE_PRESETS.map((label) => {
+                  const active = issues.includes(label);
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => toggleIssue(label)}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-[11px] transition',
+                        active
+                          ? 'border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                          : 'border-border text-muted-foreground hover:border-amber-400/60 hover:text-foreground',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                {issues
+                  .filter((i) => !GRADE_ISSUE_PRESETS.includes(i))
+                  .map((label) => (
+                    <span
+                      key={label}
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-500 bg-amber-500/15 px-2.5 py-1 text-[11px] text-amber-700 dark:text-amber-300"
+                    >
+                      {label}
+                      <button type="button" onClick={() => toggleIssue(label)} title="移除">
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={custom}
+                  onChange={(e) => setCustom(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomIssue(); } }}
+                  placeholder="其他问题，回车添加"
+                  className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={addCustomIssue}
+                  disabled={!custom.trim()}
+                  title="添加"
+                >
+                  <Plus size={13} />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium text-foreground">备注（可选）</span>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value.slice(0, 500))}
+              rows={3}
+              placeholder="写给学生的一句话，例如：第 3 题再算一遍"
+              className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:justify-end">
+        <DialogFooter className="gap-2 px-6 pb-6 pt-3 sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             取消
           </Button>

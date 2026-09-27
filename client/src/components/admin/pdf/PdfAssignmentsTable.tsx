@@ -5,7 +5,7 @@ import { useConfirm } from '../../ConfirmDialog';
 import { useAuthStore } from '../../../store/authStore';
 import { adminListPdfAssignments, adminDeletePdfAssignment, adminDeletePdfAssignmentsBatch } from '../../../pdf/api/pdfClient';
 import { formatAssignmentTitle } from '../../../utils/assignment';
-import { gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS } from '../../../utils/gradeResult';
+import { gradeBadge, hasIssue, parseGradeIssues, issueChipClass } from '../../../utils/gradeResult';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false });
@@ -289,7 +289,7 @@ export default function PdfAssignmentsTable() {
                                 </span>
                                 <StatusBadge status={item.status} gradeResult={item.gradeResult} />
                                 {hasIssue(item) && parseGradeIssues(item.gradeIssues).map((tag: string) => (
-                                  <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
+                                  <span key={tag} className={`rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
                                 ))}
                                 {item.pages?.length > 0 && (
                                   <span className="text-xs text-muted-foreground">第 {item.pages.join('、')} 页</span>

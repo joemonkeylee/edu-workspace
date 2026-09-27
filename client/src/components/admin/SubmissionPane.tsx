@@ -10,7 +10,7 @@ import {
   SUBMISSION_PAGE_SIZES, usePageSizeStore,
 } from '../../store/pageSizeStore';
 import {
-  gradeBadge, hasIssue, parseGradeIssues, GRADE_ISSUE_CHIP_CLASS,
+  gradeBadge, hasIssue, parseGradeIssues, issueChipClass,
 } from '../../utils/gradeResult';
 
 /**
@@ -264,21 +264,17 @@ export default function SubmissionPane({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate text-xs font-medium text-foreground">{title}</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{title}</span>
                       <span className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${badge ? badge.className : meta.badge}`}>
                         {badge ? badge.label : meta.label}
                       </span>
+                      {issues.map((tag) => (
+                        <span key={tag} className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
+                      ))}
                     </div>
-                    {hasIssue(row) && (issues.length > 0 || row.gradeComment) && (
-                      <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                        {issues.map((tag) => (
-                          <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
-                        ))}
-                        {row.gradeComment && (
-                          <span className="truncate text-[10px] text-muted-foreground">备注：{row.gradeComment}</span>
-                        )}
-                      </div>
+                    {hasIssue(row) && row.gradeComment && (
+                      <div className="mt-0.5 truncate text-[10px] text-muted-foreground">备注：{row.gradeComment}</div>
                     )}
                     <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="flex min-w-0 items-center gap-1">

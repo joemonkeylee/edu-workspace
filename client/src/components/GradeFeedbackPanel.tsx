@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react';
 import { formatAssignmentTitle } from '../utils/assignment';
 import {
-  GRADE_ISSUE_CHIP_CLASS, gradeBadge, hasIssue, parseGradeIssues,
+  gradeBadge, hasIssue, parseGradeIssues, issueChipClass,
 } from '../utils/gradeResult';
 import type { SubRow } from './admin/SubmissionPane';
 
@@ -118,25 +118,21 @@ export default function GradeFeedbackPanel({
                   {issue ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="truncate text-xs font-medium text-foreground">{title}</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{title}</span>
                     <span className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${badge.className}`}>
                       {badge.label}
                     </span>
+                    {tags.map((tag) => (
+                      <span key={tag} className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${issueChipClass(tag)}`}>{tag}</span>
+                    ))}
                     <span className="flex-shrink-0 rounded bg-muted px-1 py-px text-[10px] text-muted-foreground">
                       {row.kind === 'pdf' ? 'PDF' : '书籍'}
                     </span>
                   </div>
-                  {(tags.length > 0 || row.gradeComment) && (
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                      {tags.map((tag) => (
-                        <span key={tag} className={GRADE_ISSUE_CHIP_CLASS}>{tag}</span>
-                      ))}
-                      {row.gradeComment && (
-                        <span className="truncate text-[10px] text-muted-foreground">
-                          老师备注：{row.gradeComment}
-                        </span>
-                      )}
+                  {row.gradeComment && (
+                    <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                      老师备注：{row.gradeComment}
                     </div>
                   )}
                   <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
