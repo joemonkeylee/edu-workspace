@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, XCircle } from 'lucide-react';
 import { formatAssignmentTitle } from '../utils/assignment';
 import {
   gradeBadge, hasIssue, parseGradeIssues, issueChipClass,
@@ -104,9 +104,11 @@ export default function GradeFeedbackPanel({
         <div className="divide-y divide-border">
           {list.map((row) => {
             const badge = gradeBadge(row) || { label: '已批改', className: 'bg-muted text-muted-foreground' };
-            const issue = hasIssue(row);
             const tags = parseGradeIssues(row.gradeIssues);
             const title = formatAssignmentTitle(row.title) || `作业 #${row.id}`;
+            const isIssue = row.gradeResult === 'issue';
+            const isWrong = row.gradeResult === 'wrong';
+            const iconColor = isIssue ? 'text-amber-500' : isWrong ? 'text-red-500' : 'text-green-500';
             return (
               <div
                 key={`${row.kind}-${row.id}`}
@@ -114,8 +116,8 @@ export default function GradeFeedbackPanel({
                 className="group flex cursor-pointer items-center gap-2.5 px-4 py-2 transition hover:bg-muted"
                 title="点击打开这本书并定位到该作业"
               >
-                <span className={`flex-shrink-0 ${issue ? 'text-amber-500' : 'text-green-500'}`}>
-                  {issue ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
+                <span className={`flex-shrink-0 ${iconColor}`}>
+                  {isIssue ? <AlertTriangle size={15} /> : isWrong ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -123,6 +125,9 @@ export default function GradeFeedbackPanel({
                     <span className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${badge.className}`}>
                       {badge.label}
                     </span>
+                    {row.gradeResult === 'issue' && tags.map((tag) => (
+                      <span key={tag} className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                    ))}
                     <span className="flex-shrink-0 rounded bg-muted px-1 py-px text-[10px] text-muted-foreground">
                       {row.kind === 'pdf' ? 'PDF' : '书籍'}
                     </span>
@@ -133,14 +138,9 @@ export default function GradeFeedbackPanel({
                     {' · '}
                     {formatTime(row.gradedAt, row.updatedAt)}
                   </div>
-                  {(tags.length > 0 || row.gradeComment) && (
+                  {row.gradeResult === 'issue' && row.gradeComment && (
                     <div className="mt-1 flex flex-wrap items-center gap-1">
-                      {tags.map((tag) => (
-                        <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
-                      ))}
-                      {row.gradeComment && (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{row.gradeComment}</span>
-                      )}
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{row.gradeComment}</span>
                     </div>
                   )}
                 </div>

@@ -87,6 +87,8 @@ export type ReviewProgress = {
   total: number;
   /** 练过但没错过（status==='none'） */
   ungraded: number;
+  /** 从来没打过照面的（既没有状态记录，也没进过任何池） */
+  untouched: number;
   wrong: number;
   standby: number;
   mastered: number;

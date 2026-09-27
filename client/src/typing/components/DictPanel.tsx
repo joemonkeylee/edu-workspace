@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { DICT_CATEGORIES, DICT_GROUPS, DICT_MAP, DICTIONARIES, CATEGORY_DIFFICULTY, CATEGORY_ORIGINAL_NAME, searchDicts } from '../dictionaries';
 import { ALL_DICT_TAB, useTypingSettings } from '../settingsStore';
+import { useCategoryProgress, useCategoryUnitProgress } from '../../review/word.ts';
 import type { DictSortMode } from '../types';
 
 type SortMode = DictSortMode;
@@ -56,6 +57,15 @@ export default function DictPanel({ value, onChange }: Props) {
   const sortMode = dictSortMode;
 
   const isSearching = dictKeyword.trim().length > 0;
+
+  /**
+   * 书 / 分类的掌握度。
+   * 「全部词库」和搜索状态下不计算 —— 那需要一次性拉全部分类索引，
+   * 索引按分类分片（单份几百 KB），按需下载才划算。
+   */
+  const activeCategory = isSearching || dictTab === ALL_DICT_TAB ? null : dictTab;
+  const unitProgress = useCategoryUnitProgress(activeCategory);
+  const categoryProgress = useCategoryProgress(activeCategory);
 
   // 搜索时强制切回「全部」，跨分类搜索
   useEffect(() => {
@@ -188,7 +198,7 @@ export default function DictPanel({ value, onChange }: Props) {
               title="全部词库"
               className="h-7 w-[5rem] rounded-md bg-transparent px-2 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none"
             >
-              <span className="mr-1 inline-block h-2 w-2 rounded-full border border-muted-foreground/30 bg-muted align-middle" />
+              <span className="mr-1 inline-block h-2 w-2 rounded-full bg-muted-foreground/60 align-middle" />
               全部词库
             </TabsTrigger>
             {DICT_CATEGORIES.map((c) => (
@@ -219,6 +229,8 @@ export default function DictPanel({ value, onChange }: Props) {
               <ul className="space-y-0.5">
                 {visibleItems.map((d) => {
                   const selected = d.id === value;
+                  const prog = unitProgress.data?.get(d.id) ?? null;
+                  const pct = prog ? Math.round(prog.masteredRate * 100) : 0;
                   return (
                     <li key={d.id}>
                       <button
@@ -246,6 +258,27 @@ export default function DictPanel({ value, onChange }: Props) {
                               )}
                             >
                               {d.description}
+                            </span>
+                          )}
+                          {prog && (
+                            <span className="mt-1 flex items-center gap-1.5">
+                              <span
+                                className="h-1 w-16 overflow-hidden rounded-full bg-muted"
+                                title={`掌握 ${prog.standby + prog.mastered} / 去重后 ${prog.total} 词`}
+                              >
+                                <span
+                                  className="block h-full rounded-full bg-emerald-500 transition-all"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </span>
+                              <span
+                                className={cn(
+                                  'text-[10px] tabular-nums',
+                                  selected ? 'text-primary/80' : 'text-muted-foreground',
+                                )}
+                              >
+                                {pct}%
+                              </span>
                             </span>
                           )}
                         </span>
@@ -285,7 +318,18 @@ export default function DictPanel({ value, onChange }: Props) {
           ) : dictTab === ALL_DICT_TAB ? (
             <>共 {DICTIONARIES.length} 个词库</>
           ) : (
-            <>{dictTab} · {visibleItems.length} 个</>
+            <>
+              {dictTab} · {visibleItems.length} 本
+              {categoryProgress.data && (
+                <>
+                  {' '}
+                  · 掌握 {(categoryProgress.data.masteredRate * 100).toFixed(1)}%
+                  <span className="ml-1 text-[10px]">
+                    （并集 {categoryProgress.data.total} 词）
+                  </span>
+                </>
+              )}
+            </>
           )}
         </span>
 

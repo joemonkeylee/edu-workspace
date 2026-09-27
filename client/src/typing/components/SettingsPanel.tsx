@@ -231,6 +231,119 @@ export default function SettingsPanel() {
           </Row>
         </Group>
 
+        <Group title="复习轮转">
+          <Row label="连答对几次出错题池" hint={`错题 → 备用。当前 ${s.reviewPassCount} 次`}>
+            <Select
+              value={String(s.reviewPassCount)}
+              onValueChange={(v) => update({ reviewPassCount: Number(v) })}
+            >
+              <SelectTrigger className="h-8 w-[5rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {['1', '2', '3', '5'].map((n) => (
+                  <SelectItem key={n} value={n}>{n} 次</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="抽查错几次退回错题" hint={`备用 → 错题。累计错误达到才退，当前 ${s.spotCheckFailLimit} 次`}>
+            <Select
+              value={String(s.spotCheckFailLimit)}
+              onValueChange={(v) => update({ spotCheckFailLimit: Number(v) })}
+            >
+              <SelectTrigger className="h-8 w-[5rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {['1', '2', '3'].map((n) => (
+                  <SelectItem key={n} value={n}>{n} 次</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="抽查通过几次毕业" hint="0 = 永不毕业，永远留在备用池被抽查">
+            <Select
+              value={String(s.graduateAfterCheckPass)}
+              onValueChange={(v) => update({ graduateAfterCheckPass: Number(v) })}
+            >
+              <SelectTrigger className="h-8 w-[5rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  ['0', '永不毕业'],
+                  ['2', '2 次'],
+                  ['3', '3 次'],
+                  ['5', '5 次'],
+                ].map(([v, label]) => (
+                  <SelectItem key={v} value={v}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="主线混入备用词" hint={`每章按比例穿插备用词做抽查，当前 ${Math.round(s.spotCheckMixRatio * 100)}%`}>
+            <Select
+              value={String(s.spotCheckMixRatio)}
+              onValueChange={(v) => update({ spotCheckMixRatio: Number(v) })}
+            >
+              <SelectTrigger className="h-8 w-[5rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  ['0', '不混入'],
+                  ['0.1', '10%'],
+                  ['0.2', '20%'],
+                  ['0.3', '30%'],
+                ].map(([v, label]) => (
+                  <SelectItem key={v} value={v}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="混入位置" hint="穿插 = 隔几个词插一个，间隔记忆效果更好">
+            <Select
+              value={s.spotCheckMixMode}
+              onValueChange={(v) => update({ spotCheckMixMode: v as 'tail' | 'interleave' })}
+            >
+              <SelectTrigger className="h-8 w-[5rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="interleave">穿插</SelectItem>
+                <SelectItem value="tail">章末</SelectItem>
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="手动「认识了」的去处" hint="放进备用池仍会被抽查验证；直接毕业则归档">
+            <Select
+              value={s.manualKnowTarget}
+              onValueChange={(v) => update({ manualKnowTarget: v as 'standby' | 'mastered' })}
+            >
+              <SelectTrigger className="h-8 w-[5.5rem]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standby">备用池</SelectItem>
+                <SelectItem value="mastered">毕业</SelectItem>
+              </SelectContent>
+            </Select>
+          </Row>
+
+          <Row label="毕业不免疫" hint="主线练习把已毕业的词打错时，仍然拽回错题池">
+            <Toggle
+              checked={s.masteredWrongReturnsToPool}
+              onChange={(v) => update({ masteredWrongReturnsToPool: v })}
+            />
+          </Row>
+        </Group>
+
         <Group title="显示">
           <Row label={`字号（${s.fontSize}px）`} hint="音标与释义按同一比例联动">
             <Slider

@@ -2,21 +2,21 @@
  * 批改结论的共享定义。
  *
  * 图片模式（/book/:id）与 PDF 原生模式（/pdf/book/:id）是两套互不相干的
- * 作业表与路由，但「全对 / 有问题」的取值、预设问题、展示文案必须一致，
- * 所以收敛到这一处，两侧共用。
+ * 作业表与路由，但「全正确 / 有错误 / 有问题」的取值、预设问题、展示文案
+ * 必须一致，所以收敛到这一处，两侧共用。
  */
 
-export type GradeResult = '' | 'perfect' | 'issue';
+export type GradeResult = '' | 'perfect' | 'wrong' | 'issue';
 
 export interface GradeResultPayload {
-  result: 'perfect' | 'issue';
+  result: 'perfect' | 'wrong' | 'issue';
   issues: string[];
   comment: string;
 }
 
-/** 「有问题」时教师最常选的几类，做成一键勾选，避免每次手打 */
+/** 「有问题」时教师最常选的几类，做成一键勾选，避免每次手打。
+ *  「有错题」已升级为独立状态（有错误），不再出现在问题预设里。 */
 export const GRADE_ISSUE_PRESETS = [
-  '有错题',
   '有题目没有写',
   '没做完',
   '书写潦草',
@@ -46,8 +46,11 @@ export function gradeBadge(a: { status?: string; gradeResult?: string | null }):
   if (a.gradeResult === 'issue') {
     return { label: '有问题', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' };
   }
+  if (a.gradeResult === 'wrong') {
+    return { label: '有错误', className: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300' };
+  }
   if (a.gradeResult === 'perfect') {
-    return { label: '全对', className: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300' };
+    return { label: '全正确', className: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300' };
   }
   return { label: '已批改', className: 'bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400' };
 }
@@ -58,7 +61,7 @@ export const GRADE_ISSUE_CHIP_CLASS =
 
 /**
  * 按问题类型分配不同颜色，多选时一眼可区分。
- * 「有错题」用红色最醒目，其余预设各占一色，自定义问题回退琥珀色。
+ * 「有错题」保留红色映射以兼容历史数据（现已升级为独立状态「有错误」）。
  */
 const ISSUE_COLOR_MAP: Record<string, string> = {
   '有错题': 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',

@@ -83,6 +83,22 @@ export type TypingSettings = {
   isPhoneticHidden: boolean;
   /** 盲打/听写模式：隐藏全部或部分字母，默认 off（完整显示） */
   blindMode: BlindMode;
+
+  // ── review：错题 / 备用 / 毕业三池轮转 ──
+  /** 错题 → 备用：需要连续答对几次 */
+  reviewPassCount: number;
+  /** 备用 → 错题：抽查累计答错几次才退（错一次只是扣分） */
+  spotCheckFailLimit: number;
+  /** 备用 → 毕业：连续通过几次抽查；0 = 永不毕业，永远留在备用池被抽查 */
+  graduateAfterCheckPass: number;
+  /** 主线练习里混入备用词的比例 */
+  spotCheckMixRatio: number;
+  /** 混入方式：tail 塞在章节末尾 / interleave 穿插在章节中间 */
+  spotCheckMixMode: 'tail' | 'interleave';
+  /** 手动「认识了」把词移到备用（仍会被抽查）还是直接毕业归档 */
+  manualKnowTarget: 'standby' | 'mastered';
+  /** 毕业的词在主线练习答错时是否仍然拽回错题池 */
+  masteredWrongReturnsToPool: boolean;
 };
 
 export const DEFAULT_TYPING_SETTINGS: TypingSettings = {
@@ -101,4 +117,12 @@ export const DEFAULT_TYPING_SETTINGS: TypingSettings = {
   blindMode: 'off',
   loopTimes: 1,
   dailyGoalWords: 20,
+
+  reviewPassCount: 2,
+  spotCheckFailLimit: 2,
+  graduateAfterCheckPass: 3,
+  spotCheckMixRatio: 0.2,
+  spotCheckMixMode: 'interleave',
+  manualKnowTarget: 'standby',
+  masteredWrongReturnsToPool: true,
 };

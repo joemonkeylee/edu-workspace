@@ -10,12 +10,13 @@
  * 幂等：每本书先删旧 BookVideo 再重建，可重复执行。
  */
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { scanVideos, matchVideosToPdfs, toRelativePath } from '../src/services/videoMatcher';
 
 const ROOT_CATEGORY = '朱涛数学2026';
-const RESOURCE_ROOT = '/Users/lizhen/Downloads/朱涛数学2026';
+const RESOURCE_ROOT = process.env.RESOURCE_ROOT || path.join(os.homedir(), 'Downloads', '朱涛数学2026');
 
 async function main() {
   const prisma = new PrismaClient();

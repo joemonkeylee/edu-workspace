@@ -98,9 +98,11 @@ export default function PdfAssignmentMode({
     ? ''
     : assignment?.gradeResult === 'issue'
       ? '·有问题'
-      : assignment?.gradeResult === 'perfect'
-        ? '·全对'
-        : '';
+      : assignment?.gradeResult === 'wrong'
+        ? '·有错误'
+        : assignment?.gradeResult === 'perfect'
+          ? '·全正确'
+          : '';
 
   // ── 移动端手势（双指捏合缩放 / 拖拽平移） ──────────────────
   const [gestureScale, setGestureScale] = useState(1);
@@ -453,7 +455,11 @@ export default function PdfAssignmentMode({
         gradeIssues: payload.issues,
         gradeComment: payload.comment,
       });
-      toast.success(payload.result === 'issue' ? '已标记：有问题' : '已标记：全对');
+      toast.success(
+        payload.result === 'issue' ? '已标记：有问题'
+          : payload.result === 'wrong' ? '已标记：有错误'
+          : '已标记：全正确'
+      );
       setGradeOpen(false);
       onAssignmentUpdate();
     } catch (e: any) {
@@ -644,7 +650,7 @@ export default function PdfAssignmentMode({
             <span className="truncate text-xs text-white/50">
               {renderTextByCharacter(formatAssignmentTitle(assignment.title) || `作业 #${assignment.id}`, chineseRotation)}
               {isGraded && (
-                <span className={assignment?.gradeResult === 'issue' ? 'text-amber-400' : 'text-green-400'}>
+                <span className={assignment?.gradeResult === 'issue' ? 'text-amber-400' : assignment?.gradeResult === 'wrong' ? 'text-red-400' : 'text-green-400'}>
                   {' '}{renderTextByCharacter(`(已批改${gradeSuffix})`, chineseRotation)}
                 </span>
               )}
@@ -874,7 +880,7 @@ export default function PdfAssignmentMode({
             <FileText size={16} />
             {isGraded ? (
               <>
-                <span className={assignment?.gradeResult === 'issue' ? 'text-amber-400' : 'text-green-400'}>
+                <span className={assignment?.gradeResult === 'issue' ? 'text-amber-400' : assignment?.gradeResult === 'wrong' ? 'text-red-400' : 'text-green-400'}>
                   {renderTextByCharacter(`已批改${gradeSuffix}，笔迹只读`, chineseRotation)}
                 </span>
                 {!isRotated && gradedIssues.length > 0 && (

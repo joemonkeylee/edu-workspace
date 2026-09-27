@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   BarChart3,
+  BookMarked,
   ChevronLeft,
   ChevronRight,
   Keyboard,
@@ -8,7 +9,6 @@ import {
   Play,
   Settings2,
   SkipForward,
-  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -19,13 +19,17 @@ import { playCorrectSound, playKeySound, playWrongSound } from './sounds';
 import { playPronunciation } from './pronunciation';
 import { useTypingSettings } from './settingsStore';
 import { chapterCountOf, shuffle, sliceChapter, useDictWords } from './useDictWords';
-import { buildReviewWords, fetchWrongWords, syncChapterRecord, syncWordLogs } from './records';
+import { syncChapterRecord, syncWordLogs } from './records';
+import { buildMixedQueue, pickSpotCheck } from '../review/queue.ts';
+import { useDictProgress, useReviewCounts, useReviewHydrate, useReviewPool, useWordStore } from '../review/word.ts';
+import type { ReviewInput, ReviewMode } from '../review/types.ts';
 import type { Word } from './types';
 import WordDisplay from './components/WordDisplay';
 import StatsBar from './components/StatsBar';
 import ChapterResult from './components/ChapterResult';
 import SettingsPanel from './components/SettingsPanel';
 import DictPanel from './components/DictPanel';
+import ReviewPanel from './components/ReviewPanel';
 import StatsView from './components/stats/StatsView';
 
 /** 单章完成后停留一下再进入下一个词，让用户看到完整的绿色单词 */
@@ -46,12 +50,27 @@ export default function TypingHome() {
   /** 统计视图首次打开后再挂载，之后保留（避免来回切换重复请求） */
   const [statsMounted, setStatsMounted] = useState(false);
 
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
+  /** 本次练习/复习/抽查的场景，决定这批结果怎么计入三池 */
+  const [reviewMode, setReviewMode] = useState<ReviewMode>('review');
+
   useEffect(() => {
     if (view === 'stats') setStatsMounted(true);
   }, [view]);
 
   const { words, loading, error } = useDictWords(dictId);
   const [state, dispatch] = useReducer(typingReducer, undefined, () => createInitialState([]));
+
+  // ── 复习引擎：掌握态 ───────────────────────────────────────────
+  useReviewHydrate();
+  const wordStore = useWordStore();
+  const dictProgress = useDictProgress(dictId);
+  const reviewCounts = useReviewCounts();
+  const standbyPool = useReviewPool('standby');
+  /** 当前这批结果所属的会话，以及其中哪些词是被混进来的抽查词 */
+  const sessionRef = useRef<{ sessionId: string; injected: Set<string> }>({ sessionId: '', injected: new Set() });
+  /** 本次会话里偷看过答案的词：这些词的「答对」不计入晋级次数 */
+  const peekedRef = useRef<Set<string>>(new Set());
 
   const isReview = reviewWords !== null;
   const savedRef = useRef(false);
@@ -63,10 +82,62 @@ export default function TypingHome() {
   const pronunciationTypeRef = useRef(settings.pronunciationType);
   pronunciationTypeRef.current = settings.pronunciationType;
 
-  const chapterWords = useMemo(() => {
-    const base = isReview ? reviewWords.slice(0, CHAPTER_LENGTH) : words ? sliceChapter(words, chapter) : [];
-    return settings.isShuffle ? shuffle(base) : base;
-  }, [words, chapter, isReview, reviewWords, settings.isShuffle]);
+  /**
+   * 练习队列。
+   * 主线章节里会按 spotCheckMixRatio 混入备用池的词（抽查），
+   * 混进来的词在结果回写时标记成 mode='spotcheck'，走另一套计数。
+   */
+  const queueInfo = useMemo(() => {
+    const sessionId = `${dictId}:${chapter}:${isReview ? 'r' : 'p'}:${Date.now()}`;
+    const prepared = (list: Word[]) => (settings.isShuffle ? shuffle(list) : list);
+
+    if (isReview) {
+      return { queue: prepared(reviewWords).slice(0, CHAPTER_LENGTH), injected: new Set<string>(), sessionId };
+    }
+
+    const base = prepared(words ? sliceChapter(words, chapter) : []);
+    if (base.length === 0 || settings.spotCheckMixRatio <= 0 || standbyPool.length === 0) {
+      return { queue: base, injected: new Set<string>(), sessionId };
+    }
+
+    // 备用词要还原成可练习的词条：优先用当前词库里的释义与音标
+    const byName = new Map<string, Word>();
+    for (const w of words ?? []) byName.set(w.name.trim().toLowerCase(), w);
+    const candidates = pickSpotCheck(standbyPool, {
+      count: Math.max(2, Math.round(base.length * settings.spotCheckMixRatio) * 2),
+      lastCheckAtOf: (s) => s.lastCheckAt,
+    });
+    const standbyWords = candidates.map(
+      (s) => byName.get(s.key) ?? { name: s.key, trans: [], usphone: '', ukphone: '' },
+    );
+
+    const mixed = buildMixedQueue({
+      main: base,
+      standby: standbyWords,
+      keyOf: (w) => w.name.trim().toLowerCase(),
+      ratio: settings.spotCheckMixRatio,
+      mode: settings.spotCheckMixMode,
+    });
+    return { sessionId, queue: mixed.queue, injected: mixed.injectedKeys };
+  }, [
+    words,
+    chapter,
+    isReview,
+    reviewWords,
+    standbyPool,
+    settings.isShuffle,
+    settings.spotCheckMixRatio,
+    settings.spotCheckMixMode,
+    dictId,
+  ]);
+
+  const chapterWords = queueInfo.queue;
+
+  // 换一批练习就换一个会话 id：同一会话内重复命中同一个词只计一次
+  useEffect(() => {
+    sessionRef.current = { sessionId: queueInfo.sessionId, injected: queueInfo.injected };
+    peekedRef.current = new Set();
+  }, [queueInfo]);
 
   const totalChapters = useMemo(
     () => (words ? chapterCountOf(words.length) : 1),
@@ -86,6 +157,14 @@ export default function TypingHome() {
   useEffect(() => {
     setShowAnswer(false);
   }, [state.chapter.index, state.chapter.loopCount]);
+
+  // 主动看过答案的词，本次答对不计入晋级次数
+  useEffect(() => {
+    if (!showAnswer) return;
+    const w = currentWord(state);
+    if (w) peekedRef.current.add(w.name.trim().toLowerCase());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAnswer]);
 
   // ── 计时 ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -139,7 +218,7 @@ export default function TypingHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.chapter.index, state.chapter.loopCount, state.chapter.isTyping]);
 
-  // ── 章节完成：上报记录 + 弹出结果 ───────────────────────────────
+  // ── 章节完成：上报记录 + 写入掌握态 + 弹出结果 ─────────────────
   useEffect(() => {
     if (!state.chapter.isFinished || savedRef.current) {
       if (state.chapter.isFinished) setResultOpen(true);
@@ -154,6 +233,31 @@ export default function TypingHome() {
       wrongCount: state.chapter.wrongCount,
       wordCount: state.chapter.wordCount,
     };
+
+    // 把这一章每个词的结果翻译成复习引擎的输入，三池随之流转动
+    const { sessionId, injected } = sessionRef.current;
+    const inputs: ReviewInput[] = state.wordLogs.map((log) => {
+      const key = log.word.trim().toLowerCase();
+      return {
+        key,
+        ok: log.wrongCount === 0,
+        sessionId,
+        unitId: dictId,
+        mode: injected.has(key) ? 'spotcheck' : isReview ? reviewMode : 'practice',
+        mistakes: log.mistakes,
+        // 看过答案的「答对」不计入晋级，但也不算错
+        peeked: log.wrongCount === 0 && peekedRef.current.has(key),
+      };
+    });
+    const summary = wordStore.applyResults(inputs, settings);
+
+    if (summary.promotedToStandby.length > 0 || summary.demotedToWrong.length > 0 || summary.promotedToMastered.length > 0) {
+      const parts: string[] = [];
+      if (summary.promotedToStandby.length > 0) parts.push(`${summary.promotedToStandby.length} 个进入备用`);
+      if (summary.promotedToMastered.length > 0) parts.push(`${summary.promotedToMastered.length} 个毕业`);
+      if (summary.demotedToWrong.length > 0) parts.push(`${summary.demotedToWrong.length} 个回到错题`);
+      toast.success(`进度已更新：${parts.join('、')}`);
+    }
 
     void (async () => {
       try {
@@ -259,19 +363,12 @@ export default function TypingHome() {
     dispatch({ type: 'restart' });
   };
 
-  const handleStartReview = async () => {
-    try {
-      const wrong = await fetchWrongWords(dictId, CHAPTER_LENGTH);
-      if (wrong.length === 0) {
-        toast.info('这个词库还没有错词，先练一章吧');
-        return;
-      }
-      // 释义从当前词库回填，保证复习时也有中文提示
-      setReviewWords(buildReviewWords(wrong, words ?? []));
-      toast.success(`已载入 ${wrong.length} 个错词`);
-    } catch {
-      toast.error('错词本加载失败');
-    }
+  const handleLoadPool = (list: Word[], mode: ReviewMode) => {
+    if (list.length === 0) return;
+    setReviewMode(mode);
+    setReviewWords(list);
+    setReviewPanelOpen(false);
+    toast.success(mode === 'spotcheck' ? `抽查 ${list.length} 个备用词` : `复习 ${list.length} 个错词`);
   };
 
   const exitReview = () => setReviewWords(null);
@@ -312,6 +409,30 @@ export default function TypingHome() {
           ))}
         </div>
 
+        {/* 本书掌握度：分母是这本书去重后的词数，不是原始词条数 */}
+        {view === 'practice' && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">掌握</span>
+            <span className="tabular-nums">
+              {dictProgress.data ? `${(dictProgress.data.masteredRate * 100).toFixed(1)}%` : '—'}
+            </span>
+            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${Math.round((dictProgress.data?.masteredRate ?? 0) * 100)}%` }}
+              />
+            </div>
+            {dictProgress.data && (
+              <span
+                className="hidden tabular-nums md:inline"
+                title={`已接触 ${dictProgress.data.total - dictProgress.data.untouched} / 去重后 ${dictProgress.data.total} 词`}
+              >
+                {dictProgress.data.standby + dictProgress.data.mastered}/{dictProgress.data.total}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* 章节导航与错词复习只在练习视图下有意义 */}
         {view === 'practice' && (
           <div className="flex flex-wrap items-center gap-2">
@@ -347,9 +468,14 @@ export default function TypingHome() {
               </div>
             )}
 
-            <Button variant="outline" size="sm" onClick={handleStartReview}>
-              <Sparkles size={15} className="mr-1.5" />
-              错词复习
+            <Button
+              variant={reviewPanelOpen ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={reviewPanelOpen}
+              onClick={() => setReviewPanelOpen((v) => !v)}
+            >
+              <BookMarked size={15} className="mr-1.5" />
+              错题 {reviewCounts.wrong} · 备用 {reviewCounts.standby}
             </Button>
           </div>
         )}
@@ -391,6 +517,14 @@ export default function TypingHome() {
       <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
         {settings.dictPanelOpen && (
           <DictPanel value={dictId} onChange={handleSelectDict} />
+        )}
+
+        {reviewPanelOpen && (
+          <ReviewPanel
+            sourceWords={words ?? []}
+            onStartPractice={handleLoadPool}
+            onClose={() => setReviewPanelOpen(false)}
+          />
         )}
 
         <div className="relative flex min-h-[16rem] flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-card px-6">
@@ -457,7 +591,7 @@ export default function TypingHome() {
 
           {isReview && (
             <span className="absolute left-3 top-3 rounded-md bg-accent px-2 py-0.5 text-xs text-accent-foreground">
-              错词复习
+              {reviewMode === 'spotcheck' ? '抽查备用词' : '错题复习'}
             </span>
           )}
         </div>

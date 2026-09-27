@@ -300,6 +300,9 @@ export default function AssignmentsTable() {
                                   {formatAssignmentTitle(item.title) || `作业 #${item.id}`}
                                 </span>
                                 <StatusBadge status={item.status} gradeResult={item.gradeResult} />
+                                {item.gradeResult === 'issue' && parseGradeIssues(item.gradeIssues).map((tag) => (
+                                  <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                                ))}
                                 {item.pages?.length > 0 && (
                                   <span className="text-xs text-muted-foreground">第 {item.pages.join('、')} 页</span>
                                 )}
@@ -307,14 +310,9 @@ export default function AssignmentsTable() {
                               <p className="mt-0.5 text-xs text-muted-foreground">
                                 {formatDate(item.createdAt)} · {item._count?.strokes ?? 0} 笔
                               </p>
-                              {(parseGradeIssues(item.gradeIssues).length > 0 || item.gradeComment) && (
+                              {item.gradeResult === 'issue' && item.gradeComment && (
                                 <div className="mt-1 flex flex-wrap items-center gap-1">
-                                  {parseGradeIssues(item.gradeIssues).map((tag) => (
-                                    <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
-                                  ))}
-                                  {item.gradeComment && (
-                                    <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{item.gradeComment}</span>
-                                  )}
+                                  <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{item.gradeComment}</span>
                                 </div>
                               )}
                             </div>

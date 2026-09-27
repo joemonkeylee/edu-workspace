@@ -129,7 +129,7 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
               selectedId === a.id ? 'bg-primary/10' : 'hover:bg-muted'
             }`}
           >
-            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${badge ? (hasIssue(a) ? 'text-amber-500' : 'text-green-500') : isSubmitted ? 'text-blue-500' : isReturned ? 'text-amber-500' : 'text-muted-foreground'}`} />
+            <FileText size={16} className={`mt-0.5 flex-shrink-0 ${badge ? (a.gradeResult === 'issue' ? 'text-amber-500' : a.gradeResult === 'wrong' ? 'text-red-500' : 'text-green-500') : isSubmitted ? 'text-blue-500' : isReturned ? 'text-amber-500' : 'text-muted-foreground'}`} />
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -143,6 +143,9 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                     {badge ? <CheckCircle size={9} /> : null}
                     {badge ? badge.label : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
                   </span>
+                  {a.gradeResult === 'issue' && issues.map((tag) => (
+                    <span key={tag} className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground mt-0.5">
@@ -181,14 +184,9 @@ export default function AssignmentList({ bookId, onSelect, selectedId, onRefresh
                   </span>
                 )}
               </div>
-              {(issues.length > 0 || a.gradeComment) && (
+              {a.gradeResult === 'issue' && a.gradeComment && (
                 <div className="mt-1 flex flex-wrap items-center gap-1">
-                  {issues.map((tag) => (
-                    <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
-                  ))}
-                  {a.gradeComment && (
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{a.gradeComment}</span>
-                  )}
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{a.gradeComment}</span>
                 </div>
               )}
             </div>

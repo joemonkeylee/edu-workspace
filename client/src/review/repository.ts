@@ -1,22 +1,17 @@
 /**
- * 掌握态的持久化：本机 localStorage + 云端双写，沿用项目既有的「本地优先、
- * 云端失败静默降级」约定（AUTH_ENABLED=false 时服务端返回成功但不落库）。
+ * 掌握态的本地持久化。
  *
  * 内存里刻意拆成三个桶，不是为了好看，是为了 localStorage 容量：
  * - active  ：wrong / standby，完整状态对象（数量有限，通常几百到几千）
- * - mastered：只存 key 的数组，毕业的词不需要 streak / mistakes
+ * - mastered：只存 key 的集合，毕业的词不需要 streak / mistakes
  * - ungraded：练过但没错过的词，同样只存 key
  * 全书记载 42,353 个拼写，若每个掌握的词都存完整对象会轻易撑爆配额。
+ *
+ * 本文件不依赖任何网络 / UI，可以直接用 node 跑断言。
  */
 
-import {
-  listReviewItems,
-  saveReviewItems,
-  clearReviewItems,
-  type ReviewItemPayload,
-} from '@/api/client';
-import { emptyItemState } from './engine';
-import type { ReviewDomain, ReviewItemState, ReviewStatus } from './types';
+import { emptyItemState } from './engine.ts';
+import type { ReviewDomain, ReviewItemState, ReviewStatus } from './types.ts';
 
 const STORAGE_KEY = 'review-state-v1';
 const STORAGE_VERSION = 2;
@@ -49,10 +44,9 @@ function sanitizeState(raw: unknown): ReviewItemState | null {
   const r = raw as Record<string, unknown>;
   const key = typeof r.key === 'string' ? r.key : '';
   if (!key) return null;
-  const base = emptyItemState(key);
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
   return {
-    ...base,
+    ...emptyItemState(key),
     key,
     status: (VALID_STATUS.includes(r.status as ReviewStatus) ? r.status : 'wrong') as ReviewStatus,
     reviewStreak: num(r.reviewStreak),
@@ -93,8 +87,7 @@ function writeBlob(blob: SerializedBlob) {
 }
 
 export function readDomain(domain: ReviewDomain): ReviewBuckets {
-  const blob = readBlob();
-  const d = blob.domains[domain];
+  const d = readBlob().domains[domain];
   if (!d) return emptyBuckets();
 
   const active: Record<string, ReviewItemState> = {};
@@ -148,69 +141,7 @@ export function putStates(buckets: ReviewBuckets, states: ReviewItemState[]): Re
 export function lookupState(buckets: ReviewBuckets, key: string): ReviewItemState | undefined {
   const hit = buckets.active[key];
   if (hit) return hit;
-  if (buckets.mastered.has(key)) {
-    const s = emptyItemState(key);
-    s.status = 'mastered';
-    return s;
-  }
-  if (buckets.ungraded.has(key)) {
-    const s = emptyItemState(key);
-    s.status = 'none';
-    return s;
-  }
+  if (buckets.mastered.has(key)) return { ...emptyItemState(key), status: 'mastered' };
+  if (buckets.ungraded.has(key)) return { ...emptyItemState(key), status: 'none' };
   return undefined;
-}
-
-export function toPayload(s: ReviewItemState): ReviewItemPayload {
-  return {
-    key: s.key,
-    status: s.status,
-    reviewStreak: s.reviewStreak,
-    checkStreak: s.checkStreak,
-    checkFailStreak: s.checkFailStreak,
-    wrongTotal: s.wrongTotal,
-    rightTotal: s.rightTotal,
-    firstWrongAt: s.firstWrongAt,
-    lastResultAt: s.lastResultAt,
-    lastCheckAt: s.lastCheckAt,
-    units: s.units,
-    mistakes: s.mistakes,
-    updatedAt: s.updatedAt,
-  };
-}
-
-export function fromPayload(p: ReviewItemPayload): ReviewItemState {
-  return sanitizeState(p) ?? emptyItemState(p.key);
-}
-
-/** 云端拉取：失败返回 null，由调用方决定要不要回落本地 */
-export async function pullFromCloud(domain: ReviewDomain): Promise<ReviewItemState[] | null> {
-  try {
-    const rows = await listReviewItems(domain);
-    return rows.map(fromPayload);
-  } catch {
-    return null;
-  }
-}
-
-/** 云端推送：失败静默，本地已经先落盘 */
-export async function pushToCloud(domain: ReviewDomain, states: ReviewItemState[]): Promise<void> {
-  if (states.length === 0) return;
-  const payload = states.map(toPayload);
-  const MAX_PER_REQUEST = 500;
-  try {
-    for (let i = 0; i < payload.length; i += MAX_PER_REQUEST) {
-      await saveReviewItems(domain, payload.slice(i, i + MAX_PER_REQUEST));
-    }
-  } catch {
-    /* 离线或单机模式：保留本地，下次 hydrate 再带上去 */
-  }
-}
-
-export async function clearCloud(domain: ReviewDomain): Promise<void> {
-  try {
-    await clearReviewItems(domain);
-  } catch {
-    /* ignore */
-  }
 }

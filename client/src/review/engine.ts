@@ -18,7 +18,7 @@ import {
   type ReviewOutcome,
   type ReviewProgress,
   type ReviewTransition,
-} from './types';
+} from './types.ts';
 
 /** 条目键归一化：同一拼写无论大小写、首尾空格都指向同一条状态 */
 export function normalizeItemKey(raw: string): string {
@@ -86,16 +86,17 @@ export function applyResult(
 
   next.units = pushUnit(next.units, input.unitId);
 
-  // 同一会话内重复命中：只认第一次
-  if (base.lastSessionId === input.sessionId) {
-    const touched: ReviewItemState = { ...next, updatedAt: now };
-    return { state: touched, transition: 'dup' };
-  }
-  next.lastSessionId = input.sessionId;
-
+  // 偷看答案必须在占用会话名额之前判断：
+  // 否则「先看一遍答案再打」会把这个世界晋级名额白白吃掉
   if (input.peeked) {
     return { state: { ...next, updatedAt: now }, transition: 'peeked' };
   }
+
+  // 同一会话内重复命中：只认第一次
+  if (base.lastSessionId === input.sessionId) {
+    return { state: { ...next, updatedAt: now }, transition: 'dup' };
+  }
+  next.lastSessionId = input.sessionId;
 
   next.lastResultAt = now;
   next.updatedAt = now;
@@ -207,6 +208,7 @@ export function computeProgress(
   lookup: (key: string) => ReviewItemState | undefined,
 ): ReviewProgress {
   let total = 0;
+  let untouched = 0;
   let ungraded = 0;
   let wrong = 0;
   let standby = 0;
@@ -214,7 +216,13 @@ export function computeProgress(
 
   for (const key of keys) {
     total += 1;
-    switch (lookup(key)?.status ?? 'none') {
+    const st = lookup(key);
+    // 没有记录 = 从没打过照面，不能算进覆盖率
+    if (!st) {
+      untouched += 1;
+      continue;
+    }
+    switch (st.status) {
       case 'wrong':
         wrong += 1;
         break;
@@ -234,6 +242,7 @@ export function computeProgress(
   return {
     total,
     ungraded,
+    untouched,
     wrong,
     standby,
     mastered,
@@ -242,22 +251,25 @@ export function computeProgress(
   };
 }
 
-/** 多个容器进度的加权合并：按各自去重词数加权，避免小词库和大词库等量齐观 */
+/** 多个容器进度的合并：按各自去重条目数加权，避免小词库和大词库等量齐观 */
 export function mergeProgress(list: ReviewProgress[]): ReviewProgress {
   const acc = list.reduce(
     (a, p) => ({
       total: a.total + p.total,
       ungraded: a.ungraded + p.ungraded,
+      untouched: a.untouched + p.untouched,
       wrong: a.wrong + p.wrong,
       standby: a.standby + p.standby,
       mastered: a.mastered + p.mastered,
     }),
-    { total: 0, ungraded: 0, wrong: 0, standby: 0, mastered: 0 },
+    { total: 0, ungraded: 0, untouched: 0, wrong: 0, standby: 0, mastered: 0 },
   );
+  const learned = acc.standby + acc.mastered;
+  const touched = acc.ungraded + acc.wrong + acc.standby + acc.mastered;
   return {
     ...acc,
-    masteredRate: acc.total === 0 ? 0 : (acc.standby + acc.mastered) / acc.total,
-    coveredRate: acc.total === 0 ? 0 : (acc.ungraded + acc.wrong + acc.standby + acc.mastered) / acc.total,
+    masteredRate: acc.total === 0 ? 0 : learned / acc.total,
+    coveredRate: acc.total === 0 ? 0 : touched / acc.total,
   };
 }
 

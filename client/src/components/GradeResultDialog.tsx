@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, AlertTriangle, Plus, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Plus, X } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -18,37 +18,40 @@ interface Props {
   onSubmit: (payload: GradeResultPayload) => void | Promise<void>;
 }
 
+type Result = 'perfect' | 'wrong' | 'issue' | null;
+
 /**
  * 教师点「标记为已批改」时的结论弹框。
  *
- * 只做一件事：把「全对 / 有问题」收敛成结构化结果存下来，学生侧就能
- * 直接筛出「有问题」的作业去处理，不必逐个打开看批注。
- * 常见问题做成预设标签一键勾选，另留自定义输入与备注。
+ * 三种结论：
+ *   全正确 —— 全部正确，学生无需处理
+ *   有错误 —— 有错题，状态本身已说明问题，无需额外标签/备注
+ *   有问题 —— 其他问题，需勾选具体类型并可写备注
  */
 export default function GradeResultDialog({
   open, assignmentTitle, initial, submitting = false, onOpenChange, onSubmit,
 }: Props) {
-  const [result, setResult] = useState<'perfect' | 'issue' | null>(null);
+  const [result, setResult] = useState<Result>(null);
   const [issues, setIssues] = useState<string[]>([]);
   const [custom, setCustom] = useState('');
   const [comment, setComment] = useState('');
 
-  // 只在「打开」这一刻回填一次。父层（做题全屏层）会因为自动保存频繁重渲染，
-  // 若把 initial 直接放进依赖里，教师勾到一半的选项会被反复重置。
   const initialRef = useRef(initial);
   initialRef.current = initial;
 
   useEffect(() => {
     if (!open) return;
     const prev = initialRef.current;
-    const prevResult = prev?.result === 'perfect' || prev?.result === 'issue' ? prev.result : null;
+    const prevResult = (prev?.result === 'perfect' || prev?.result === 'wrong' || prev?.result === 'issue')
+      ? prev.result as Result
+      : null;
     const prevIssues = Array.isArray(prev?.issues)
       ? prev!.issues.filter((i): i is string => typeof i === 'string' && i.trim().length > 0)
       : [];
     setResult(prevResult);
-    setIssues(prevIssues);
+    setIssues(prevResult === 'issue' ? prevIssues : []);
     setCustom('');
-    setComment(typeof prev?.comment === 'string' ? prev.comment : '');
+    setComment(prevResult === 'issue' && typeof prev?.comment === 'string' ? prev.comment : '');
   }, [open]);
 
   const toggleIssue = (label: string) => {
@@ -67,7 +70,7 @@ export default function GradeResultDialog({
   const canSubmit = useMemo(() => {
     if (submitting || !result) return false;
     // 「有问题」必须说清楚问题是什么，否则学生侧拿不到任何可执行的提示
-    return result === 'perfect' || issues.length > 0;
+    return result !== 'issue' || issues.length > 0;
   }, [result, issues, submitting]);
 
   const handleSubmit = () => {
@@ -75,9 +78,17 @@ export default function GradeResultDialog({
     void onSubmit({
       result,
       issues: result === 'issue' ? issues : [],
-      comment: comment.trim(),
+      comment: result === 'issue' ? comment.trim() : '',
     });
   };
+
+  const submitLabel = result === 'issue' ? '确认并标记有问题'
+    : result === 'wrong' ? '确认并标记有错误'
+    : result === 'perfect' ? '确认批改' : '确认批改';
+
+  const submitClass = result === 'issue' ? 'bg-amber-600 text-white hover:bg-amber-700'
+    : result === 'wrong' ? 'bg-red-600 text-white hover:bg-red-700'
+    : 'bg-green-600 text-white hover:bg-green-700';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,7 +102,7 @@ export default function GradeResultDialog({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-6 py-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => setResult('perfect')}
@@ -103,9 +114,24 @@ export default function GradeResultDialog({
               )}
             >
               <span className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
-                <CheckCircle2 size={15} /> 全对
+                <CheckCircle2 size={15} /> 全正确
               </span>
-              <span className="text-[11px] text-muted-foreground">全部正确，学生无需处理</span>
+              <span className="text-[11px] text-muted-foreground">全部正确</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setResult('wrong')}
+              className={cn(
+                'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition',
+                result === 'wrong'
+                  ? 'border-red-500 bg-red-50 dark:bg-red-500/10'
+                  : 'border-border hover:border-red-400/60 hover:bg-muted/50',
+              )}
+            >
+              <span className="flex items-center gap-1.5 text-sm font-medium text-red-600 dark:text-red-400">
+                <XCircle size={15} /> 有错误
+              </span>
+              <span className="text-[11px] text-muted-foreground">有错题</span>
             </button>
             <button
               type="button"
@@ -120,7 +146,7 @@ export default function GradeResultDialog({
               <span className="flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-500">
                 <AlertTriangle size={15} /> 有问题
               </span>
-              <span className="text-[11px] text-muted-foreground">需要学生订正或补做</span>
+              <span className="text-[11px] text-muted-foreground">需订正/补做</span>
             </button>
           </div>
 
@@ -183,19 +209,18 @@ export default function GradeResultDialog({
                   <Plus size={13} />
                 </Button>
               </div>
+              <div className="space-y-1.5 pt-1">
+                <span className="text-xs font-medium text-foreground">备注（可选）</span>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value.slice(0, 500))}
+                  rows={3}
+                  placeholder="写给学生的一句话，例如：第 3 题再算一遍"
+                  className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
             </div>
           )}
-
-          <div className="space-y-1.5">
-            <span className="text-xs font-medium text-foreground">备注（可选）</span>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value.slice(0, 500))}
-              rows={3}
-              placeholder="写给学生的一句话，例如：第 3 题再算一遍"
-              className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
         </div>
 
         <DialogFooter className="gap-2 px-6 pb-6 pt-3 sm:justify-end">
@@ -205,13 +230,9 @@ export default function GradeResultDialog({
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={cn(
-              result === 'issue'
-                ? 'bg-amber-600 text-white hover:bg-amber-700'
-                : 'bg-green-600 text-white hover:bg-green-700',
-            )}
+            className={submitClass}
           >
-            {submitting ? '提交中...' : result === 'issue' ? '确认并标记有问题' : '确认批改'}
+            {submitting ? '提交中...' : submitLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

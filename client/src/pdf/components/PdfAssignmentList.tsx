@@ -133,7 +133,7 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
               <FileText
                 size={16}
                 className={`mt-0.5 flex-shrink-0 ${
-                  badge ? (hasIssue(a) ? 'text-amber-500' : 'text-green-500')
+                  badge ? (a.gradeResult === 'issue' ? 'text-amber-500' : a.gradeResult === 'wrong' ? 'text-red-500' : 'text-green-500')
                     : isSubmitted ? 'text-blue-500'
                       : isReturned ? 'text-amber-500'
                         : 'text-muted-foreground'
@@ -155,6 +155,9 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                     {badge && <CheckCircle2 size={9} />}
                     {badge ? badge.label : isSubmitted ? '已提交' : isReturned ? '已打回' : '待提交'}
                   </span>
+                  {a.gradeResult === 'issue' && issues.map((tag) => (
+                    <span key={tag} className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                  ))}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="flex items-center gap-0.5">
@@ -166,14 +169,9 @@ export default function PdfAssignmentList({ bookId, onSelect, selectedId, onRefr
                     </span>
                   )}
                 </div>
-                {(issues.length > 0 || a.gradeComment) && (
+                {a.gradeResult === 'issue' && a.gradeComment && (
                   <div className="mt-1 flex flex-wrap items-center gap-1">
-                    {issues.map((tag) => (
-                      <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
-                    ))}
-                    {a.gradeComment && (
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{a.gradeComment}</span>
-                    )}
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{a.gradeComment}</span>
                   </div>
                 )}
               </div>

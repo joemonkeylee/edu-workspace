@@ -7,18 +7,16 @@
 
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import {
-  clearCloud,
   clearDomain,
   lookupState,
   persistDomain,
-  pullFromCloud,
-  pushToCloud,
   putStates,
   readDomain,
   emptyBuckets,
   type ReviewBuckets,
-} from './repository';
-import { applyResult, markKnown, mergeStates, normalizeItemKey, reopenWrong } from './engine';
+} from './repository.ts';
+import { clearCloud, pullFromCloud, pushToCloud } from './sync.ts';
+import { applyResult, markKnown, mergeStates, normalizeItemKey, reopenWrong } from './engine.ts';
 import {
   DEFAULT_REVIEW_CONFIG,
   type ReviewConfig,
@@ -27,7 +25,7 @@ import {
   type ReviewItemState,
   type ReviewStatus,
   type ReviewTransition,
-} from './types';
+} from './types.ts';
 
 export type ReviewBatchResult = {
   applied: ReviewItemState[];
@@ -46,7 +44,6 @@ type ReviewStoreState = {
   applyResults: (inputs: ReviewInput[], cfg?: Partial<ReviewConfig>) => ReviewBatchResult;
   markKnownMany: (keys: string[], cfg?: Partial<ReviewConfig>) => void;
   reopenMany: (keys: string[]) => void;
-  removeStates: (keys: string[]) => void;
   clearAll: () => Promise<void>;
   lookup: (key: string) => ReviewItemState | undefined;
   listByStatus: (status: ReviewStatus) => ReviewItemState[];
@@ -168,27 +165,6 @@ function makeStore(domain: ReviewDomain) {
           changed.push(reopenWrong(prev));
         }
         commit(putStates(buckets, changed), changed);
-      },
-
-      removeStates(keys) {
-        const buckets = get().buckets;
-        const active = { ...buckets.active };
-        const mastered = new Set(buckets.mastered);
-        const ungraded = new Set(buckets.ungraded);
-        const changed: ReviewItemState[] = [];
-        for (const raw of keys) {
-          const key = normalizeItemKey(raw);
-          const prev = lookupState(buckets, key);
-          if (!prev) continue;
-          delete active[key];
-          mastered.delete(key);
-          ungraded.delete(key);
-          // 没有墓碑机制：用一个 status==='none' 的空记录占位，靠 updatedAt 取胜后消失
-          changed.push({ ...prev, status: 'none', updatedAt: Date.now(), mistakes: undefined });
-        }
-        persistDomain(domain, { active, mastered, ungraded });
-        set((s) => ({ buckets: { active, mastered, ungraded }, revision: s.revision + 1 }));
-        void pushToCloud(domain, changed);
       },
 
       async clearAll() {

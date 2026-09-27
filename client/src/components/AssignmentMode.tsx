@@ -121,9 +121,11 @@ export default function AssignmentMode({
     ? ''
     : assignment?.gradeResult === 'issue'
       ? '·有问题'
-      : assignment?.gradeResult === 'perfect'
-        ? '·全对'
-        : '';
+      : assignment?.gradeResult === 'wrong'
+        ? '·有错误'
+        : assignment?.gradeResult === 'perfect'
+          ? '·全正确'
+          : '';
 
   const effectiveRotation = ((localRotation % 360) + 360) % 360;
   const isRotated = effectiveRotation === 90 || effectiveRotation === 270;
@@ -543,7 +545,11 @@ export default function AssignmentMode({
         gradeIssues: payload.issues,
         gradeComment: payload.comment,
       });
-      toast.success(payload.result === 'issue' ? '已标记：有问题' : '已标记：全对');
+      toast.success(
+        payload.result === 'issue' ? '已标记：有问题'
+          : payload.result === 'wrong' ? '已标记：有错误'
+          : '已标记：全正确'
+      );
       setGradeOpen(false);
       onAssignmentUpdate();
     } catch (e: any) {
@@ -676,7 +682,9 @@ export default function AssignmentMode({
                 {renderTextByCharacter(
                   `(已批改${gradeSuffix})`,
                   chineseRotation,
-                  assignment?.gradeResult === 'issue' ? 'text-amber-400 ml-1' : 'text-green-400 ml-1',
+                  assignment?.gradeResult === 'issue' ? 'text-amber-400 ml-1'
+                    : assignment?.gradeResult === 'wrong' ? 'text-red-400 ml-1'
+                    : 'text-green-400 ml-1',
                 )}
               </>
             )}
@@ -694,12 +702,16 @@ export default function AssignmentMode({
               // 同一页有多份作业时，按钮颜色直接区分「有问题」需要回头处理
               const gradeTone = a.gradeResult === 'issue'
                 ? 'border-amber-500 text-amber-400 hover:bg-white/10'
-                : a.gradeResult === 'perfect'
-                  ? 'border-green-500 text-green-400 hover:bg-white/10'
-                  : 'border-gray-500 text-gray-400 hover:text-white hover:border-white/50';
+                : a.gradeResult === 'wrong'
+                  ? 'border-red-500 text-red-400 hover:bg-white/10'
+                  : a.gradeResult === 'perfect'
+                    ? 'border-green-500 text-green-400 hover:bg-white/10'
+                    : 'border-gray-500 text-gray-400 hover:text-white hover:border-white/50';
               const gradeLabel = a.gradeResult === 'issue'
                 ? ' (有问题)'
-                : a.gradeResult === 'perfect' ? ' (全对)' : ' (已批改)';
+                : a.gradeResult === 'wrong'
+                  ? ' (有错误)'
+                  : a.gradeResult === 'perfect' ? ' (全正确)' : ' (已批改)';
               return (
                 <button
                   key={a.id}
@@ -996,7 +1008,9 @@ export default function AssignmentMode({
             ? renderTextByCharacter(
                 `已批改${gradeSuffix}，笔迹只读`,
                 chineseRotation,
-                assignment?.gradeResult === 'issue' ? 'text-amber-400' : 'text-green-400',
+                assignment?.gradeResult === 'issue' ? 'text-amber-400'
+                  : assignment?.gradeResult === 'wrong' ? 'text-red-400'
+                  : 'text-green-400',
               )
             : renderTextByCharacter('此作业已提交，笔迹只读', chineseRotation)}
           {isGraded && !isRotated && gradedIssues.length > 0 && (

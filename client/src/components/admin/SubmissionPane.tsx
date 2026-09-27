@@ -269,6 +269,9 @@ export default function SubmissionPane({
                       <span className={`flex-shrink-0 rounded px-1 py-px text-[10px] ${badge ? badge.className : meta.badge}`}>
                         {badge ? badge.label : meta.label}
                       </span>
+                      {row.gradeResult === 'issue' && issues.map((tag) => (
+                        <span key={tag} className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
+                      ))}
                     </div>
                     <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="flex min-w-0 items-center gap-1">
@@ -291,14 +294,9 @@ export default function SubmissionPane({
                         {formatTime(row.updatedAt)}
                       </span>
                     </div>
-                    {(issues.length > 0 || row.gradeComment) && (
+                    {row.gradeResult === 'issue' && row.gradeComment && (
                       <div className="mt-1 flex flex-wrap items-center gap-1">
-                        {issues.map((tag) => (
-                          <span key={tag} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${issueChipClass(tag)}`}>{tag}</span>
-                        ))}
-                        {row.gradeComment && (
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{row.gradeComment}</span>
-                        )}
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">备注：{row.gradeComment}</span>
                       </div>
                     )}
                   </div>
