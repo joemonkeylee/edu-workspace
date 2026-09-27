@@ -113,9 +113,17 @@ export default function BookViewer() {
 
   // 带讲解视频的课程书打开时，自动展开左侧栏并默认停在「视频」标签
   // 没有视频的书也展开左侧栏但保持最小宽度 240px，停在 thumbs tab
+  // 批改模式（grading=1）下默认收起左右侧栏，给批改画布最大空间
   useEffect(() => {
     initWidthSet.current = false; // 切书后重置，让下一个书按自身条件初始化宽度
-    if (hasVideos) {
+    if (gradingEntry) {
+      setLeftOpen(false);
+      setRightOpen(false);
+      setLeftView('thumbs');
+      leftWidthRef.current = LEFT_MIN;
+      setLeftWidth(LEFT_MIN);
+      initWidthSet.current = true;
+    } else if (hasVideos) {
       setLeftOpen(true);
       setLeftView('video');
       // 宽度交给下面的 fit 逻辑按「适应页面」自动初始化
@@ -126,7 +134,7 @@ export default function BookViewer() {
       setLeftWidth(LEFT_MIN);
       initWidthSet.current = true; // 标记已初始化，阻止 fit 逻辑覆盖
     }
-  }, [bookId, hasVideos]);
+  }, [bookId, hasVideos, gradingEntry]);
 
   // 拖拽调整左侧栏宽度（不设上限，仅在关键宽度处吸附）
   const onResizeMove = useCallback((e: MouseEvent) => {
@@ -228,8 +236,8 @@ export default function BookViewer() {
     }
   }
 
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(!gradingEntry);
+  const [rightOpen, setRightOpen] = useState(!gradingEntry);
   const [rightTab, setRightTab] = useState<'annotations' | 'assignments'>('assignments');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [layers, setLayers] = useState({
@@ -803,10 +811,12 @@ export default function BookViewer() {
                   <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-popover border border-border rounded-lg shadow-xl py-1">
                     {currentBook.pairSummary.role === 'textbook' ? (
                       currentBook.pairSummary.partners.length > 0 ? (
-                        currentBook.pairSummary.partners.map((p) => (
+                        currentBook.pairSummary.partners.map((p) => {
+                          const qs = gradingEntry ? '?grading=1' : '';
+                          return (
                           <a
                             key={p.id}
-                            href={`/book/${p.id}`}
+                            href={`/book/${p.id}${qs}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => setPairOpen(false)}
@@ -815,15 +825,18 @@ export default function BookViewer() {
                             <span className="text-teal-400">答案</span>
                             <span className="truncate flex-1">{p.title}</span>
                           </a>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="px-3 py-2 text-xs text-muted-foreground">暂无答案</div>
                       )
                     ) : currentBook.pairSummary.partners.length > 0 ? (
-                      currentBook.pairSummary.partners.map((p) => (
+                      currentBook.pairSummary.partners.map((p) => {
+                        const qs = gradingEntry ? '?grading=1' : '';
+                        return (
                         <a
                           key={p.id}
-                          href={`/book/${p.id}`}
+                          href={`/book/${p.id}${qs}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setPairOpen(false)}
@@ -832,7 +845,8 @@ export default function BookViewer() {
                           <span className="text-sky-400">教材</span>
                           <span className="truncate flex-1">{p.title}</span>
                         </a>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="px-3 py-2 text-xs text-muted-foreground">所属教材未知</div>
                     )}

@@ -106,10 +106,10 @@ export default function PdfBookViewer() {
   const [pageBase, setPageBase] = useState({ w: 794, h: 1123 }); // A4 @96dpi 默认
   const [savedConfig, setSavedConfig] = useState<ReturnType<typeof loadReadConfigLocal> | null>(null);
 
-  const [leftOpen, setLeftOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(!gradingEntry);
   const [leftView, setLeftView] = useState<PdfTocView>('thumbs');
   const [leftWidth, setLeftWidth] = useState(LEFT_MIN);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(!gradingEntry);
   const [rightTab, setRightTab] = useState<'annotations' | 'assignments'>('assignments');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [layers, setLayers] = useState({ annotations: true, highlights: true, assignments: true, grading: true });
@@ -694,10 +694,12 @@ export default function PdfBookViewer() {
                   <div className="absolute left-0 top-full mt-1 z-50 min-w-[220px] rounded-lg border border-border bg-popover py-1 shadow-xl">
                     {book.pairSummary.role === 'textbook' ? (
                       book.pairSummary.partners.length > 0 ? (
-                        book.pairSummary.partners.map((p) => (
+                        book.pairSummary.partners.map((p) => {
+                          const qs = gradingEntry ? '?grading=1' : '';
+                          return (
                           <a
                             key={p.id}
-                            href={`/book/${p.id}`}
+                            href={`/book/${p.id}${qs}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => setPairOpen(false)}
@@ -706,15 +708,18 @@ export default function PdfBookViewer() {
                             <span className="text-teal-400">答案</span>
                             <span className="flex-1 truncate">{p.title}</span>
                           </a>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="px-3 py-2 text-xs text-muted-foreground">暂无答案</div>
                       )
                     ) : book.pairSummary.partners.length > 0 ? (
-                      book.pairSummary.partners.map((p) => (
+                      book.pairSummary.partners.map((p) => {
+                        const qs = gradingEntry ? '?grading=1' : '';
+                        return (
                         <a
                           key={p.id}
-                          href={`/book/${p.id}`}
+                          href={`/book/${p.id}${qs}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setPairOpen(false)}
@@ -723,7 +728,8 @@ export default function PdfBookViewer() {
                           <span className="text-sky-400">教材</span>
                           <span className="flex-1 truncate">{p.title}</span>
                         </a>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="px-3 py-2 text-xs text-muted-foreground">所属教材未知</div>
                     )}
