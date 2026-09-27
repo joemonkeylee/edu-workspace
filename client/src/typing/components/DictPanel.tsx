@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { DICT_CATEGORIES, DICT_GROUPS, DICT_MAP, DICTIONARIES, CATEGORY_DIFFICULTY, searchDicts } from '../dictionaries';
+import { DICT_CATEGORIES, DICT_GROUPS, DICT_MAP, DICTIONARIES, CATEGORY_DIFFICULTY, CATEGORY_ORIGINAL_NAME, searchDicts } from '../dictionaries';
 import { ALL_DICT_TAB, useTypingSettings } from '../settingsStore';
 
 type SortMode = 'name-asc' | 'name-desc' | 'length-asc' | 'length-desc' | 'difficulty-asc' | 'difficulty-desc';
@@ -182,16 +182,19 @@ export default function DictPanel({ value, onChange }: Props) {
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
             <TabsTrigger
               value={ALL_DICT_TAB}
-              className="h-7 rounded-md bg-transparent px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none"
+              title="全部词库"
+              className="h-7 w-[5rem] rounded-md bg-transparent px-2 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none"
             >
-              全部
+              <span className="mr-1 inline-block h-2 w-2 rounded-full border border-muted-foreground/30 bg-muted align-middle" />
+              全部词库
             </TabsTrigger>
             {DICT_CATEGORIES.map((c) => (
               <TabsTrigger
                 key={c}
                 value={c}
                 disabled={isSearching}
-                className="h-7 rounded-md bg-transparent px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none disabled:opacity-40"
+                title={`${c}（${CATEGORY_ORIGINAL_NAME[c] ?? c}）`}
+                className="h-7 w-[5rem] rounded-md bg-transparent px-2 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-none disabled:opacity-40"
               >
                 <span
                   className={cn('mr-1 inline-block h-2 w-2 rounded-full align-middle', difficultyDot(CATEGORY_DIFFICULTY[c] ?? 5))}
