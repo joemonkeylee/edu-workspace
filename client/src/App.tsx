@@ -39,6 +39,9 @@ const PdfHome = lazy(() => import('./pdf/pages/PdfHome'));
 const PdfBookViewer = lazy(() => import('./pdf/pages/PdfBookViewer'));
 // 单词打字练习模块：词库 JSON 在运行时按需 fetch，代码本身很小
 const TypingHome = lazy(() => import('./typing/TypingHome'));
+// 错题本样例（一次性展示）：文件不进仓库、不进构建产物，只在本地 dev/preview 可用
+const WrongDemoHome = lazy(() => import('./wrongDemo/WrongDemoHome'));
+const WrongDemoViewer = lazy(() => import('./wrongDemo/WrongDemoViewer'));
 
 function PdfSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -76,6 +79,11 @@ export default function App() {
           {/* PDF 原生模块：独立路由前缀，不与上面任何一条产生交集 */}
           <Route path="/pdf" element={<PdfSuspense><PdfHome /></PdfSuspense>} />
           <Route path="/pdf/book/:id" element={<PdfSuspense><PdfBookViewer /></PdfSuspense>} />
+
+          {/* 错题本样例：静态展示，数据在 client/src/wrongDemo/items.ts，文件在
+              client/wrong-demo-assets/（.gitignore 已排除，vite dev 中间件映射出去） */}
+          <Route path="/wrong-demo" element={<PdfSuspense><WrongDemoHome /></PdfSuspense>} />
+          <Route path="/wrong-demo/:slug" element={<PdfSuspense><WrongDemoViewer /></PdfSuspense>} />
 
           <Route path="/admin" element={<AuthGuard allowedRoles={['admin', 'teacher']} redirectTo="/" />}>
           <Route element={<AdminLayout />}>

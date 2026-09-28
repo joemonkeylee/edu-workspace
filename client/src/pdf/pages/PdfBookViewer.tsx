@@ -76,9 +76,25 @@ function withToken(url: string): string {
   return `${url}${sep}token=${encodeURIComponent(token)}`;
 }
 
-export default function PdfBookViewer() {
+/**
+ * 本地文件模式：书籍信息与文件 URL 由调用方直接给出，不查库。
+ * 用于「错题本样例」这类一次性静态展示 —— 数据写在 ts 清单里，文件走 vite 中间件。
+ * 不传这个 prop 时，组件行为与原来完全一致（走 /pdf/book/:id 的接口）。
+ */
+export interface PdfViewerLocalSource {
+  /** 与 getBook() 返回结构一致的书籍信息，通常由静态清单拼出来 */
+  book: PdfBookDetail;
+  /** PDF 文件的可访问 URL */
+  fileUrl: string;
+  /** 顶栏「返回」按钮的目标路由 */
+  backTo: string;
+}
+
+export default function PdfBookViewer({ local = null }: { local?: PdfViewerLocalSource | null } = {}) {
   const { id } = useParams();
   const bookId = Number(id);
+  // 本地模式下 URL 上没有 id，bookId 是 NaN —— 所有依赖 bookId 的接口调用都会自然跳过
+  const isLocal = Boolean(local);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const confirm = useConfirm();
@@ -106,10 +122,11 @@ export default function PdfBookViewer() {
   const [pageBase, setPageBase] = useState({ w: 794, h: 1123 }); // A4 @96dpi 默认
   const [savedConfig, setSavedConfig] = useState<ReturnType<typeof loadReadConfigLocal> | null>(null);
 
-  const [leftOpen, setLeftOpen] = useState(!gradingEntry);
+  // 本地模式没有目录树、缩略图和全文索引，左右两个侧栏都不展开
+  const [leftOpen, setLeftOpen] = useState(!gradingEntry && !local);
   const [leftView, setLeftView] = useState<PdfTocView>('thumbs');
   const [leftWidth, setLeftWidth] = useState(LEFT_MIN);
-  const [rightOpen, setRightOpen] = useState(!gradingEntry);
+  const [rightOpen, setRightOpen] = useState(!gradingEntry && !local);
   const [rightTab, setRightTab] = useState<'annotations' | 'assignments'>('assignments');
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [layers, setLayers] = useState({ annotations: true, highlights: true, assignments: true, grading: true });
@@ -148,12 +165,29 @@ export default function PdfBookViewer() {
 
   // ── 载入书籍与 PDF 文档 ────────────────────────────────────
   useEffect(() => {
-    if (!bookId) return;
+    if (!bookId && !local) return;
     let cancelled = false;
     setLoadError(null);
 
     (async () => {
       try {
+        // 本地样例：书籍信息已在 local.book 里，跳过取书 / 取批注 / 取进度三个接口
+        if (local) {
+          setSavedConfig({ page: 1, pageLayout: 'single', fitMode: 'page', rotation: 0, zoom: 1 });
+          setFitMode('page');
+          setPageLayout('single');
+          setRotation(0);
+          setZoom(1);
+          setBook(local.book);
+          setAnnotations([]);
+          setIsFavorite(false);
+          setPage(1);
+          const localDoc = await getCachedDocument(local.fileUrl);
+          if (cancelled) return;
+          setDoc(localDoc);
+          return;
+        }
+
         const cfg = await (async () => {
           const local = loadReadConfigLocal(bookId);
           if (authEnabled && user) {
@@ -199,7 +233,7 @@ export default function PdfBookViewer() {
     })();
 
     return () => { cancelled = true; };
-  }, [bookId, authEnabled, user]);
+  }, [bookId, authEnabled, user, local]);
 
   // 当前页的基础尺寸（pt），用于把 zoom 换算成显示宽度
   useEffect(() => {
@@ -629,8 +663,11 @@ export default function PdfBookViewer() {
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
         <AlertTriangle size={40} />
         <p className="text-sm">加载失败：{loadError}</p>
-        <button onClick={() => navigate('/pdf')} className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white">
-          返回书库
+        <button
+          onClick={() => navigate(isLocal && local ? local.backTo : '/pdf')}
+          className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white"
+        >
+          {isLocal ? '返回列表' : '返回书库'}
         </button>
       </div>
     );
@@ -660,16 +697,22 @@ export default function PdfBookViewer() {
       {/* 顶栏 */}
       <header className="grid flex-shrink-0 select-none grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border bg-card px-2 py-1.5 text-card-foreground">
         <div className="flex min-w-0 items-center gap-1">
-          <button onClick={() => navigate('/pdf')} title="返回书库" className="flex-shrink-0 rounded p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground">
+          <button
+            onClick={() => navigate(isLocal && local ? local.backTo : '/pdf')}
+            title={isLocal ? '返回列表' : '返回书库'}
+            className="flex-shrink-0 rounded p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
             <ArrowLeft size={18} />
           </button>
-          <button
-            onClick={() => setLeftOpen(!leftOpen)}
-            title="目录"
-            className={`flex-shrink-0 rounded p-1.5 transition ${leftOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-          >
-            <PanelLeft size={18} />
-          </button>
+          {!isLocal && (
+            <button
+              onClick={() => setLeftOpen(!leftOpen)}
+              title="目录"
+              className={`flex-shrink-0 rounded p-1.5 transition ${leftOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+            >
+              <PanelLeft size={18} />
+            </button>
+          )}
           <h1 className="truncate text-sm text-foreground" title={book.title}>{book.title}</h1>
 
           {book.pairSummary && (
@@ -742,15 +785,17 @@ export default function PdfBookViewer() {
             </div>
           )}
 
-          <button
-            onClick={handleToggleFavorite}
-            title={isFavorite ? '取消收藏' : '收藏'}
-            className={`ml-1 flex-shrink-0 rounded p-1 transition ${isFavorite ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500'}`}
-          >
-            <Star size={14} className={isFavorite ? 'fill-amber-500' : ''} />
-          </button>
+          {!isLocal && (
+            <button
+              onClick={handleToggleFavorite}
+              title={isFavorite ? '取消收藏' : '收藏'}
+              className={`ml-1 flex-shrink-0 rounded p-1 transition ${isFavorite ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500'}`}
+            >
+              <Star size={14} className={isFavorite ? 'fill-amber-500' : ''} />
+            </button>
+          )}
 
-          {book.searchable !== 'ok' && (
+          {!isLocal && book.searchable !== 'ok' && (
             <span
               className="ml-1 flex flex-shrink-0 items-center gap-0.5 rounded bg-slate-500/15 px-1.5 py-0.5 text-[10px] text-muted-foreground"
               title={SEARCHABLE_LABEL[book.searchable] || book.searchable}
@@ -805,34 +850,39 @@ export default function PdfBookViewer() {
           >
             <MousePointer2 size={16} />
           </button>
-          <button
-            onClick={handleEnterAssignmentMode}
-            title="做题"
-            className="relative flex-shrink-0 rounded p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          >
-            <PenLine size={16} />
-          </button>
-          <button
-            onClick={() => setTool('note')}
-            title="批注"
-            className={`relative flex-shrink-0 rounded p-1.5 transition ${tool === 'note' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-          >
-            <StickyNote size={16} />
-          </button>
-          <button
-            onClick={() => setTool('highlight')}
-            title="高亮"
-            className={`relative flex-shrink-0 rounded p-1.5 transition ${tool === 'highlight' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-          >
-            <Highlighter size={16} />
-          </button>
-          <button
-            onClick={() => setTool('crop')}
-            title="裁剪错题"
-            className={`relative flex-shrink-0 rounded p-1.5 transition ${tool === 'crop' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-          >
-            <Scissors size={16} />
-          </button>
+          {/* 做题 / 批注 / 高亮 / 裁剪都要写库，本地样例模式下整组隐藏 */}
+          {!isLocal && (
+            <>
+              <button
+                onClick={handleEnterAssignmentMode}
+                title="做题"
+                className="relative flex-shrink-0 rounded p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <PenLine size={16} />
+              </button>
+              <button
+                onClick={() => setTool('note')}
+                title="批注"
+                className={`relative flex-shrink-0 rounded p-1.5 transition ${tool === 'note' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                <StickyNote size={16} />
+              </button>
+              <button
+                onClick={() => setTool('highlight')}
+                title="高亮"
+                className={`relative flex-shrink-0 rounded p-1.5 transition ${tool === 'highlight' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                <Highlighter size={16} />
+              </button>
+              <button
+                onClick={() => setTool('crop')}
+                title="裁剪错题"
+                className={`relative flex-shrink-0 rounded p-1.5 transition ${tool === 'crop' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+              >
+                <Scissors size={16} />
+              </button>
+            </>
+          )}
 
           <div className="mx-0.5 h-5 w-px bg-muted" />
 
@@ -880,6 +930,8 @@ export default function PdfBookViewer() {
 
           <div className="mx-0.5 h-5 w-px bg-muted" />
 
+          {/* 图层控制只关乎批注/做题/批改的显示，本地样例模式下没有意义 */}
+          {!isLocal && (
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setLayerDropdownOpen(!layerDropdownOpen)}
@@ -912,6 +964,7 @@ export default function PdfBookViewer() {
               </>
             )}
           </div>
+          )}
 
           <button
             onClick={() => setPageLayout('single')}
@@ -957,7 +1010,12 @@ export default function PdfBookViewer() {
                   <button
                     disabled={book.missing}
                     aria-disabled={book.missing}
-                    onClick={() => { if (!book.missing) { window.open(pdfFileUrl(bookId), '_blank'); setMoreOpen(false); } }}
+                    onClick={() => {
+                      if (!book.missing) {
+                        window.open(isLocal && local ? local.fileUrl : pdfFileUrl(bookId), '_blank');
+                        setMoreOpen(false);
+                      }
+                    }}
                     className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition ${
                       book.missing
                         ? 'cursor-not-allowed text-muted-foreground/50'
@@ -971,18 +1029,20 @@ export default function PdfBookViewer() {
             )}
           </div>
 
-          <button
-            onClick={() => setRightOpen(!rightOpen)}
-            title="作业 / 错题 / 批注"
-            className={`relative flex-shrink-0 rounded p-1.5 transition ${rightOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
-          >
-            <PanelRight size={18} />
-          </button>
+          {!isLocal && (
+            <button
+              onClick={() => setRightOpen(!rightOpen)}
+              title="作业 / 错题 / 批注"
+              className={`relative flex-shrink-0 rounded p-1.5 transition ${rightOpen ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+            >
+              <PanelRight size={18} />
+            </button>
+          )}
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {leftOpen && (
+        {leftOpen && !isLocal && (
           <aside
             style={{ width: leftWidth }}
             className="relative flex flex-shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
@@ -1075,7 +1135,7 @@ export default function PdfBookViewer() {
           </div>
         </main>
 
-        {rightOpen && (
+        {rightOpen && !isLocal && (
           <aside className="flex w-72 flex-shrink-0 flex-col border-l border-border bg-card">
             <div className="flex items-center border-b border-border">
               <button

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, FileText, Languages, Keyboard, Settings } from 'lucide-react';
+import { BookOpen, FileText, Languages, Keyboard, NotebookPen, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import WebVitalsInfoPanel from '@/english/components/WebVitalsInfoPanel';
@@ -23,6 +23,7 @@ export default function AppHeaderRight() {
 
   const isBookActive = location.pathname.startsWith('/books');
   const isPdfActive = location.pathname.startsWith('/pdf');
+  const isWrongDemoActive = location.pathname.startsWith('/wrong-demo');
   const isEnglishActive = location.pathname.startsWith('/english');
   const isTypingActive = location.pathname.startsWith('/typing');
 
@@ -42,6 +43,11 @@ export default function AppHeaderRight() {
         isTypingActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
         <Keyboard size={16} />
         <span className="hidden sm:inline">Word</span>
+      </Link>
+      <Link to="/wrong-demo" title="错题本样例（本地静态展示）" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
+        isWrongDemoActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>
+        <NotebookPen size={16} />
+        <span className="hidden sm:inline">Case</span>
       </Link>
       <Link to="/english" className={cn('flex items-center gap-1.5 h-9 px-3 rounded-lg transition text-sm',
         isEnglishActive ? 'bg-primary text-primary-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground')}>

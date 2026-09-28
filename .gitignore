@@ -16,6 +16,10 @@ client/vite.config.d.ts
 # Storage (uploaded images)
 server/storage/
 
+# Wrong-notebook demo assets (600MB+ of local PDFs; served by a dev-only vite
+# plugin, never copied into dist and never deployed)
+client/wrong-demo-assets/
+
 # Prisma
 server/prisma/migrations/
 
