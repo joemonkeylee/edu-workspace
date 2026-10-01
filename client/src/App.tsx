@@ -25,9 +25,11 @@ import BookPairs from './components/admin/BookPairs';
 import DbBackup from './components/admin/DbBackup';
 import PdfBooksTable from './components/admin/pdf/PdfBooksTable';
 import PdfImportPanel from './components/admin/pdf/PdfImportPanel';
+import PdfCollectPreview from './components/admin/pdf/PdfCollectPreview';
 import PdfAnnotationsTable from './components/admin/pdf/PdfAnnotationsTable';
 import PdfMistakesTable from './components/admin/pdf/PdfMistakesTable';
 import PdfAssignmentsTable from './components/admin/pdf/PdfAssignmentsTable';
+import PdfMaterialsTable from './components/admin/pdf/PdfMaterialsTable';
 import PdfAdminDashboard from './components/admin/pdf/PdfAdminDashboard';
 import LandingLayout from './english/components/LandingLayout';
 import EnglishPage from './english/components/EnglishPage';
@@ -101,10 +103,12 @@ export default function App() {
             {/* PDF 原生管理：与图片版完全并行的一套后台 */}
             <Route path="pdf" element={<PdfAdminDashboard />} />
             <Route path="pdf/import" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/pdf/books"><PdfImportPanel /></AuthGuard>} />
+            <Route path="pdf/collect" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/pdf/books"><PdfCollectPreview /></AuthGuard>} />
             <Route path="pdf/books" element={<PdfBooksTable />} />
             <Route path="pdf/annotations" element={<PdfAnnotationsTable />} />
             <Route path="pdf/mistakes" element={<PdfMistakesTable />} />
             <Route path="pdf/assignments" element={<PdfAssignmentsTable />} />
+            <Route path="pdf/materials" element={<AuthGuard allowedRoles={['admin']} redirectTo="/admin/pdf/books"><PdfMaterialsTable /></AuthGuard>} />
           </Route>
         </Route>
 

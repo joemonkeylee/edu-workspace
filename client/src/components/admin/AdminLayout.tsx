@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
-import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard, LogOut as LogOutOuter, FileText } from 'lucide-react';
+import { GraduationCap, BookOpen, Highlighter, AlertCircle, ClipboardList, Link2, Scan, Users, ShieldCheck, FolderCog, Database, LogOut, PanelLeftClose, LayoutDashboard, LogOut as LogOutOuter, FileText, FolderTree } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,8 @@ const MENU_GROUPS: MenuGroup[] = [
     items: [
       { path: '/admin/pdf', label: 'PDF 概览', icon: LayoutDashboard },
       { path: '/admin/pdf/import', label: 'PDF 导入', icon: Scan, roles: ['admin'] },
+      { path: '/admin/pdf/collect', label: 'PDF 整理', icon: FolderTree, roles: ['admin'] },
+      { path: '/admin/pdf/materials', label: '教辅资料', icon: GraduationCap, roles: ['admin'] },
       { path: '/admin/pdf/books', label: 'PDF 书籍', icon: BookOpen },
       { path: '/admin/pdf/annotations', label: 'PDF 批注', icon: Highlighter },
       { path: '/admin/pdf/mistakes', label: 'PDF 错题', icon: AlertCircle },

@@ -9,6 +9,8 @@ import pdfAdminBooksRouter from './routes/pdfAdminBooks.js';
 import pdfAdminAnnotationsRouter from './routes/pdfAdminAnnotations.js';
 import pdfAdminMistakesRouter from './routes/pdfAdminMistakes.js';
 import pdfAdminAssignmentsRouter from './routes/pdfAdminAssignments.js';
+import pdfCollectRouter from './routes/pdfCollect.js';
+import pdfMaterialsRouter from './routes/pdfMaterials.js';
 
 /**
  * PDF 原生模块的入口路由，整体挂载在 /api/pdf 之下。
@@ -30,6 +32,10 @@ router.use('/admin/mistakes', pdfAdminMistakesRouter);
 router.use('/admin/assignments', pdfAdminAssignmentsRouter);
 // 管理端：扫描入库 / 资源根目录 / 播种
 router.use('/admin', pdfScanRouter);
+// 管理端：外部资料盘预分析预览（只读看结果 + 重扫），入库复用 /admin/scan/commit
+router.use('/admin/collect', pdfCollectRouter);
+// 管理端：教辅资料清单（teaching_materials 表，只读展示 + 筛选）
+router.use('/admin/materials', pdfMaterialsRouter);
 router.use('/annotations', pdfAnnotationsRouter);
 router.use('/mistakes', pdfMistakesRouter);
 router.use('/assignments', pdfAssignmentsRouter);
