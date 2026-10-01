@@ -301,6 +301,26 @@ export default function Home() {
     saveResourceKind(resourceKind);
   }, [resourceKind]);
 
+  // 兜底：当前视图一本都没有、而其它视图还有内容时，自动切到「全部书籍」。
+  // 场景：库里某个 kind 被清空后（例如课程资源清完），首页记忆仍停在该 Tab，
+  // 打开就是空白页，看起来像"书全丢了"。
+  // 同一次会话内只自动切一次（切完置位 guard），避免和用户手动切 Tab 打架；
+  // 刷新后会重新判断一次 —— 若该视图依然为空，仍会被兜底带走。
+  const emptyTabGuardRef = useRef(false);
+  useEffect(() => {
+    if (emptyTabGuardRef.current) return;
+    const totalVisible = kindCounts.book + kindCounts.course + kindCounts.exercise;
+    if (totalVisible === 0) return; // 计数尚未加载（或库为空），不做判断
+    const currentCount =
+      resourceKind === 'course' ? kindCounts.course : resourceKind === 'exercise' ? kindCounts.exercise : totalVisible;
+    if (resourceKind !== 'all' && currentCount === 0) {
+      emptyTabGuardRef.current = true;
+      kindRef.current = 'all';
+      setResourceKind('all');
+      applyKindState(loadKindFilters('all'));
+    }
+  }, [kindCounts, resourceKind]);
+
   const hasUnsavedChanges = draftEdits.size > 0 || pendingDeletes.size > 0;
 
   // 条件变化时回到第 1 页；但「切换 Tab 换槽」和「首次挂载」不算条件变化，
