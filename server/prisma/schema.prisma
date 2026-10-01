@@ -50,6 +50,13 @@ model User {
   reviewItemStates    ReviewItemState[]
   englishStudyRecords EnglishStudyRecord[]
   englishDailyStats   EnglishDailyStat[]
+
+  // ── 专栏 PDF 模块（column）────────────────────────────────────
+  columnAnnotations      ColumnAnnotation[]
+  columnMistakes         ColumnMistake[]
+  columnAssignments      ColumnAssignment[]
+  columnReadingProgress  ColumnReadingProgress[]
+  columnBookFavorites    ColumnBookFavorite[]
 }
 
 model RefreshToken {
@@ -525,6 +532,243 @@ model PdfBookFavorite {
   @@index([userId])
   @@index([bookId])
   @@map("pdf_book_favorite")
+}
+
+// ── 专栏 PDF 模块（column）────────────────────────────────────
+// 独立表族，主键用短雪花 id（String，base62）。不改动既有 pdf_* 表。
+// 结构参考 pdf_* 扩展而来，仅主键类型不同（String 而非 Int），并新增 series 字段。
+// 旧 pdf_book 的迁移（标记 legacy）另行处理，不在此表族内。
+
+model ColumnBook {
+  id        String   @id @db.VarChar(20) // 短雪花 id（base62）
+  title     String   @db.VarChar(255)
+  category  String   @default("") @db.VarChar(255) // 源目录名（保留可追溯）
+  grade     String   @default("") @db.VarChar(64)
+  subject   String   @default("") @db.VarChar(64)
+  series    String   @default("") @db.VarChar(128) // 系列名（如 学霸题中题）
+  batchId   String   @default("") @db.VarChar(64)
+  pdfKind   String   @default("pdf") @db.VarChar(16) // pdf | scan
+  coverPage Int      @default(1)
+  totalPages Int     @default(0)
+
+  /// —— 引用式存储 ——
+  filePath String  @db.Text
+  rootPath String  @db.Text
+  relPath  String  @db.Text
+  rootId   Int?
+  missing  Boolean @default(false)
+  fileSize Int     @default(0)
+  /// sha256(文件)，用于唯一性判定与去重
+  fileHash String? @db.VarChar(64)
+  /// 源盘绝对路径（拷贝式入库时保留，供「该源文件已迁移」识别与重复拷贝去重）
+  sourcePath String @default("") @db.VarChar(768)
+
+  pageSizes Json?
+  searchable    String  @default("ok") @db.VarChar(16) // ok | no_text | garbled | watermark_only
+  textStats     Json?
+  textExtracted Boolean @default(false)
+
+  tocSource String @default("manual") @db.VarChar(16)
+  tocJson   Json   @default("[]")
+  attributes Json  @default("{}")
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  videos          ColumnVideo[]
+  pageTexts       ColumnPageText[]
+  thumbs          ColumnThumb[]
+  annotations     ColumnAnnotation[]
+  mistakes        ColumnMistake[]
+  assignments     ColumnAssignment[]
+  readingProgress ColumnReadingProgress[]
+  favorites       ColumnBookFavorite[]
+
+  @@index([rootPath(length: 255), relPath(length: 255)])
+  @@index([fileHash])
+  @@index([sourcePath(length: 191)])
+  @@index([subject])
+  @@index([grade])
+  @@index([series])
+  @@index([category])
+  @@index([batchId])
+  @@index([searchable])
+  @@index([missing])
+  @@map("column_book")
+}
+
+/// MP4 讲解视频，关联到某本专栏书。文件不复制，只记录原绝对路径（同 BookVideo 机制）。
+model ColumnVideo {
+  id        String   @id @db.VarChar(20)
+  bookId    String
+  book      ColumnBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  title     String   @default("") @db.VarChar(512)
+  fileName  String   @default("") @db.VarChar(512)
+  filePath  String   @db.Text
+  rootPath  String   @db.Text
+  relPath   String   @db.Text
+  lessonNo  Int?
+  sortOrder Int      @default(0)
+  matchScore Float   @default(0)
+  scope     String   @default("lesson") @db.VarChar(16) // lesson | course
+  missing   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookId])
+  @@index([bookId, sortOrder])
+  @@map("column_video")
+}
+
+model ColumnPageText {
+  id         String   @id @db.VarChar(20)
+  bookId     String
+  book       ColumnBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber Int
+  items      Json
+  plainText  String   @db.Text
+  charCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([bookId, pageNumber])
+  @@index([bookId])
+  @@map("column_page_text")
+}
+
+model ColumnThumb {
+  id         String   @id @db.VarChar(20)
+  bookId     String
+  book       ColumnBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber Int // 0 = 封面
+  relPath    String   @db.VarChar(512)
+  width      Int      @default(0)
+  height     Int      @default(0)
+  bytes      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([bookId, pageNumber])
+  @@index([bookId])
+  @@map("column_thumb")
+}
+
+model ColumnAnnotation {
+  id         String   @id @db.VarChar(20)
+  bookId     String
+  book       ColumnBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pageNumber Int
+  type       String   @db.VarChar(64)
+  contentJson Json
+  tags       String?  @db.VarChar(512)
+  createdAt  DateTime @default(now())
+
+  mistakes ColumnMistake[]
+
+  @@index([userId])
+  @@index([bookId, pageNumber])
+  @@map("column_annotation")
+}
+
+model ColumnMistake {
+  id           String        @id @db.VarChar(20)
+  annotationId String
+  annotation   ColumnAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  bookId       String
+  book         ColumnBook     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId       Int?
+  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pageNumber   Int
+  imagePath    String         @db.VarChar(512)
+  subject      String         @default("") @db.VarChar(64)
+  tags         String?        @db.VarChar(512)
+  reviewStatus Int            @default(0)
+  createdAt    DateTime       @default(now())
+
+  @@index([bookId])
+  @@index([annotationId])
+  @@index([subject])
+  @@index([userId])
+  @@map("column_mistake")
+}
+
+model ColumnAssignment {
+  id               String   @id @db.VarChar(20)
+  bookId           String
+  book             ColumnBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  userId           Int?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String   @default("") @db.VarChar(255)
+  subject          String   @default("") @db.VarChar(64)
+  status           String   @default("draft") @db.VarChar(20)
+  gradedBy         Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  submittedAt      DateTime?
+  gradedAt         DateTime?
+  estimatedMinutes Int      @default(30)
+  gradeResult      String   @default("") @db.VarChar(16)
+  gradeIssues      Json?
+  gradeComment     String   @default("") @db.VarChar(500)
+
+  strokes ColumnAssignmentStroke[]
+
+  @@index([bookId])
+  @@index([userId])
+  @@map("column_assignment")
+}
+
+model ColumnAssignmentStroke {
+  id           String        @id @db.VarChar(20)
+  assignmentId String
+  assignment   ColumnAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  pageNumber   Int
+  layer        String        @default("student") @db.VarChar(10)
+  tool         String        @default("pen") @db.VarChar(20)
+  color        String        @default("#000000") @db.VarChar(20)
+  width        Float         @default(2)
+  points       Json
+  createdAt    DateTime      @default(now())
+
+  @@index([assignmentId])
+  @@index([assignmentId, pageNumber])
+  @@map("column_assignment_stroke")
+}
+
+model ColumnReadingProgress {
+  id         String   @id @db.VarChar(20)
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId     String
+  book       ColumnBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  pageNumber Int      @default(1)
+  pageLayout String   @default("single") @db.VarChar(20)
+  fitMode    String   @default("page") @db.VarChar(20)
+  scale      Float    @default(1.5)
+  rotation   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+  @@map("column_reading_progress")
+}
+
+model ColumnBookFavorite {
+  id        String   @id @db.VarChar(20)
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId    String
+  book      ColumnBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, bookId])
+  @@index([userId])
+  @@index([bookId])
+  @@map("column_book_favorite")
 }
 
 // ── 单词打字练习模块（typing）────────────────────────────────────

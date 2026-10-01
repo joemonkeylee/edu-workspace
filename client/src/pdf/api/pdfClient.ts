@@ -409,6 +409,162 @@ export async function recheckSearchable(limit = 50) {
   return data.data;
 }
 
+// ── 专栏预分析（外部资料盘 collect-scan.py 产物） ──────────────
+
+export interface CollectFile {
+  name: string;
+  relPath: string;
+  absPath: string;
+  sizeMB: number;
+  dir: string;
+  kind: string;
+  subject: string;
+  subjectConf: number;
+  grade: string;
+  gradeConf: number;
+  series: string;
+  seriesConf: number;
+  docType: string;
+  noise: boolean;
+  noiseReason: string;
+  pending: boolean;
+  dupOf: string | null;
+  sha256: string | null;
+}
+
+export interface CollectTreeNode {
+  name: string;
+  relPath: string;
+  isDir: true;
+  isNoise: boolean;
+  noiseReason: string;
+  hasNoise: boolean;
+  fileCount: number;
+  noiseCount: number;
+  files: CollectFile[];
+  children: CollectTreeNode[];
+}
+
+export interface CollectMeta {
+  root: string;
+  scannedAt: string;
+  totalWalked: number;
+  pdfCount: number;
+  pendingCount: number;
+  noiseDirCount: number;
+  dupGroups: number;
+  subjectFilter: string | null;
+  hashed: boolean;
+  subjectDist: Record<string, number>;
+  gradeDist: Record<string, number>;
+  noiseDist: Record<string, number>;
+}
+
+export interface CollectPreviewData {
+  meta: CollectMeta;
+  files: CollectFile[];
+  tree: CollectTreeNode;
+  /** 源盘绝对路径 → 已入库记录（拷贝式入库后源文件仍在，靠它标「已迁移」） */
+  migrated: Record<string, { id: string; title: string; batchId: string; at: string }>;
+  paths: { tree: string; files: string; src: string; out: string; target: string };
+}
+
+export async function collectPreview() {
+  const { data } = await apiClient.get('/pdf/admin/collect/preview');
+  return data.data as CollectPreviewData;
+}
+
+export async function collectScan(payload: { subject?: string; noHash?: boolean; src?: string }) {
+  const { data } = await apiClient.post('/pdf/admin/collect/scan', payload);
+  return data.data as CollectPreviewData & { ran: boolean; logTail: string; src?: string };
+}
+
+export interface CollectCommitItem {
+  filePath: string;
+  title?: string;
+  subject?: string;
+  grade?: string;
+  series?: string;
+  totalPages?: number;
+  searchable?: string;
+  fileSize?: number;
+  fileHash?: string | null;
+}
+
+export interface CollectCommitResult {
+  created: { id: string; title: string; relPath: string }[];
+  skipped: { filePath: string; reason: string }[];
+  videoCount: number;
+  mode: 'copy' | 'move';
+}
+
+/** 入库：把勾选+校正后的文件搬到目标盘并写入 column_book（默认拷贝，源文件保留） */
+export async function collectCommit(payload: {
+  items: CollectCommitItem[];
+  targetRoot?: string;
+  batchId?: string;
+  mode?: 'copy' | 'move';
+}) {
+  const { data } = await apiClient.post('/pdf/admin/collect/commit', payload);
+  return data.data as CollectCommitResult;
+}
+
+export interface DiskInfo {
+  path: string;
+  totalBytes: number;
+  freeBytes: number;
+  usedBytes: number;
+}
+
+/** 目标盘（或任意路径所在盘）剩余空间 */
+export async function collectDisk(path?: string) {
+  const { data } = await apiClient.get('/pdf/admin/collect/disk', { params: path ? { path } : {} });
+  return data.data as DiskInfo;
+}
+
+export interface FsStatItem {
+  path: string;
+  exists: boolean;
+  isDir: boolean;
+  sizeBytes: number;
+  fileCount: number;
+  dirCount: number;
+}
+
+/** 路径体积统计（删除前预估「几个文件 / 多大」） */
+export async function collectFsStat(paths: string[]) {
+  const { data } = await apiClient.post('/pdf/admin/collect/fs/stat', { paths });
+  return data.data as { items: FsStatItem[]; totalBytes: number; totalFiles: number; totalDirs: number };
+}
+
+export interface FsDeleteResult {
+  results: { path: string; ok: boolean; error?: string; sizeBytes?: number; fileCount?: number }[];
+  okCount: number;
+  failCount: number;
+  freedBytes: number;
+  deletedFiles: number;
+}
+
+/** 批量物理删除文件 / 文件夹（仅允许白名单根目录之下；echo 必须为 'DELETE'） */
+export async function collectFsDelete(paths: string[]) {
+  const { data } = await apiClient.post('/pdf/admin/collect/fs/delete', { paths, echo: 'DELETE' });
+  return data.data as FsDeleteResult;
+}
+
+export interface PurgeResult {
+  db: { booksBefore: number; booksAfter: number } | null;
+  files:
+    | { skipped: true; reason: string; targetRoot: string; columnRoot?: string }
+    | { targetRoot: string; filePattern: 'pdf' | 'all'; deletedFiles: number; freedBytes: number; prunedDirs: number; sample: string[] }
+    | null;
+}
+
+/** 一键清空：column_* 表 与 / 或 目标盘 PDF（echo 必须为 'PURGE'） */
+export async function collectPurge(payload: { db: boolean; files: boolean; targetRoot?: string; filePattern?: 'pdf' | 'all' }) {
+  const { data } = await apiClient.post('/pdf/admin/collect/purge', { ...payload, echo: 'PURGE' });
+  return data.data as PurgeResult;
+}
+
 // ── 管理端：书籍 / 批注 / 错题 / 作业 ─────────────────────────
 
 export interface PdfAdminBook {
@@ -584,6 +740,67 @@ export async function adminDeletePdfAssignment(id: number) {
 export async function adminDeletePdfAssignmentsBatch(ids: number[]) {
   const { data } = await apiClient.post('/pdf/admin/assignments/batch-delete', { ids });
   return data as { success: boolean; count: number };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 教辅资料（teaching_materials 表，管理端只读展示 + 筛选）
+// ─────────────────────────────────────────────────────────────
+
+export interface TeachingMaterial {
+  id: number;
+  name: string;
+  /** 难度 1~10（越小越基础） */
+  difficulty: number | null;
+  /** 科目，多值时用「、」连接，如「英语、物理」 */
+  subject: string;
+  /** 热度 1~10 */
+  popularity: number | null;
+  /** 地区 / 版本，如「全国通用(人教版)」 */
+  region: string;
+  /** 资料来源（网盘卖家） */
+  source: string;
+  url: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface TeachingMaterialFacets {
+  subjects: { value: string; count: number }[];
+  regions: { value: string; count: number }[];
+  sources: { value: string; count: number }[];
+  difficulties: { value: number; count: number }[];
+  popularities: { value: number; count: number }[];
+  total: number;
+}
+
+export interface TeachingMaterialQuery {
+  q?: string;
+  subject?: string;
+  region?: string;
+  source?: string;
+  difficulty?: number | '';
+  popularity?: number | '';
+  /** '1' 仅有链接 / '0' 无链接 / '' 不限 */
+  hasUrl?: '1' | '0' | '';
+  sort?: string;
+  order?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+}
+
+export async function listTeachingMaterials(params: TeachingMaterialQuery = {}) {
+  // 空串 / undefined 不传，避免后端把 '' 当成有效筛选值
+  const query: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== '' && v !== undefined && v !== null) query[k] = v;
+  }
+  const { data } = await apiClient.get('/pdf/admin/materials', { params: query });
+  return data.data as { rows: TeachingMaterial[]; total: number; page: number; pageSize: number };
+}
+
+export async function teachingMaterialFacets() {
+  const { data } = await apiClient.get('/pdf/admin/materials/facets');
+  return data.data as TeachingMaterialFacets;
 }
 
 /** PDF 文件的直链（供 pdf.js 自己发 Range 请求） */
