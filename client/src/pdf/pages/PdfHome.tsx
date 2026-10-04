@@ -300,7 +300,10 @@ export default function PdfHome() {
     [facets.grades]
   );
   const categoryOptions = useMemo(() =>
-    [...facets.categories.map((c) => c.value)].filter(Boolean).sort((a, b) => a.localeCompare(b)),
+    facets.categories
+      .filter((c) => c.value)
+      .map((c) => ({ name: c.value, count: c.count }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     [facets.categories]
   );
 
@@ -951,7 +954,7 @@ export default function PdfHome() {
                             >
                               <option value="" className="text-foreground">&nbsp;</option>
                               {categoryOptions.map((c) => (
-                                <option key={c} value={c} className="text-foreground">{c}</option>
+                                <option key={c.name} value={c.name} className="text-foreground">{c.name}</option>
                               ))}
                             </select>
                           </div>
@@ -1112,7 +1115,7 @@ export default function PdfHome() {
                             className="w-full rounded border border-border px-1 py-0.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                           >
                             <option value="">&nbsp;</option>
-                            {categoryOptions.map((c) => (<option key={c} value={c}>{c}</option>))}
+                            {categoryOptions.map((c) => (<option key={c.name} value={c.name}>{c.name}</option>))}
                           </select>
                         ) : (
                           book.category && <span className="rounded bg-violet-100 px-1 py-0.5 text-[10px] text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">{book.category}</span>
