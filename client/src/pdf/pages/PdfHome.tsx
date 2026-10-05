@@ -159,6 +159,9 @@ export default function PdfHome() {
     missing: number;
   }>({ grades: [], subjects: [], categories: [], searchable: [], kinds: {}, missing: 0 });
 
+  // 列表接口返回的、随当前筛选联动的下拉选项；为 null 时回退到全局 facets
+  const [listOptions, setListOptions] = useState<{ subjects: string[]; grades: string[]; categories: { name: string; count: number }[] } | null>(null);
+
   const sortString = useMemo(() => {
     const active = sortFields.filter((s) => s.dir !== null);
     if (active.length === 0) return undefined;
@@ -258,6 +261,7 @@ export default function PdfHome() {
         if (cancelled) return;
         setItems(res.data);
         setTotal(res.total);
+        setListOptions(res.options ?? null);
       })
       .catch((e: any) => {
         if (!cancelled) toast.error('加载失败: ' + (e?.message || ''));
@@ -290,21 +294,19 @@ export default function PdfHome() {
   }, [resourceKind]);
 
   const subjectOptions = useMemo(() =>
-    [...facets.subjects.map((s) => s.value)].filter(Boolean)
+    [...(listOptions?.subjects ?? facets.subjects.map((s) => s.value))].filter(Boolean)
       .sort((a, b) => (SUBJECT_ORDER.indexOf(a) + 1 || 999) - (SUBJECT_ORDER.indexOf(b) + 1 || 999)),
-    [facets.subjects]
+    [listOptions, facets.subjects]
   );
   const gradeOptions = useMemo(() =>
-    [...facets.grades.map((g) => g.value)].filter(Boolean)
+    [...(listOptions?.grades ?? facets.grades.map((g) => g.value))].filter(Boolean)
       .sort((a, b) => (GRADE_ORDER.indexOf(a) + 1 || 999) - (GRADE_ORDER.indexOf(b) + 1 || 999)),
-    [facets.grades]
+    [listOptions, facets.grades]
   );
   const categoryOptions = useMemo(() =>
-    facets.categories
-      .filter((c) => c.value)
-      .map((c) => ({ name: c.value, count: c.count }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [facets.categories]
+    (listOptions?.categories ?? facets.categories.filter((c) => c.value).map((c) => ({ name: c.value, count: c.count })))
+      .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN')),
+    [listOptions, facets.categories]
   );
 
   const kindCounts = useMemo(() => {
@@ -684,8 +686,8 @@ export default function PdfHome() {
       <main className={`flex-1 px-6 pt-4 pb-3 ${total === 0 && !loading ? 'overflow-hidden' : 'overflow-auto'}`}>
         {/* Row 1: filters + sort */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-16 sm:w-20" />
-          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-16 sm:w-20" />
+          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-20 sm:w-24" />
+          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-20 sm:w-24" />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} className="w-24 sm:w-36" />
           {keywordSearchEl}
           {searchButtonEl}

@@ -176,6 +176,27 @@ function compareRows(
   };
 }
 
+/** 把 groupBy 出来的「学科 × 学期 × 分类」组合汇总成筛选项（与 books.ts 同款，跟随当前筛选联动） */
+function buildFilterOptions(
+  rows: Array<{ subject: string | null; grade: string | null; category: string | null; _count: { _all: number } }>,
+) {
+  const subjectSet = new Set<string>();
+  const gradeSet = new Set<string>();
+  const categoryCountMap = new Map<string, number>();
+  for (const r of rows) {
+    if (r.subject) subjectSet.add(r.subject);
+    if (r.grade) gradeSet.add(r.grade);
+    if (r.category) categoryCountMap.set(r.category, (categoryCountMap.get(r.category) ?? 0) + r._count._all);
+  }
+  const categories = [...categoryCountMap.entries()]
+    .filter(([, count]) => count > 0)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+  return { subjects: [...subjectSet], grades: [...gradeSet], categories };
+}
+
+const EMPTY_OPTIONS = { subjects: [] as string[], grades: [] as string[], categories: [] as { name: string; count: number }[] };
+
 router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const page = Math.max(1, parseIntParam(req.query.page, 1));
   const pageSize = Math.min(100, Math.max(1, parseIntParam(req.query.pageSize, 24)));
@@ -215,7 +236,7 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
     for (const f of favs) favoriteAtMap.set(f.bookId, f.createdAt);
     where.id = { in: [...favoriteAtMap.keys()] };
     if (favoriteAtMap.size === 0) {
-      return res.json({ data: [], total: 0, page, pageSize });
+      return res.json({ data: [], total: 0, page, pageSize, options: EMPTY_OPTIONS });
     }
   }
 
@@ -230,6 +251,7 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
       total,
       page,
       pageSize,
+      options: buildFilterOptions(rows.map((r: any) => ({ subject: r.subject, grade: r.grade, category: r.category, _count: { _all: 1 } }))),
     });
   }
 
@@ -237,7 +259,7 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
     ? sort.map((s) => ({ [s.field]: s.dir }))
     : [{ updatedAt: 'desc' as const }, { id: 'desc' as const }];
 
-  const [total, items] = await Promise.all([
+  const [total, items, optionRows] = await Promise.all([
     prisma.pdfBook.count({ where }),
     prisma.pdfBook.findMany({
       where,
@@ -246,6 +268,8 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
       take: pageSize,
       select: LIST_SELECT,
     }),
+    // 筛选项统计与列表用同一个 where —— 学科/学期/关键字筛选后，分类计数随之联动
+    prisma.pdfBook.groupBy({ by: ['subject', 'grade', 'category'], where, _count: { _all: true } }),
   ]);
 
   // 非收藏路径也要给出收藏状态（卡片上的星标）
@@ -266,6 +290,7 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
     total,
     page,
     pageSize,
+    options: buildFilterOptions(optionRows),
   });
 }));
 

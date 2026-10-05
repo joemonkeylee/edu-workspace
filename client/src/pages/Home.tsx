@@ -718,8 +718,8 @@ export default function Home() {
         {/* Row 1: filters + sort + edit toggle */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {/* <span className="text-xs text-muted-foreground mr-1">筛选</span> */}
-          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-16 sm:w-20" />
-          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-16 sm:w-20" />
+          <ClearableSelect value={selectedSubject} onChange={safeSetSubject} placeholder="全部学科" options={subjectOptions} className="w-20 sm:w-24" />
+          <ClearableSelect value={selectedGrade} onChange={safeSetGrade} placeholder="全部学期" options={gradeOptions} className="w-20 sm:w-24" />
           <ClearableSelect value={selectedCategory} onChange={safeSetCategory} placeholder="全部分类" options={categoryOptions} className="w-24 sm:w-36" />
           {keywordSearchEl}
           {searchButtonEl}

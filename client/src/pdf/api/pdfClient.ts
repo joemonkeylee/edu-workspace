@@ -84,7 +84,14 @@ export async function listBooks(params: ListParams = {}) {
   if (kind) query.kind = kind;
   if (favoritesOnly) query.favoritesOnly = '1';
   const { data } = await apiClient.get('/pdf/books', { params: query });
-  return data as { data: PdfBookSummary[]; total: number; page: number; pageSize: number };
+  return data as {
+    data: PdfBookSummary[];
+    total: number;
+    page: number;
+    pageSize: number;
+    /** 随当前筛选联动的下拉选项（学科/学期为去重值，分类带计数） */
+    options?: { subjects: string[]; grades: string[]; categories: { name: string; count: number }[] };
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
