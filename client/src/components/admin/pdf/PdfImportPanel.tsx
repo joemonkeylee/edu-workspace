@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Scan, FolderOpen, Check, AlertTriangle, RefreshCw, Database, Sparkles } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Scan, FolderOpen, Check, AlertTriangle, RefreshCw, Database, ArrowDown, ArrowUp, ArrowDownUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '../../ConfirmDialog';
 import { scanPreview, scanCommit, seedFromBooks, recheckSearchable } from '../../../pdf/api/pdfClient';
@@ -31,6 +31,28 @@ const SEARCHABLE_LABEL: Record<string, string> = {
   watermark_only: '仅水印',
 };
 
+type SortField = 'fileName' | 'title' | 'grade' | 'subject' | 'totalPages' | 'fileSize' | 'searchable' | 'status';
+type SortDir = 'desc' | 'asc';
+
+function fmtSize(n: number): string {
+  if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+  if (n >= 1024) return (n / 1024).toFixed(0) + ' KB';
+  return n + ' B';
+}
+
+/** 状态排序权重：待入库 > 匹配旧库 > 已入库 > 错误 */
+function statusRank(it: ScanItem): number {
+  if (it.error) return 0;
+  if (it.alreadyImported) return 1;
+  if (it.legacyBookId) return 2;
+  return 3;
+}
+
+/** 可搜索排序权重：可搜索 > 其他 */
+function searchableRank(it: ScanItem): number {
+  return it.searchable === 'ok' ? 1 : 0;
+}
+
 export default function PdfImportPanel() {
   const confirm = useConfirm();
   const [rootPath, setRootPath] = useState('');
@@ -40,6 +62,9 @@ export default function PdfImportPanel() {
   const [generateCovers, setGenerateCovers] = useState(true);
   const [items, setItems] = useState<ScanItem[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // 预解析结果的关键字过滤 + 表头排序；勾选集以 filePath 为键，不受过滤/排序影响
+  const [filterText, setFilterText] = useState('');
+  const [sort, setSort] = useState<{ field: SortField; dir: SortDir } | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [summary, setSummary] = useState<{ total: number; alreadyImported: number; matchLegacy: number; unscannable: number; errored: number } | null>(null);
@@ -54,6 +79,8 @@ export default function PdfImportPanel() {
     setPreviewing(true);
     setItems([]);
     setSummary(null);
+    setFilterText('');
+    setSort(null);
     try {
       const res: any = await scanPreview({ rootPath: rootPath.trim(), recursive, max: 500, hash: doHash });
       setItems(res.items);
@@ -75,12 +102,44 @@ export default function PdfImportPanel() {
     });
   };
 
-  const selectAllNew = () => {
-    const next = new Set<string>();
-    items.forEach((it) => {
-      if (!it.alreadyImported && !it.error) next.add(it.filePath);
+  // 过滤（关键字匹配文件名/标题/路径/分类/学期/学科，大小写不敏感）
+  const visibleItems = useMemo(() => {
+    const kw = filterText.trim().toLowerCase();
+    const filtered = kw
+      ? items.filter((it) =>
+          [it.fileName, it.title, it.relPath, it.category, it.grade, it.subject]
+            .filter(Boolean)
+            .some((s) => String(s).toLowerCase().includes(kw)),
+        )
+      : items;
+    if (!sort) return filtered;
+    const { field, dir } = sort;
+    const mul = dir === 'desc' ? -1 : 1;
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (field === 'status') cmp = statusRank(a) - statusRank(b);
+      else if (field === 'searchable') cmp = searchableRank(a) - searchableRank(b);
+      else if (field === 'totalPages' || field === 'fileSize') cmp = a[field] - b[field];
+      else cmp = String(a[field] ?? '').localeCompare(String(b[field] ?? ''), 'zh-CN');
+      if (cmp === 0) cmp = a.filePath.localeCompare(b.filePath);
+      return cmp * mul;
     });
-    setSelected(next);
+  }, [items, filterText, sort]);
+
+  // 点击表头排序：新字段首击降序，再击切换升序（约定：首击降序，大数值在前）
+  const toggleSort = (field: SortField) => {
+    setSort((prev) => (prev?.field === field ? (prev.dir === 'desc' ? { field, dir: 'asc' } : { field, dir: 'desc' }) : { field, dir: 'desc' }));
+  };
+
+  const selectAllNew = () => {
+    // 只把当前筛选可见的未入库行并入选择集，已勾选的（含被过滤隐藏的）保持不变
+    setSelected((prev) => {
+      const next = new Set(prev);
+      visibleItems.forEach((it) => {
+        if (!it.alreadyImported && !it.error) next.add(it.filePath);
+      });
+      return next;
+    });
   };
 
   const clearSelection = () => setSelected(new Set());
@@ -222,36 +281,67 @@ export default function PdfImportPanel() {
         {/* 预解析结果 */}
         {items.length > 0 && (
           <div className="mt-6">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
               <span className="text-sm font-medium text-foreground">
-                预解析结果（{items.length} 个文件）
+                预解析结果
+                {visibleItems.length !== items.length ? `（筛选 ${visibleItems.length} / 共 ${items.length} 个文件）` : `（${items.length} 个文件）`}
+                {selected.size > 0 && <span className="ml-2 text-xs text-primary">已选 {selected.size}</span>}
                 {summary && (
                   <span className="ml-2 text-xs text-muted-foreground">
                     已入库 {summary.alreadyImported} · 匹配旧库 {summary.matchLegacy} · 无文本 {summary.unscannable} · 错误 {summary.errored}
                   </span>
                 )}
               </span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder="关键字过滤（文件名/标题/路径）"
+                  className="w-56 px-3 py-1.5 border border-input bg-background text-foreground placeholder:text-muted-foreground rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                />
                 <button onClick={selectAllNew} className="text-xs text-primary hover:underline">全选未入库</button>
                 <button onClick={clearSelection} className="text-xs text-muted-foreground hover:underline">清空选择</button>
               </div>
             </div>
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="overflow-x-auto rounded-lg border border-border max-h-[60vh] overflow-y-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 sticky top-0">
                   <tr>
                     <th className="w-10 px-3 py-2"></th>
-                    <th className="text-left px-3 py-2 font-medium text-foreground/70">文件名</th>
-                    <th className="text-left px-3 py-2 font-medium text-foreground/70">标题</th>
-                    <th className="text-left px-3 py-2 font-medium text-foreground/70">学期</th>
-                    <th className="text-left px-3 py-2 font-medium text-foreground/70">学科</th>
-                    <th className="text-left px-3 py-2 font-medium text-foreground/70">页数</th>
-                    <th className="text-left px-3 py-2 font-medium text-foreground/70">可搜索</th>
-                    <th className="text-left px-3 py-2 font-medium text-foreground/70">状态</th>
+                    {([
+                      ['fileName', '文件名'],
+                      ['title', '标题'],
+                      ['grade', '学期'],
+                      ['subject', '学科'],
+                      ['totalPages', '页数'],
+                      ['fileSize', '大小'],
+                      ['searchable', '可搜索'],
+                      ['status', '状态'],
+                    ] as [SortField, string][]).map(([field, label]) => {
+                      const active = sort?.field === field;
+                      return (
+                        <th
+                          key={field}
+                          onClick={() => toggleSort(field)}
+                          title={active ? (sort!.dir === 'desc' ? '降序（点击切升序）' : '升序（点击切降序）') : '按此列排序（首击降序）'}
+                          className={`text-left px-3 py-2 font-medium whitespace-nowrap select-none cursor-pointer hover:text-foreground ${active ? 'text-foreground' : 'text-foreground/70'}`}
+                        >
+                          <span className="inline-flex items-center gap-0.5">
+                            {label}
+                            {active ? (
+                              sort!.dir === 'desc' ? <ArrowDown size={12} className="text-primary" /> : <ArrowUp size={12} className="text-primary" />
+                            ) : (
+                              <ArrowDownUp size={11} className="text-muted-foreground/40" />
+                            )}
+                          </span>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((it) => {
+                  {visibleItems.map((it) => {
                     const isSelected = selected.has(it.filePath);
                     const disabled = it.alreadyImported || !!it.error;
                     return (
@@ -265,11 +355,12 @@ export default function PdfImportPanel() {
                             className="w-4 h-4 accent-primary cursor-pointer disabled:cursor-not-allowed"
                           />
                         </td>
-                        <td className="px-3 py-2 text-foreground truncate max-w-[200px]" title={it.fileName}>{it.fileName}</td>
+                        <td className="px-3 py-2 text-foreground truncate max-w-[200px]" title={it.relPath}>{it.fileName}</td>
                         <td className="px-3 py-2 text-foreground/70 truncate max-w-[200px]" title={it.title}>{it.title}</td>
                         <td className="px-3 py-2 text-primary">{it.grade || '-'}</td>
                         <td className="px-3 py-2 text-emerald-600 dark:text-emerald-400">{it.subject || '-'}</td>
                         <td className="px-3 py-2 text-foreground/70">{it.totalPages}</td>
+                        <td className="px-3 py-2 text-foreground/70 whitespace-nowrap">{fmtSize(it.fileSize)}</td>
                         <td className="px-3 py-2">
                           <span className={`text-xs ${it.searchable === 'ok' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                             {SEARCHABLE_LABEL[it.searchable] || it.searchable}
