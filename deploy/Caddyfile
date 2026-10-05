@@ -10,6 +10,15 @@
         reverse_proxy 127.0.0.1:4000
     }
 
+    # Static HTML documents: drop files into <repo>/doc/ and they are served
+    # at /doc/... immediately — no rebuild or deploy needed.
+    # /doc/index.html -> doc/index.html, /doc/ -> doc/index.html
+    handle_path /doc/* {
+        root * {$HOME}/工作/github/edu-workspace/doc
+        file_server
+    }
+    redir /doc /doc/ 301
+
     # English module data & audio live on the remote resource server.
     # Without these, requests fall through to the SPA fallback below and
     # return index.html, which the JSON fetch then fails to parse.

@@ -26,6 +26,11 @@ server/prisma/migrations/
 # Logs
 *.log
 
+# Static HTML documents served by Caddy at /doc/... (repo-root doc/ folder).
+# Contents stay local-only; keep the folder itself via .gitkeep.
+/doc/*
+!/doc/.gitkeep
+
 # OS
 .DS_Store
 
