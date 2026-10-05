@@ -222,17 +222,15 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   if (missingParam === '0') where.missing = false;
 
   // 「收藏」相关的两条路径：只看收藏、按收藏时间排序。
-  // 两者都先取该用户的收藏集，因为 MySQL 里无法直接按关联表的 createdAt 排序。
-  // standalone 模式（userId 为 null）下没有登录用户，收藏集为空 —— 与既有行为一致。
+  // 两者都先取收藏集（MySQL 里无法直接按关联表的 createdAt 排序）。
+  // standalone 模式（userId 为 null）按全局收藏处理 —— 与 books.ts 行为一致。
   const favoriteAtMap = new Map<number, Date>();
   const needsFavorites = favoritesOnly || sort.some((s) => s.field === 'favoriteAt');
   if (needsFavorites) {
-    const favs = userId
-      ? await prisma.pdfBookFavorite.findMany({
-          where: { userId },
-          select: { bookId: true, createdAt: true },
-        })
-      : [];
+    const favs = await prisma.pdfBookFavorite.findMany({
+      where: { userId },
+      select: { bookId: true, createdAt: true },
+    });
     for (const f of favs) favoriteAtMap.set(f.bookId, f.createdAt);
     where.id = { in: [...favoriteAtMap.keys()] };
     if (favoriteAtMap.size === 0) {
@@ -272,14 +270,12 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
     prisma.pdfBook.groupBy({ by: ['subject', 'grade', 'category'], where, _count: { _all: true } }),
   ]);
 
-  // 非收藏路径也要给出收藏状态（卡片上的星标）
-  if (userId) {
-    const favs = await prisma.pdfBookFavorite.findMany({
-      where: { userId, bookId: { in: items.map((i: any) => i.id) } },
-      select: { bookId: true, createdAt: true },
-    });
-    for (const f of favs) favoriteAtMap.set(f.bookId, f.createdAt);
-  }
+  // 非收藏路径也要给出收藏状态（卡片上的星标）；standalone 下 userId=null = 全局收藏
+  const pageFavs = await prisma.pdfBookFavorite.findMany({
+    where: { userId, bookId: { in: items.map((i: any) => i.id) } },
+    select: { bookId: true, createdAt: true },
+  });
+  for (const f of pageFavs) favoriteAtMap.set(f.bookId, f.createdAt);
 
   res.json({
     data: items.map((r: any) => ({
@@ -342,6 +338,13 @@ router.get('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
     }
   }
 
+  // 收藏状态（standalone 下 userId=null = 全局收藏）
+  const userId = req.user?.userId ?? null;
+  const favRow = await prisma.pdfBookFavorite.findFirst({
+    where: { userId, bookId: id },
+    select: { createdAt: true },
+  });
+
   res.json({
     data: {
       ...book,
@@ -349,6 +352,8 @@ router.get('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
       coverUrl: `/api/pdf/books/${id}/cover`,
       missing: resolved.missing,
       pairSummary,
+      isFavorite: !!favRow,
+      favoriteAt: favRow?.createdAt ?? null,
     },
   });
 }));
