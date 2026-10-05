@@ -4,6 +4,7 @@ import path from 'path';
 import prisma from '../../prisma.js';
 import { authRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { buildKeywordFilter } from '../../utils/keywordQuery.js';
 import { extractPageText, hashFile, inspectPdf, openPdf } from '../services/pdfMeta.js';
 import { ensureCover, ensureThumb } from '../services/pdfRender.js';
 import { ensurePdfDirs, getPdfRoot, getThumbPath, joinRootRel, splitRootRel } from '../services/pdfStorage.js';
@@ -212,7 +213,10 @@ router.get('/', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const userId = req.user?.userId ?? null;
 
   const where: any = { isDeleted: false };
-  if (q) where.title = { contains: q };
+  // 关键字支持布尔逻辑：& 与、| 或（"秋下&人教&全国"、"秋上|秋下"）
+  // helper 返回 where 顶层片段（本项目 Prisma 不支持字段内嵌 AND/OR），直接合入
+  const titleFilter = buildKeywordFilter(q, ['title']);
+  if (titleFilter) Object.assign(where, titleFilter);
   if (grade) where.grade = grade;
   if (subject) where.subject = subject;
   if (category) where.category = category;

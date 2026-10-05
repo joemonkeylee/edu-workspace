@@ -665,7 +665,7 @@ export default function Home() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applySearch(); } }}
-        placeholder="请输入关键字..."
+        placeholder="请输入关键字，支持 与& 或| ..."
         className="w-full rounded-lg border border-border bg-card py-1.5 pl-7 pr-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
       />
       {search && (

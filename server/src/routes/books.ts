@@ -14,6 +14,7 @@ import {
 } from '../services/bookIndex.js';
 import { authRequired, adminRequired, optionalAuth, AuthedRequest } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { buildKeywordFilter } from '../utils/keywordQuery.js';
 
 const router = Router();
 
@@ -77,12 +78,10 @@ router.get('/', optionalAuth, asyncHandler(async (req: AuthedRequest, res: Respo
   if (kind === 'book' || kind === 'course' || kind === 'exercise') where.kind = kind;
   if (hasVideoOnly) where.videos = { some: { missing: false } };
   if (search) {
-    where.OR = [
-      { title: { contains: search } },
-      { category: { contains: search } },
-      { grade: { contains: search } },
-      { subject: { contains: search } },
-    ];
+    // 关键字支持布尔逻辑：& 与、| 或（"秋下&人教&全国"、"秋上|秋下"）
+    // helper 返回 where 顶层片段，直接合入本请求的 where
+    const kwFilter = buildKeywordFilter(search, ['title', 'category', 'grade', 'subject']);
+    if (kwFilter) Object.assign(where, kwFilter);
   }
   // 答案页书籍不进列表；判断依据来自缓存索引，因此这里可以交给数据库过滤 / 分页，
   // 不必再把全表 attributes 拉回来在内存里筛（这是过去慢的主因）
