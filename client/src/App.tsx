@@ -44,6 +44,11 @@ const TypingHome = lazy(() => import('./typing/TypingHome'));
 // 错题本样例（一次性展示）：文件不进仓库、不进构建产物，只在本地 dev/preview 可用
 const WrongDemoHome = lazy(() => import('./wrongDemo/WrongDemoHome'));
 const WrongDemoViewer = lazy(() => import('./wrongDemo/WrongDemoViewer'));
+// 日语学习模块
+const JpHome = lazy(() => import('./japanese/pages/JpHome').then((m) => ({ default: m.JpHome })));
+const JpLessons = lazy(() => import('./japanese/pages/JpLessons').then((m) => ({ default: m.JpLessons })));
+const JpStudy = lazy(() => import('./japanese/pages/JpStudy').then((m) => ({ default: m.JpStudy })));
+const JpReview = lazy(() => import('./japanese/pages/JpReview').then((m) => ({ default: m.JpReview })));
 
 function PdfSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -116,6 +121,12 @@ export default function App() {
         <Route path="/english/:bookIdx/:lessonIdx" element={<LandingLayout><EnglishPage /></LandingLayout>} />
 
         <Route path="/typing" element={<LandingLayout><PdfSuspense><TypingHome /></PdfSuspense></LandingLayout>} />
+
+        {/* 日语学习模块 */}
+        <Route path="/jp" element={<PdfSuspense><JpHome /></PdfSuspense>} />
+        <Route path="/jp/lessons" element={<PdfSuspense><JpLessons /></PdfSuspense>} />
+        <Route path="/jp/study/:lessonId" element={<PdfSuspense><JpStudy /></PdfSuspense>} />
+        <Route path="/jp/review" element={<PdfSuspense><JpReview /></PdfSuspense>} />
 
         <Route path="*" element={<NotFound />} />
         </Routes>

@@ -34,6 +34,14 @@ import { isAuthEnabled } from './services/auth.js';
 import { cropsAuthMiddleware } from './middleware/cropsAuth.js';
 import { startBackupScheduler } from './services/dbBackupScheduler.js';
 
+// 进程级兜底：pdf.js 解析损坏 PDF 时会在后台抛出无法被 await 链捕获的
+// rejection（如 XRefEntryException: Bad (uncompressed) XRef entry），Node 默认
+// 会因 unhandledRejection 直接退出进程。这里只记录日志、不中断服务 ——
+// 单个坏文件不能拖垮整个应用。
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
