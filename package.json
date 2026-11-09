@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
     "deploy:now": "./scripts/auto-deploy-main.sh",
+    "deploy:vps": "bash ./scripts/deploy-vps.sh",
     "setup:ssh": "./scripts/setup-github-ssh.sh",
     "build": "npm run build:server && npm run build:client",
     "build:prod": "npm run build:server && npm run build:client:prod",

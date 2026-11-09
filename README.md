@@ -103,6 +103,8 @@ cd /Users/{user}/工作/github/edu-workspace
 npm run build
 ```
 
+Debian VPS 部署请参考[部署指南](./markdown/debian-vps-deploy.md)。VPS 首次配置完成后，可在本机运行 `npm run deploy:vps -- deploy@服务器地址` 发布；现有 `npm run deploy:now` 仍用于 macOS 局域网部署。
+
 生产构建完成后，由 launchd 启动后端和 Caddy。手动更新发布：
 
 ```bash
