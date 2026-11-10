@@ -19,7 +19,14 @@ function safeMkdir(dir: string, label?: string) {
 
 export async function initializeStorageRoot() {
   const setting = await prisma.appSetting.findUnique({ where: { key: STORAGE_KEY } });
-  if (setting?.value) storageRoot = path.resolve(setting.value);
+  if (setting?.value) {
+    const savedRoot = path.resolve(setting.value);
+    if (fs.existsSync(savedRoot) || !process.env.STORAGE_DIR || !fs.existsSync(DEFAULT_ROOT)) {
+      storageRoot = savedRoot;
+    } else {
+      console.warn(`[storage] saved storage root is unavailable; using STORAGE_DIR: ${DEFAULT_ROOT}`);
+    }
+  }
   safeMkdir(storageRoot, 'storageRoot');
   return storageRoot;
 }
@@ -85,11 +92,29 @@ export function hasBookAssets(bookId: number, root = storageRoot) {
 
 export async function inspectStorageRoot(targetPath: string) {
   const resolvedPath = path.resolve(targetPath);
+  const exists = fs.existsSync(resolvedPath);
+  let writable = false;
+  if (exists) {
+    const probePath = path.join(resolvedPath, `.edu-workspace-write-check-${process.pid}-${Date.now()}`);
+    try {
+      fs.writeFileSync(probePath, '');
+      fs.unlinkSync(probePath);
+      writable = true;
+    } catch (error) {
+      try {
+        fs.rmSync(probePath, { force: true });
+      } catch (cleanupError) {
+        console.warn(`[storage] write-check cleanup failed: ${probePath}`, cleanupError);
+      }
+      console.warn(`[storage] write check failed: ${resolvedPath}`, error);
+    }
+  }
   const books = await prisma.book.findMany({ select: { id: true } });
   const matchedBookIds = books.filter((book) => hasBookAssets(book.id, resolvedPath)).map((book) => book.id);
   return {
     path: resolvedPath,
-    exists: fs.existsSync(resolvedPath),
+    exists,
+    writable,
     matchedBooks: matchedBookIds.length,
     totalBooks: books.length,
     matchedBookIds,

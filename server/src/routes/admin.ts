@@ -137,16 +137,26 @@ router.get('/storage', asyncHandler(async (_req: Request, res: Response) => {
 router.post('/storage/inspect', asyncHandler(async (req: Request, res: Response) => {
   const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
   if (!targetPath) return res.status(400).json({ error: '资源目录不能为空' });
+  if (/^https?:\/\//i.test(targetPath)) {
+    return res.status(400).json({ error: '当前需要服务端可访问的本地或挂载目录；HTTP 存储服务待接口协议明确后接入' });
+  }
   res.json(await inspectStorageRoot(targetPath));
 }));
 
 router.put('/storage', asyncHandler(async (req: Request, res: Response) => {
   const targetPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
   if (!targetPath) return res.status(400).json({ error: '资源目录不能为空' });
-  const inspection = await inspectStorageRoot(targetPath);
-  if (!inspection.exists) fs.mkdirSync(inspection.path, { recursive: true });
+  if (/^https?:\/\//i.test(targetPath)) {
+    return res.status(400).json({ error: '当前需要服务端可访问的本地或挂载目录；HTTP 存储服务待接口协议明确后接入' });
+  }
+  let inspection = await inspectStorageRoot(targetPath);
+  if (!inspection.exists) {
+    fs.mkdirSync(inspection.path, { recursive: true });
+    inspection = await inspectStorageRoot(inspection.path);
+  }
+  if (!inspection.writable) return res.status(400).json({ error: '资源目录不可写，请检查路径、挂载状态和服务进程权限' });
   const storagePath = await setStorageRoot(inspection.path);
-  res.json({ path: storagePath, matchedBooks: inspection.matchedBooks, totalBooks: inspection.totalBooks });
+  res.json({ path: storagePath, writable: true, matchedBooks: inspection.matchedBooks, totalBooks: inspection.totalBooks });
 }));
 
 router.post('/storage/open', (req: Request, res: Response) => {

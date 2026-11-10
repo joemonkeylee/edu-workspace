@@ -571,17 +571,17 @@ export async function updateScanConcurrency(taskId: string, concurrency: number)
 
 export async function getStorageSettings() {
   const { data } = await api.get('/admin/storage');
-  return data as { path: string; exists: boolean; matchedBooks: number; totalBooks: number };
+  return data as { path: string; exists: boolean; writable: boolean; matchedBooks: number; totalBooks: number };
 }
 
 export async function inspectStorageSettings(path: string) {
   const { data } = await api.post('/admin/storage/inspect', { path });
-  return data as { path: string; exists: boolean; matchedBooks: number; totalBooks: number };
+  return data as { path: string; exists: boolean; writable: boolean; matchedBooks: number; totalBooks: number };
 }
 
 export async function updateStorageSettings(path: string) {
   const { data } = await api.put('/admin/storage', { path });
-  return data as { path: string; matchedBooks: number; totalBooks: number };
+  return data as { path: string; writable: boolean; matchedBooks: number; totalBooks: number };
 }
 
 export async function openStorageDirectory(path?: string) {
