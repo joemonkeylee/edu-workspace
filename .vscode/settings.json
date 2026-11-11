@@ -24,5 +24,6 @@
   "files.exclude": {
     "**/dist": false
   },
-  "github.copilot.chat.workspace.indexing.enabled": false
+  "github.copilot.chat.workspace.indexing.enabled": false,
+  "python.terminal.useEnvFile": true
 }
