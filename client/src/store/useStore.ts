@@ -92,7 +92,9 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   setCurrentPage: (page: number) => set({ currentPage: page }),
-  setZoom: (zoom: number) => set({ zoom: Math.max(0.1, Math.min(8, zoom)) }),
+  // 高清扫描页（如 6508x9130）在「适应页面」下需要小于 10% 的缩放；
+  // 下限过低只会让图片超出可视区、长出滚动条，故允许缩到 1%。
+  setZoom: (zoom: number) => set({ zoom: Math.max(0.01, Math.min(8, zoom)) }),
   setTool: (tool: ToolMode) => set({ tool }),
   setBooksPerRow: (n: number) => {
     const clamped = Math.max(3, Math.min(10, n));

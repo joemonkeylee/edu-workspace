@@ -989,7 +989,7 @@ export default function BookViewer() {
               data-tooltip="点击输入缩放比例"
               className="relative text-xs w-12 text-center text-muted-foreground hover:text-foreground py-0.5 rounded flex-shrink-0"
             >
-              {Math.round(snapZoom(zoom) * 100)}%
+              {Math.round(zoom * 100)}%
             </button>
           )}
           <button onClick={zoomIn} data-tooltip="放大" className="relative p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition flex-shrink-0">
