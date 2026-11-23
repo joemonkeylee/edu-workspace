@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Scan, FolderOpen, Check, AlertTriangle, RefreshCw, Database, ArrowDown, ArrowUp, ArrowDownUp } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Scan, FolderOpen, Check, AlertTriangle, RefreshCw, Database, ArrowDown, ArrowUp, ArrowDownUp, HardDrive } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '../../ConfirmDialog';
-import { scanPreview, scanCommit, seedFromBooks, recheckSearchable } from '../../../pdf/api/pdfClient';
+import { getPdfStorageStatus, initializePdfStorage, scanPreview, scanCommit, seedFromBooks, recheckSearchable } from '../../../pdf/api/pdfClient';
+import { Button } from '../../ui/button';
 
 interface ScanItem {
   filePath: string;
@@ -73,6 +74,30 @@ export default function PdfImportPanel() {
   const [seedLimit, setSeedLimit] = useState(5000);
   const [seedResult, setSeedResult] = useState<any>(null);
   const [seeding, setSeeding] = useState(false);
+  const [storageStatus, setStorageStatus] = useState<{ mode: 'local' | 'http'; initialized: boolean; writable: boolean } | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
+
+  const refreshStorageStatus = useCallback(async () => {
+    const status = await getPdfStorageStatus();
+    setStorageStatus(status);
+  }, []);
+
+  useEffect(() => {
+    refreshStorageStatus().catch((error: any) => toast.error('读取 PDF 存储状态失败: ' + (error?.message || '')));
+  }, [refreshStorageStatus]);
+
+  const handleInitializeStorage = async () => {
+    setStorageBusy(true);
+    try {
+      const status = await initializePdfStorage();
+      await refreshStorageStatus();
+      toast.success(status.writable ? 'PDF 存储已初始化且可写' : 'PDF 存储初始化后仍不可写');
+    } catch (error: any) {
+      toast.error('初始化 PDF 存储失败: ' + (error?.message || ''));
+    } finally {
+      setStorageBusy(false);
+    }
+  };
 
   const handlePreview = useCallback(async () => {
     if (!rootPath.trim()) return;
@@ -216,6 +241,30 @@ export default function PdfImportPanel() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <HardDrive size={18} className="text-primary" /> PDF 资源存储
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {storageStatus
+                ? `模式：${storageStatus.mode === 'local' ? '本机 storage' : 'HTTP 文件服务'}；${storageStatus.initialized ? '已初始化' : '未初始化'}；${storageStatus.writable ? '可写' : '不可写'}`
+                : '正在检查资源服务…'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">仅影响 PDF 原生模块，不改动旧图片书籍资源。</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => refreshStorageStatus().catch((error: any) => toast.error('检查失败: ' + (error?.message || '')))} disabled={storageBusy}>
+              <RefreshCw size={14} /> 检查
+            </Button>
+            <Button variant="default" size="sm" onClick={handleInitializeStorage} disabled={storageBusy}>
+              <Database size={14} /> 初始化 PDF 存储
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* 扫描入库 */}
       <div className="bg-background rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">

@@ -1,13 +1,24 @@
 import { Router, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import { Readable } from 'stream';
 import prisma from '../../prisma.js';
 import { authRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { buildKeywordFilter } from '../../utils/keywordQuery.js';
 import { extractPageText, hashFile, inspectPdf, openPdf } from '../services/pdfMeta.js';
 import { ensureCover, ensureThumb } from '../services/pdfRender.js';
-import { ensurePdfDirs, getPdfRoot, getThumbPath, joinRootRel, splitRootRel } from '../services/pdfStorage.js';
+import { ensurePdfDirs, getCoverPath, getPdfRoot, getThumbPath, joinRootRel, splitRootRel } from '../services/pdfStorage.js';
+import {
+  downloadPdfObject,
+  getPdfObjectMetadata,
+  getPdfObjectResponse,
+  isRemotePdfRef,
+  isRemotePdfStorage,
+  pdfObjectKey,
+  putPdfObjectFromFile,
+} from '../services/pdfObjectStore.js';
 import { buildPairSummary, getBookIndex } from '../../services/bookIndex.js';
 
 const router = Router();
@@ -20,7 +31,59 @@ router.use(authRequired);
 interface ResolvedFile {
   ok: boolean;
   filePath: string;
+  objectKey?: string;
   missing: boolean;
+}
+
+const remotePdfDownloads = new Map<string, Promise<string>>();
+
+async function cacheRemotePdf(book: { id: number; relPath: string; fileHash: string | null; fileSize: number }) {
+  const key = pdfObjectKey(book.relPath);
+  const cacheDir = path.join(os.tmpdir(), 'edu-workspace', 'pdf-cache');
+  const cachePath = path.join(cacheDir, `${book.id}-${book.fileHash || book.fileSize || 'file'}.pdf`);
+  const pending = remotePdfDownloads.get(cachePath);
+  if (pending) return { filePath: await pending, objectKey: key };
+
+  const existing = await fs.promises.stat(cachePath).catch(() => null);
+  if (existing && (!book.fileSize || existing.size === book.fileSize)) return { filePath: cachePath, objectKey: key };
+
+  const download = (async () => {
+    await fs.promises.mkdir(cacheDir, { recursive: true });
+    await downloadPdfObject(key, cachePath);
+    return cachePath;
+  })();
+  remotePdfDownloads.set(cachePath, download);
+  try {
+    return { filePath: await download, objectKey: key };
+  } finally {
+    remotePdfDownloads.delete(cachePath);
+  }
+}
+
+async function cacheRemoteImage(key: string, localPath: string): Promise<boolean> {
+  if (!isRemotePdfStorage()) return false;
+  const metadata = await getPdfObjectMetadata(key);
+  if (!metadata) return false;
+  const current = await fs.promises.stat(localPath).catch(() => null);
+  if (!current || current.size !== metadata.size) await downloadPdfObject(key, localPath);
+  return true;
+}
+
+async function streamRemoteObject(req: AuthedRequest, res: Response, key: string, contentType: string) {
+  const upstream = await getPdfObjectResponse(key, req.headers.range);
+  if (upstream.status !== 200 && upstream.status !== 206) {
+    return res.status(upstream.status).json({ error: upstream.status === 404 ? 'object not found' : 'range not satisfiable' });
+  }
+  for (const header of ['accept-ranges', 'content-length', 'content-range', 'etag', 'last-modified']) {
+    const value = upstream.headers.get(header);
+    if (value) res.setHeader(header, value);
+  }
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  res.setHeader('Content-Disposition', 'inline');
+  res.status(upstream.status);
+  if (!upstream.body) return res.end();
+  Readable.from(upstream.body as AsyncIterable<Uint8Array>).pipe(res);
 }
 
 /**
@@ -34,7 +97,30 @@ async function resolveBookFile(book: {
   relPath: string;
   filePath: string;
   missing: boolean;
-}): Promise<ResolvedFile> {
+  fileHash?: string | null;
+  fileSize?: number;
+}, cacheRemote = true): Promise<ResolvedFile> {
+  if (isRemotePdfRef(book.rootPath)) {
+    const key = pdfObjectKey(book.relPath);
+    if (await getPdfObjectMetadata(key)) {
+      if (book.missing) {
+        await prisma.pdfBook.update({ where: { id: book.id }, data: { missing: false } }).catch(() => {});
+      }
+      if (!cacheRemote) return { ok: true, filePath: '', objectKey: key, missing: false };
+      const cached = await cacheRemotePdf({
+        id: book.id,
+        relPath: book.relPath,
+        fileHash: book.fileHash || null,
+        fileSize: book.fileSize || 0,
+      });
+      return { ok: true, ...cached, missing: false };
+    }
+    if (!book.missing) {
+      await prisma.pdfBook.update({ where: { id: book.id }, data: { missing: true } }).catch(() => {});
+    }
+    return { ok: false, filePath: '', objectKey: key, missing: true };
+  }
+
   const candidates = [
     joinRootRel(book.rootPath, book.relPath),
     book.filePath,
@@ -327,7 +413,7 @@ router.get('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => {
   const book = await prisma.pdfBook.findFirst({ where: { id, isDeleted: false } });
   if (!book) return res.status(404).json({ error: 'pdf book not found' });
 
-  const resolved = await resolveBookFile(book);
+  const resolved = await resolveBookFile(book, false);
 
   // 通过 fileHash 映射到 legacy Book，复用其教材/答案配对信息（pairSummary）
   let pairSummary: any = null;
@@ -374,9 +460,12 @@ router.get('/:id/file', asyncHandler(async (req: AuthedRequest, res: Response) =
   const book = await prisma.pdfBook.findFirst({ where: { id, isDeleted: false } });
   if (!book) return res.status(404).json({ error: 'pdf book not found' });
 
-  const resolved = await resolveBookFile(book);
+  const resolved = await resolveBookFile(book, false);
   if (!resolved.ok) return res.status(410).json({ error: 'pdf file missing', missing: true });
 
+  if (resolved.objectKey && isRemotePdfStorage()) {
+    return streamRemoteObject(req, res, resolved.objectKey, 'application/pdf');
+  }
   streamFile(req, res, resolved.filePath, 'application/pdf');
 }));
 
@@ -434,7 +523,11 @@ router.get('/:id/cover', asyncHandler(async (req: AuthedRequest, res: Response) 
 
   ensurePdfDirs();
   const width = Math.min(800, Math.max(80, parseIntParam(req.query.w, 300)));
+  const coverPath = getCoverPath(id);
+  const coverKey = pdfObjectKey(`covers/${id}.jpg`);
+  const coverExisted = await cacheRemoteImage(coverKey, coverPath);
   const result = await ensureCover(resolved.filePath, id, book.coverPage || 1, width);
+  if (isRemotePdfStorage() && !coverExisted) await putPdfObjectFromFile(coverKey, result.absPath);
   assertInsidePdfRoot(result.absPath);
   streamFile(req, res, result.absPath, 'image/jpeg');
 }));
@@ -455,9 +548,10 @@ router.get('/:id/thumb/:page', asyncHandler(async (req: AuthedRequest, res: Resp
 
   const width = Math.min(400, Math.max(60, parseIntParam(req.query.w, 160)));
   const outPath = getThumbPath(id, page);
+  const thumbKey = pdfObjectKey(`thumbs/${id}/${page}.jpg`);
+  const thumbExisted = await cacheRemoteImage(thumbKey, outPath);
   assertInsidePdfRoot(outPath);
 
-  const existed = fs.existsSync(outPath);
   let result;
   try {
     result = await ensureThumb(resolved.filePath, id, page, width);
@@ -467,7 +561,8 @@ router.get('/:id/thumb/:page', asyncHandler(async (req: AuthedRequest, res: Resp
     return res.status(404).json({ error: 'page out of range' });
   }
 
-  if (!existed) {
+  if (isRemotePdfStorage() && !thumbExisted) await putPdfObjectFromFile(thumbKey, result.absPath);
+  if (!thumbExisted && !isRemotePdfStorage()) {
     await prisma.pdfThumb.upsert({
       where: { bookId_pageNumber: { bookId: id, pageNumber: page } },
       create: {

@@ -391,6 +391,16 @@ export async function getFacets() {
 
 // ── 管理端 ───────────────────────────────────────────────────────
 
+export async function getPdfStorageStatus() {
+  const { data } = await apiClient.get('/pdf/admin/storage/status');
+  return data.data as { mode: 'local' | 'http'; initialized: boolean; writable: boolean };
+}
+
+export async function initializePdfStorage() {
+  const { data } = await apiClient.post('/pdf/admin/storage/initialize');
+  return data.data as { mode?: 'local' | 'http'; initialized?: boolean; writable: boolean };
+}
+
 export async function scanPreview(payload: {
   rootPath: string;
   recursive?: boolean;

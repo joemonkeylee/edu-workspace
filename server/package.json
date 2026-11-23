@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "PORT=4001 CLIENT_ORIGIN=http://localhost:5678 tsx watch src/index.ts",
+    "dev:storage": "tsx watch src/storage/fileServiceMain.ts",
     "start": "node dist/index.js",
+    "start:storage": "node dist/storage/fileServiceMain.js",
+    "test:storage": "tsx --test src/storage/fileService.test.ts",
+    "db:init:production": "node scripts/initialize-production.mjs",
+    "pdf:sync:production": "node scripts/sync-pdf-to-production.mjs",
     "build": "tsc",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",

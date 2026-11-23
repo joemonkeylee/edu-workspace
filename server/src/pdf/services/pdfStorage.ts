@@ -10,7 +10,8 @@ import { getStorageRoot } from '../../services/storage.js';
  *   ├── thumbs/{bookId}/{page}.jpg  页缩略图（按需生成后缓存）
  *   └── crops/                   错题裁图
  *
- * 注意：PDF 原件不复制，只存引用路径（rootPath + relPath）。
+ * 本地模式以 rootPath + relPath 引用 PDF 原件；HTTP 模式将其上传至文件服务，
+ * 并以 object://pdf + relPath 保存引用。
  */
 
 function safeMkdir(dir: string) {

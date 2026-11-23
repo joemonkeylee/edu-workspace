@@ -1,10 +1,10 @@
 import { Router, Response } from 'express';
 import fs from 'fs';
-import path from 'path';
+import { Readable } from 'stream';
 import prisma from '../../prisma.js';
 import { authRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
-import { getPdfRoot } from '../services/pdfStorage.js';
+import { getPdfObjectResponse, isRemotePdfStorage, localPdfObjectPath, pdfObjectKey, removePdfObject } from '../services/pdfObjectStore.js';
 
 /**
  * PDF 域的错题（/api/pdf/mistakes）。
@@ -74,10 +74,22 @@ router.get('/:id/image', asyncHandler(async (req: AuthedRequest, res: Response) 
   if (!mistake) return res.status(404).json({ error: 'mistake not found' });
   if (!canViewMistake(req, mistake)) return res.status(403).json({ error: 'access denied' });
 
-  const abs = path.resolve(getPdfRoot(), mistake.imagePath);
+  const key = pdfObjectKey(mistake.imagePath);
+  if (isRemotePdfStorage()) {
+    const upstream = await getPdfObjectResponse(key);
+    if (!upstream.ok) return res.status(upstream.status).json({ error: 'image missing' });
+    const ext = mistake.imagePath.toLowerCase().split('.').pop();
+    const contentType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : 'image/png';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    if (upstream.body) Readable.from(upstream.body as AsyncIterable<Uint8Array>).pipe(res);
+    else res.end();
+    return;
+  }
+  const abs = localPdfObjectPath(key);
   if (!fs.existsSync(abs)) return res.status(404).json({ error: 'image missing' });
 
-  const ext = path.extname(abs).toLowerCase();
+  const ext = mistake.imagePath.toLowerCase().split('.').pop();
   const contentType = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
     : ext === '.webp' ? 'image/webp'
       : ext === '.gif' ? 'image/gif'
@@ -114,9 +126,10 @@ router.delete('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => 
   if (!canViewMistake(req, existing)) return res.status(403).json({ error: 'access denied' });
 
   try {
-    const abs = path.resolve(getPdfRoot(), existing.imagePath);
-    if (fs.existsSync(abs)) fs.unlinkSync(abs);
-  } catch { /* 文件删除失败不阻断 */ }
+    await removePdfObject(pdfObjectKey(existing.imagePath));
+  } catch (error) {
+    console.warn(`[pdf-mistake] failed to delete crop ${existing.imagePath}:`, error);
+  }
 
   await prisma.pdfMistake.delete({ where: { id } });
   res.json({ success: true });

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import prisma from '../../prisma.js';
 import { adminRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
@@ -10,9 +11,26 @@ import { classifyText, extractPageText, hashFile, inspectPdf, openPdf } from '..
 import { ensureCover } from '../services/pdfRender.js';
 import { splitRootRel } from '../services/pdfStorage.js';
 import { getStorageRoot } from '../../services/storage.js';
+import {
+  getPdfStorageStatus,
+  initializePdfStorage,
+  isRemotePdfStorage,
+  pdfObjectKey,
+  putPdfObjectFromFile,
+  removePdfObject,
+  REMOTE_PDF_ROOT,
+} from '../services/pdfObjectStore.js';
 
 const router = Router();
 router.use(adminRequired);
+
+router.get('/storage/status', asyncHandler(async (_req: AuthedRequest, res: Response) => {
+  res.json({ data: await getPdfStorageStatus() });
+}));
+
+router.post('/storage/initialize', asyncHandler(async (_req: AuthedRequest, res: Response) => {
+  res.json({ data: await initializePdfStorage() });
+}));
 
 /** 受限并发映射，避免几千个文件同时打开 */
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
@@ -161,6 +179,7 @@ router.post('/scan/commit', asyncHandler(async (req: AuthedRequest, res: Respons
   if (rawItems.length > 2000) return res.status(400).json({ error: 'too many items (max 2000)' });
 
   const generateCovers = req.body?.generateCovers !== false;
+  const remoteStorage = isRemotePdfStorage();
 
   const created: { id: number; title: string }[] = [];
   const skipped: { filePath: string; reason: string }[] = [];
@@ -173,7 +192,12 @@ router.post('/scan/commit', asyncHandler(async (req: AuthedRequest, res: Respons
     }
 
     const rootPath = String(raw?.rootPath || path.dirname(filePath));
-    const { rootPath: rp, relPath } = splitRootRel(rootPath, filePath);
+    const localReference = splitRootRel(rootPath, filePath);
+    const remoteRelPath = `books/${randomUUID()}.pdf`;
+    const rp = remoteStorage ? REMOTE_PDF_ROOT : localReference.rootPath;
+    const relPath = remoteStorage ? remoteRelPath : localReference.relPath;
+    const storedPath = remoteStorage ? `${REMOTE_PDF_ROOT}/${remoteRelPath}` : path.resolve(filePath);
+    const fileSize = Number(raw?.fileSize) || fs.statSync(filePath).size;
     const title = String(raw?.title || path.basename(filePath).replace(/\.pdf$/i, '')).trim();
     const category = String(raw?.category || '').trim();
 
@@ -192,6 +216,8 @@ router.post('/scan/commit', asyncHandler(async (req: AuthedRequest, res: Respons
       continue;
     }
 
+    let bookId: number | null = null;
+    let uploadedKey: string | null = null;
     try {
       const book = await prisma.pdfBook.create({
         data: {
@@ -203,24 +229,40 @@ router.post('/scan/commit', asyncHandler(async (req: AuthedRequest, res: Respons
           pdfKind: raw?.searchable === 'no_text' ? 'scan' : 'pdf',
           coverPage: Number(raw?.coverPage) > 0 ? Number(raw.coverPage) : 1,
           totalPages: Number(raw?.totalPages) || 0,
-          filePath: path.resolve(filePath),
+          filePath: storedPath,
           rootPath: rp,
           relPath,
-          fileSize: Number(raw?.fileSize) || fs.statSync(filePath).size,
+          fileSize,
           fileHash: raw?.fileHash ? String(raw.fileHash) : null,
           searchable: String(raw?.searchable || 'ok'),
         },
       });
+      bookId = book.id;
+      if (remoteStorage) {
+        uploadedKey = pdfObjectKey(relPath);
+        await putPdfObjectFromFile(uploadedKey, filePath);
+      }
       created.push({ id: book.id, title: book.title });
 
       if (generateCovers) {
         try {
-          await ensureCover(path.resolve(filePath), book.id, book.coverPage, 300);
+          const cover = await ensureCover(path.resolve(filePath), book.id, book.coverPage, 300);
+          if (remoteStorage) await putPdfObjectFromFile(pdfObjectKey(`covers/${book.id}.jpg`), cover.absPath);
         } catch (e) {
           console.warn(`[pdf-scan] cover generation failed for book ${book.id}:`, e);
         }
       }
     } catch (e: any) {
+      if (bookId !== null) {
+        await prisma.pdfBook.delete({ where: { id: bookId } }).catch((cleanupError) => {
+          console.error(`[pdf-scan] failed to rollback PDF book ${bookId}:`, cleanupError);
+        });
+      }
+      if (uploadedKey) {
+        await removePdfObject(uploadedKey).catch((cleanupError) => {
+          console.error(`[pdf-scan] failed to remove uploaded PDF ${uploadedKey}:`, cleanupError);
+        });
+      }
       skipped.push({ filePath, reason: String(e?.message || e).slice(0, 200) });
     }
   }

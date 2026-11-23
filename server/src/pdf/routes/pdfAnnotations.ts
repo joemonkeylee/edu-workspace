@@ -1,12 +1,12 @@
 import { Router, Response } from 'express';
-import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import prisma from '../../prisma.js';
 import { authRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
-import { ensurePdfDirs, getPdfCropsRoot, getPdfRoot } from '../services/pdfStorage.js';
+import { ensurePdfDirs } from '../services/pdfStorage.js';
+import { pdfObjectKey, putPdfObjectFromBuffer, removePdfObject } from '../services/pdfObjectStore.js';
 
 /**
  * PDF 域的批注 / 错题路由（/api/pdf/annotations、/api/pdf/mistakes）。
@@ -99,25 +99,32 @@ router.post('/', upload.single('image'), asyncHandler(async (req: AuthedRequest,
   let mistake: any = null;
   if (String(type) === 'crop' && req.file) {
     ensurePdfDirs();
-    const cropDir = path.join(getPdfCropsRoot(), String(bid));
-    fs.mkdirSync(cropDir, { recursive: true });
-    const ext = path.extname(req.file.originalname) || '.png';
+    const rawExt = path.extname(req.file.originalname).toLowerCase();
+    const ext = ['.png', '.jpg', '.jpeg', '.webp'].includes(rawExt) ? rawExt : '.png';
     const fileName = `${uuidv4()}${ext}`;
-    const absPath = path.join(cropDir, fileName);
-    fs.writeFileSync(absPath, req.file.buffer);
+    const imagePath = path.posix.join('crops', String(bid), fileName);
+    const objectKey = pdfObjectKey(imagePath);
+    const contentType = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.webp' ? 'image/webp' : 'image/png';
+    await putPdfObjectFromBuffer(objectKey, req.file.buffer, contentType);
 
-    mistake = await prisma.pdfMistake.create({
-      data: {
-        annotationId: annotation.id,
-        bookId: bid,
-        pageNumber: pno,
-        // 相对 pdf root 的路径（而非相对 cwd），随根目录迁移仍然可定位
-        imagePath: path.posix.join('crops', String(bid), fileName),
-        subject: subject ? String(subject) : (book.subject || ''),
-        tags: tags ? String(tags) : null,
-        userId,
-      },
-    });
+    try {
+      mistake = await prisma.pdfMistake.create({
+        data: {
+          annotationId: annotation.id,
+          bookId: bid,
+          pageNumber: pno,
+          imagePath,
+          subject: subject ? String(subject) : (book.subject || ''),
+          tags: tags ? String(tags) : null,
+          userId,
+        },
+      });
+    } catch (error) {
+      await removePdfObject(objectKey).catch((cleanupError) => {
+        console.error(`[pdf-annotation] failed to clean up crop ${objectKey}:`, cleanupError);
+      });
+      throw error;
+    }
   }
 
   res.json({ data: { annotation, mistake: mistake ? shapeMistake(mistake) : null } });
@@ -159,9 +166,10 @@ router.delete('/:id', asyncHandler(async (req: AuthedRequest, res: Response) => 
   const mistakes = await prisma.pdfMistake.findMany({ where: { annotationId: id }, select: { imagePath: true } });
   for (const m of mistakes) {
     try {
-      const abs = path.resolve(getPdfRoot(), m.imagePath);
-      if (fs.existsSync(abs)) fs.unlinkSync(abs);
-    } catch { /* ignore */ }
+      await removePdfObject(pdfObjectKey(m.imagePath));
+    } catch (error) {
+      console.warn(`[pdf-annotation] failed to delete crop ${m.imagePath}:`, error);
+    }
   }
 
   await prisma.pdfAnnotation.delete({ where: { id } });

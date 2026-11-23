@@ -1,10 +1,8 @@
 import { Router, Response } from 'express';
-import fs from 'fs';
-import path from 'path';
 import prisma from '../../prisma.js';
 import { teacherOrAdminRequired, adminRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
-import { getPdfRoot } from '../services/pdfStorage.js';
+import { pdfObjectKey, removePdfObject } from '../services/pdfObjectStore.js';
 
 /**
  * PDF 原生批注管理端路由（/api/pdf/admin/annotations）。
@@ -59,9 +57,10 @@ router.delete('/:id', adminRequired, asyncHandler(async (req: AuthedRequest, res
   });
   for (const m of mistakes) {
     try {
-      const abs = path.resolve(getPdfRoot(), m.imagePath);
-      if (fs.existsSync(abs)) fs.unlinkSync(abs);
-    } catch { /* ignore */ }
+      await removePdfObject(pdfObjectKey(m.imagePath));
+    } catch (error) {
+      console.warn(`[pdf-admin-annotation] failed to delete crop ${m.imagePath}:`, error);
+    }
   }
 
   await prisma.pdfAnnotation.delete({ where: { id } });

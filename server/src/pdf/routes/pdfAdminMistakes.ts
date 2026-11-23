@@ -1,10 +1,8 @@
 import { Router, Response } from 'express';
-import fs from 'fs';
-import path from 'path';
 import prisma from '../../prisma.js';
 import { teacherOrAdminRequired, adminRequired, AuthedRequest } from '../../middleware/auth.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
-import { getPdfRoot } from '../services/pdfStorage.js';
+import { pdfObjectKey, removePdfObject } from '../services/pdfObjectStore.js';
 
 /**
  * PDF 原生错题管理端路由（/api/pdf/admin/mistakes）。
@@ -81,9 +79,10 @@ router.delete('/:id', adminRequired, asyncHandler(async (req: AuthedRequest, res
   if (!existing) return res.status(404).json({ error: 'mistake not found' });
 
   try {
-    const abs = path.resolve(getPdfRoot(), existing.imagePath);
-    if (fs.existsSync(abs)) fs.unlinkSync(abs);
-  } catch { /* 文件删除失败不阻断 */ }
+    await removePdfObject(pdfObjectKey(existing.imagePath));
+  } catch (error) {
+    console.warn(`[pdf-admin-mistake] failed to delete crop ${existing.imagePath}:`, error);
+  }
 
   await prisma.pdfMistake.delete({ where: { id } });
   res.json({ success: true });
