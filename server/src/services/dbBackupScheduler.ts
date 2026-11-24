@@ -7,9 +7,8 @@
  *
  * Both are fire-and-forget; errors only log, never block requests.
  */
-import fs from 'fs';
-import path from 'path';
 import { listBackups, createBackup, resolveConnection, isBackupsAvailable, getBackupsRoot } from './dbBackup.js';
+import { deleteBackup } from './dbBackup.js';
 import { setWriteListener } from '../prisma.js';
 import prisma from '../prisma.js';
 
@@ -43,13 +42,13 @@ export async function startBackupScheduler(): Promise<void> {
 
   // 3. Pre-create a backup if none recent (gap > 6h)
   try {
-    if (!isBackupsAvailable()) {
+    if (!await isBackupsAvailable()) {
       // e.g. storage root on an unmounted / read-only external drive
       console.warn(`[auto-backup] 备份目录不可用,跳过启动预备份: ${getBackupsRoot()}`);
       console.log('[auto-backup] scheduler started (backups disabled until storage root is writable)');
       return;
     }
-    const backups = listBackups();
+    const backups = await listBackups();
     const sixHoursAgo = Date.now() - 6 * 60 * 60 * 1000;
     const latestPeriodic = backups.find((b) => b.filename.startsWith('backup-auto-'));
     if (!latestPeriodic || new Date(latestPeriodic.createdAt).getTime() < sixHoursAgo) {
@@ -116,7 +115,7 @@ async function getIntSetting(key: string, fallback: number): Promise<number> {
 /** Fire a backup — completely detached, errors only log. */
 async function fireBackup(kind: 'auto' | 'change'): Promise<void> {
   try {
-    if (!isBackupsAvailable()) {
+    if (!await isBackupsAvailable()) {
       // Storage root unmounted / read-only — skip quietly, warn only once
       if (!unavailableWarned) {
         unavailableWarned = true;
@@ -129,16 +128,16 @@ async function fireBackup(kind: 'auto' | 'change'): Promise<void> {
     const tag = kind === 'change' ? 'change' : 'auto';
     const meta = await createBackup({ compress: true, tag, connection: conn });
     console.log(`[auto-backup] ✓ ${kind} backup: ${meta.filename} (${(meta.size / 1024 / 1024).toFixed(2)} MB)`);
-    cleanupOldBackups();
+    await cleanupOldBackups();
   } catch (e: any) {
     console.error(`[auto-backup] ✗ ${kind} backup failed:`, e?.message || e);
   }
 }
 
 /** Keep the last N periodic + last N change backups; delete the rest. */
-function cleanupOldBackups(): void {
+async function cleanupOldBackups(): Promise<void> {
   try {
-    const backups = listBackups();
+    const backups = await listBackups();
     const periodic = backups.filter((b) => b.filename.startsWith('backup-auto-'));
     const change = backups.filter((b) => b.filename.startsWith('backup-change-'));
 
@@ -148,12 +147,13 @@ function cleanupOldBackups(): void {
 
     if (drop.length === 0) return;
 
-    const root = getBackupsRoot();
     for (const b of drop) {
       try {
-        fs.unlinkSync(path.join(root, b.filename));
+        await deleteBackup(b.filename);
         console.log(`[auto-backup] cleaned up old: ${b.filename}`);
-      } catch { /* ignore */ }
+      } catch (error) {
+        console.warn(`[auto-backup] failed to remove old backup ${b.filename}:`, error);
+      }
     }
   } catch (e) {
     console.warn('[auto-backup] cleanup failed:', e);

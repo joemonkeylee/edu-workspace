@@ -2,9 +2,19 @@ import fs from 'fs';
 import path from 'path';
 import { spawn, execFileSync } from 'child_process';
 import { pipeline } from 'stream/promises';
+import os from 'os';
 import zlib from 'zlib';
 import { getStorageRoot } from './storage.js';
 import prisma from '../prisma.js';
+import {
+  deletePdfObject,
+  downloadPdfObject,
+  getPdfObjectMetadata,
+  getPdfStorageStatus,
+  isRemotePdfStorage,
+  listPdfStorageObjects,
+  putPdfObjectFromFile,
+} from '../pdf/services/pdfObjectStore.js';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -126,7 +136,7 @@ function formatTimestamp(d: Date): string {
 const SAFE_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.sql(\.gz)?$/;
 
 export function getBackupsRoot(): string {
-  return path.join(getStorageRoot(), 'db-backups');
+  return isRemotePdfStorage() ? 'resource://db-backups' : path.join(getStorageRoot(), 'db-backups');
 }
 
 /** errno codes meaning "the backup dir simply is not usable right now" */
@@ -139,6 +149,7 @@ const DIR_UNAVAILABLE_CODES = new Set(['ENOENT', 'EACCES', 'EPERM', 'EROFS', 'EN
  * gracefully instead of crashing startup or scheduled jobs.
  */
 export function tryEnsureBackupsDir(): string | null {
+  if (isRemotePdfStorage()) return null;
   const root = getBackupsRoot();
   try {
     fs.mkdirSync(root, { recursive: true });
@@ -149,8 +160,12 @@ export function tryEnsureBackupsDir(): string | null {
   }
 }
 
-/** Whether backups can currently be written/listed. Cheap probe, never throws. */
-export function isBackupsAvailable(): boolean {
+/** Whether backups can currently be written/listed. */
+export async function isBackupsAvailable(): Promise<boolean> {
+  if (isRemotePdfStorage()) {
+    const status = await getPdfStorageStatus();
+    return status.initialized && status.writable;
+  }
   return tryEnsureBackupsDir() !== null;
 }
 
@@ -166,6 +181,7 @@ export function ensureBackupsDir(): string {
 
 export function resolveSafePath(filename: string): string {
   if (!SAFE_NAME.test(filename)) throw new Error('invalid filename');
+  if (isRemotePdfStorage()) throw new Error('remote backups do not have a local filesystem path');
   const root = ensureBackupsDir();
   const resolved = path.resolve(root, filename);
   const rel = path.relative(root, resolved);
@@ -273,7 +289,26 @@ export function testConnection(conn: DbConnection): string {
 // ── Backup / Restore ─────────────────────────────────────────────
 
 /** List all backup files, newest first. */
-export function listBackups(): BackupMeta[] {
+export async function listBackups(): Promise<BackupMeta[]> {
+  if (isRemotePdfStorage()) {
+    const objects = await listPdfStorageObjects('db-backups/');
+    return objects
+      .filter((object) => object.key.startsWith('db-backups/'))
+      .map((object) => {
+        const filename = object.key.slice('db-backups/'.length);
+        if (!SAFE_NAME.test(filename)) return null;
+        return {
+          filename,
+          size: object.size,
+          createdAt: object.lastModified,
+          compressed: filename.endsWith('.gz'),
+          type: filename.startsWith('pre-restore-') ? 'pre-restore' : 'backup',
+        } satisfies BackupMeta;
+      })
+      .filter((backup): backup is BackupMeta => backup !== null)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
   // Storage root may be unmounted / read-only (external drive) — treat as "no backups"
   const root = tryEnsureBackupsDir();
   if (!root) return [];
@@ -311,93 +346,161 @@ export function listBackups(): BackupMeta[] {
 export async function createBackup(opts: { compress?: boolean; tag?: string; connection?: DbConnection } = {}): Promise<BackupMeta> {
   const { compress = true, tag, connection } = opts;
   if (!connection) throw new Error('connection required');
-  const root = ensureBackupsDir();
+  const remote = isRemotePdfStorage();
+  const tempDir = remote ? fs.mkdtempSync(path.join(os.tmpdir(), 'edu-db-backup-')) : null;
+  const root = remote ? tempDir! : ensureBackupsDir();
   const ts = formatTimestamp(new Date());
   const prefix = tag ? `${tag}-` : 'backup-';
   const ext = compress ? '.sql.gz' : '.sql';
   const filename = `${prefix}${ts}${ext}`;
   const filePath = path.join(root, filename);
 
-  const args = [...buildMysqlArgs(connection, false), '--single-transaction', '--routines', '--triggers', '--events', connection.database];
-  const dump = spawn(resolveMysqlCommand('mysqldump'), args, { env: process.env });
-  const out = fs.createWriteStream(filePath);
+  try {
+    const args = [...buildMysqlArgs(connection, false), '--single-transaction', '--routines', '--triggers', '--events', connection.database];
+    const dump = spawn(resolveMysqlCommand('mysqldump'), args, { env: process.env });
+    const out = fs.createWriteStream(filePath, { flags: 'wx' });
 
-  let stderr = '';
-  dump.stderr.on('data', (d) => { stderr += d.toString(); });
+    let stderr = '';
+    dump.stderr.on('data', (d) => { stderr += d.toString(); });
 
-  const gzip = compress ? zlib.createGzip() : undefined;
-  const streams: any[] = [dump.stdout];
-  if (gzip) streams.push(gzip);
-  streams.push(out);
+    const gzip = compress ? zlib.createGzip() : undefined;
+    const streams: any[] = [dump.stdout];
+    if (gzip) streams.push(gzip);
+    streams.push(out);
 
-  await Promise.all([
-    pipeline(streams).catch((err) => {
-      fs.rmSync(filePath, { force: true });
-      throw handleSpawnError(err, 'mysqldump');
-    }),
-    new Promise<void>((resolve, reject) => {
-      dump.on('error', (err) => { fs.rmSync(filePath, { force: true }); reject(handleSpawnError(err, 'mysqldump')); });
-      dump.on('close', (code) => {
-        if (code !== 0) {
-          fs.rmSync(filePath, { force: true });
-          reject(new Error(`mysqldump 退出码 ${code}${stderr ? `: ${stderr}` : ''}`));
-        } else {
-          resolve();
-        }
-      });
-    }),
-  ]);
+    await Promise.all([
+      pipeline(streams).catch((err) => {
+        fs.rmSync(filePath, { force: true });
+        throw handleSpawnError(err, 'mysqldump');
+      }),
+      new Promise<void>((resolve, reject) => {
+        dump.on('error', (err) => { fs.rmSync(filePath, { force: true }); reject(handleSpawnError(err, 'mysqldump')); });
+        dump.on('close', (code) => {
+          if (code !== 0) {
+            fs.rmSync(filePath, { force: true });
+            reject(new Error(`mysqldump 退出码 ${code}${stderr ? `: ${stderr}` : ''}`));
+          } else {
+            resolve();
+          }
+        });
+      }),
+    ]);
 
-  const stat = fs.statSync(filePath);
-  return {
-    filename,
-    size: stat.size,
-    createdAt: stat.mtime.toISOString(),
-    compressed: compress,
-    type: tag ? 'pre-restore' : 'backup',
-    connectionName: connection.name,
-  };
+    const stat = fs.statSync(filePath);
+    if (remote) await putPdfObjectFromFile(`db-backups/${filename}`, filePath);
+    return {
+      filename,
+      size: stat.size,
+      createdAt: stat.mtime.toISOString(),
+      compressed: compress,
+      type: tag ? 'pre-restore' : 'backup',
+      connectionName: connection.name,
+    };
+  } finally {
+    if (remote && tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 /** Restore from a backup file into the given target connection. Automatically backs up current data of the target first. */
 export async function restoreBackup(filename: string, targetConnection: DbConnection): Promise<{ preRestoreFile: string }> {
-  const filePath = resolveSafePath(filename);
-  if (!fs.existsSync(filePath)) throw new Error('备份文件不存在');
+  if (!SAFE_NAME.test(filename)) throw new Error('invalid filename');
+  const remote = isRemotePdfStorage();
+  const metadata = remote ? await getPdfObjectMetadata(`db-backups/${filename}`) : null;
+  const tempDir = remote ? fs.mkdtempSync(path.join(os.tmpdir(), 'edu-db-restore-')) : null;
+  const filePath = remote ? path.join(tempDir!, filename) : resolveSafePath(filename);
+  try {
+    if (remote) {
+      if (!metadata) throw new Error('备份文件不存在');
+      await downloadPdfObject(`db-backups/${filename}`, filePath);
+    } else if (!fs.existsSync(filePath)) {
+      throw new Error('备份文件不存在');
+    }
 
-  // Safety net: snapshot current data of the TARGET connection before overwriting.
-  const preRestore = await createBackup({ compress: true, tag: 'pre-restore', connection: targetConnection });
+    // Safety net: snapshot current data of the TARGET connection before overwriting.
+    const preRestore = await createBackup({ compress: true, tag: 'pre-restore', connection: targetConnection });
 
-  const args = buildMysqlArgs(targetConnection, true);
-  const mysql = spawn(resolveMysqlCommand('mysql'), args, { env: process.env });
-  const readStream = fs.createReadStream(filePath);
-  const isGz = filename.endsWith('.gz');
-  const gunzip = isGz ? zlib.createGunzip() : undefined;
+    const args = buildMysqlArgs(targetConnection, true);
+    const mysql = spawn(resolveMysqlCommand('mysql'), args, { env: process.env });
+    const readStream = fs.createReadStream(filePath);
+    const isGz = filename.endsWith('.gz');
+    const gunzip = isGz ? zlib.createGunzip() : undefined;
 
-  let stderr = '';
-  mysql.stderr.on('data', (d) => { stderr += d.toString(); });
+    let stderr = '';
+    mysql.stderr.on('data', (d) => { stderr += d.toString(); });
 
-  const source: any = gunzip ? readStream.pipe(gunzip) : readStream;
+    const source: any = gunzip ? readStream.pipe(gunzip) : readStream;
 
-  await Promise.all([
-    new Promise<void>((resolve, reject) => {
-      mysql.on('error', (err) => reject(handleSpawnError(err, 'mysql')));
-      mysql.on('close', (code) => {
-        if (code !== 0) reject(new Error(`mysql 还原退出码 ${code}${stderr ? `: ${stderr}` : ''}`));
-        else resolve();
-      });
-    }),
-    pipeline(source, mysql.stdin).catch((err) => { throw handleSpawnError(err, 'mysql'); }),
-  ]);
+    await Promise.all([
+      new Promise<void>((resolve, reject) => {
+        mysql.on('error', (err) => reject(handleSpawnError(err, 'mysql')));
+        mysql.on('close', (code) => {
+          if (code !== 0) reject(new Error(`mysql 还原退出码 ${code}${stderr ? `: ${stderr}` : ''}`));
+          else resolve();
+        });
+      }),
+      pipeline(source, mysql.stdin).catch((err) => { throw handleSpawnError(err, 'mysql'); }),
+    ]);
 
-  return { preRestoreFile: preRestore.filename };
+    return { preRestoreFile: preRestore.filename };
+  } finally {
+    if (remote && tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 /** Delete a backup file. Idempotent: missing file does not throw. */
-export function deleteBackup(filename: string): void {
+export async function deleteBackup(filename: string): Promise<void> {
+  if (!SAFE_NAME.test(filename)) throw new Error('invalid filename');
+  if (isRemotePdfStorage()) {
+    await deletePdfObject(`db-backups/${filename}`);
+    return;
+  }
   const filePath = resolveSafePath(filename);
   try {
     fs.unlinkSync(filePath);
   } catch (e) {
     if ((e as any).code !== 'ENOENT') throw e;
+  }
+}
+
+export async function uploadBackup(filename: string, sourcePath: string): Promise<BackupMeta> {
+  if (!SAFE_NAME.test(filename)) throw new Error('invalid filename');
+  if (isRemotePdfStorage()) {
+    const result = await putPdfObjectFromFile(`db-backups/${filename}`, sourcePath);
+    return {
+      filename,
+      size: result.data.size,
+      createdAt: new Date().toISOString(),
+      compressed: filename.endsWith('.gz'),
+      type: filename.startsWith('pre-restore-') ? 'pre-restore' : 'backup',
+    };
+  }
+  const target = resolveSafePath(filename);
+  fs.copyFileSync(sourcePath, target, fs.constants.COPYFILE_EXCL);
+  const stat = fs.statSync(target);
+  return {
+    filename,
+    size: stat.size,
+    createdAt: stat.mtime.toISOString(),
+    compressed: filename.endsWith('.gz'),
+    type: filename.startsWith('pre-restore-') ? 'pre-restore' : 'backup',
+  };
+}
+
+export async function getBackupDownloadPath(filename: string): Promise<{ filePath: string; cleanup: () => void }> {
+  if (!SAFE_NAME.test(filename)) throw new Error('invalid filename');
+  if (!isRemotePdfStorage()) {
+    const filePath = resolveSafePath(filename);
+    if (!fs.existsSync(filePath)) throw new Error('备份文件不存在');
+    return { filePath, cleanup: () => undefined };
+  }
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'edu-db-download-'));
+  const filePath = path.join(tempDir, filename);
+  try {
+    if (!await getPdfObjectMetadata(`db-backups/${filename}`)) throw new Error('备份文件不存在');
+    await downloadPdfObject(`db-backups/${filename}`, filePath);
+    return { filePath, cleanup: () => fs.rmSync(tempDir, { recursive: true, force: true }) };
+  } catch (error) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    throw error;
   }
 }

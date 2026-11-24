@@ -174,6 +174,27 @@ export async function getPdfObjectMetadata(key: string): Promise<{ size: number;
   };
 }
 
+export async function listPdfStorageObjects(prefix: string): Promise<{ key: string; size: number; lastModified: string }[]> {
+  const { baseUrl, token } = remoteConfig();
+  const objects: { key: string; size: number; lastModified: string }[] = [];
+  let cursor = '';
+  do {
+    const query = new URLSearchParams({ prefix, limit: '1000' });
+    if (cursor) query.set('cursor', cursor);
+    const response = await fetch(`${baseUrl}/v1/objects?${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error(`PDF storage listing failed (${response.status})`);
+    const result = await response.json() as {
+      data: { key: string; size: number; lastModified: string }[];
+      nextCursor: string | null;
+    };
+    objects.push(...result.data);
+    cursor = result.nextCursor || '';
+  } while (cursor);
+  return objects;
+}
+
 export async function deletePdfObject(key: string) {
   const { token } = remoteConfig();
   const response = await fetch(objectUrl(key), {

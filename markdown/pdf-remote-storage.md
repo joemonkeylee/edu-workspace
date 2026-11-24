@@ -1,6 +1,6 @@
 # PDF 远端资源存储
 
-PDF 原生模块支持本地和 HTTP 文件服务两种模式。默认 `PDF_STORAGE_MODE=local`，保留 `localhost + 本地 storage` 开发方式；旧图片书籍 `Book` 路径不由此配置迁移。
+PDF 原生模块和数据库备份支持本地和 HTTP 文件服务两种模式。默认 `PDF_STORAGE_MODE=local`，保留 `localhost + 本地 storage` 开发方式。切换为 HTTP 时，PDF 资源与数据库备份都写入远端文件服务；旧图片书籍 `Book` 路径不由此配置迁移。
 
 ## 本地开发
 
@@ -11,7 +11,7 @@ STORAGE_DIR=./storage
 PDF_STORAGE_MODE=local
 ```
 
-应用直接在 `STORAGE_DIR/pdf/` 读写 PDF 原件、封面、缩略图和错题裁图，不需要启动文件服务。
+应用直接在 `STORAGE_DIR/pdf/` 读写 PDF 原件、封面、缩略图和错题裁图；数据库备份保存在 `STORAGE_DIR/db-backups/`。不需要启动文件服务。
 
 ## 同机部署（例如应用与资源服务都在 182）
 
@@ -45,7 +45,7 @@ PDF_STORAGE_API_URL=http://127.0.0.1:4010
 PDF_STORAGE_TOKEN=<与 FILE_SERVICE_TOKEN 相同>
 ```
 
-在 PDF 管理页执行存储检查和初始化。应用代理 PDF 读取请求并支持 Range；远端 PDF 原件不会经由普通业务接口整本下载后再返回。
+在 PDF 管理页执行存储检查和初始化。该文件服务同时为数据库备份创建 `db-backups/` 目录。应用代理 PDF 读取请求并支持 Range；远端 PDF 原件不会经由普通业务接口整本下载后再返回。备份功能也使用远端存储，应用主机仍须安装并配置 MySQL `mysqldump` / `mysql` 命令，备份会在应用主机临时生成后上传。
 
 ## 文件服务位于另一台主机
 
@@ -77,4 +77,4 @@ npm run pdf:sync:production --workspace=server -- --apply
 
 ## 当前范围
 
-本实现覆盖 PDF 原件、封面、页缩略图和 PDF 错题裁图。其他模块的资源路径、数据库备份文件以及签名 URL/CDN 直连尚未由此实现迁移。
+本实现覆盖 PDF 原件、封面、页缩略图、PDF 错题裁图，以及数据库备份的创建、上传、列举、下载、删除、还原和自动清理。旧图片书籍 `Book` 模块与签名 URL/CDN 直连不在本次范围内。

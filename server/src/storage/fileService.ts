@@ -158,7 +158,7 @@ export function createFileServiceApp({ root, token, maxUploadBytes = 20 * 1024 *
 
   app.post('/v1/initialize', (_req, res, next) => {
     try {
-      for (const relative of ['pdf/books', 'pdf/covers', 'pdf/thumbs', 'pdf/crops']) {
+      for (const relative of ['pdf/books', 'pdf/covers', 'pdf/thumbs', 'pdf/crops', 'db-backups']) {
         fs.mkdirSync(path.join(resolvedRoot, ...relative.split('/')), { recursive: true });
       }
       const probe = path.join(resolvedRoot, `.write-check-${crypto.randomUUID()}`);

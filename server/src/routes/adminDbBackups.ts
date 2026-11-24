@@ -1,4 +1,7 @@
 import { Router, Request, Response } from 'express';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { adminRequired } from '../middleware/auth.js';
@@ -8,15 +11,14 @@ import {
   createBackup,
   restoreBackup,
   deleteBackup,
-  resolveSafePath,
-  tryEnsureBackupsDir,
+  getBackupDownloadPath,
   isBackupsAvailable,
   getBackupsRoot,
+  uploadBackup,
   resolveConnection,
   getConnectionConfig,
   saveConnectionConfig,
   testConnection,
-  type BackupMeta,
   type DbConnection,
   type ConnectionConfig,
 } from '../services/dbBackup.js';
@@ -24,17 +26,20 @@ import {
 const router = Router();
 router.use(adminRequired);
 
-// Upload config: disk storage into backups dir, keep original name, validate suffix.
+const uploadTempRoot = path.join(os.tmpdir(), 'edu-workspace-db-backup-uploads');
+
+// Upload to a temporary directory first; the configured object store owns the final copy.
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
-      const dir = tryEnsureBackupsDir();
-      if (!dir) {
-        return cb(new Error(`备份目录不可用:${getBackupsRoot()}(存储根目录不存在或不可写)`), '');
+      try {
+        fs.mkdirSync(uploadTempRoot, { recursive: true });
+        cb(null, uploadTempRoot);
+      } catch (error) {
+        cb(error as Error, '');
       }
-      cb(null, dir);
     },
-    filename: (_req, file, cb) => cb(null, Buffer.from(file.originalname, 'latin1').toString('utf8')),
+    filename: (_req, _file, cb) => cb(null, `${uuidv4()}.upload`),
   }),
   limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB
   fileFilter: (_req, file, cb) => {
@@ -49,8 +54,8 @@ const upload = multer({
 // ── Backups: list / create / upload / download / delete / restore ─
 
 router.get('/', asyncHandler(async (_req: Request, res: Response) => {
-  const available = isBackupsAvailable();
-  const data = listBackups();
+  const available = await isBackupsAvailable();
+  const data = await listBackups();
   res.json({ data, available, root: getBackupsRoot() });
 }));
 
@@ -66,24 +71,28 @@ router.post('/upload', upload.single('file'), asyncHandler(async (req: Request, 
   if (!req.file) {
     return res.status(400).json({ error: '未收到文件,或文件名仅允许字母数字及 .sql/.sql.gz 后缀' });
   }
-  const stat = await import('fs').then((m) => m.statSync(req.file!.path));
-  const meta: BackupMeta = {
-    filename: req.file.filename!,
-    size: stat.size,
-    createdAt: stat.mtime.toISOString(),
-    compressed: req.file.filename!.endsWith('.gz'),
-    type: req.file.filename!.startsWith('pre-restore-') ? 'pre-restore' : 'backup',
-  };
-  res.status(201).json({ data: meta });
+  const filename = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+  try {
+    const meta = await uploadBackup(filename, req.file.path);
+    res.status(201).json({ data: meta });
+  } finally {
+    await fs.promises.rm(req.file.path, { force: true });
+  }
 }));
 
 router.get('/:filename/download', asyncHandler(async (req: Request, res: Response) => {
-  const filePath = resolveSafePath(req.params.filename);
-  res.download(filePath, req.params.filename);
+  const { filePath, cleanup } = await getBackupDownloadPath(req.params.filename);
+  res.download(filePath, req.params.filename, (error) => {
+    cleanup();
+    if (error) {
+      if (!res.headersSent) res.status(500).json({ error: 'failed to download backup' });
+      else res.destroy(error);
+    }
+  });
 }));
 
 router.delete('/:filename', asyncHandler(async (req: Request, res: Response) => {
-  deleteBackup(req.params.filename);
+  await deleteBackup(req.params.filename);
   res.json({ success: true });
 }));
 
